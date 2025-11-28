@@ -7,16 +7,16 @@ name = "apple-health-analyzer"
 version = "0.1.0"
 description = "A Python project for analyzing Apple Health data"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.9"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "Nicolas Reyrolle", email = "405928+NicolasReyrolle@users.noreply.github.com"},
 ]
 keywords = ["apple", "health", "analyzer"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
