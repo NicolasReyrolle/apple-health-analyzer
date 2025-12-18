@@ -54,11 +54,3 @@ jobs:
       run: |
         # Running from the project root ensures pytest discovery
         pytest --cov=src --cov-report=term-missing -q tests/
-
-    - name: Upload coverage to artifact (optional)
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-${{ matrix.python-version }}
-        path: ./.coverage
-        if-no-files-found: ignore
