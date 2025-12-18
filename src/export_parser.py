@@ -3,10 +3,10 @@
 import sys
 from types import TracebackType
 from typing import Optional, Type
-from xml.etree.ElementTree import iterparse
 from zipfile import ZipFile
 
 import pandas as pd
+from defusedxml.ElementTree import iterparse
 
 
 class ExportParser:
