@@ -137,3 +137,5 @@ Thumbs.db
 #Ignore vscode AI rules
 .codacy
 .continue
+
+output/
