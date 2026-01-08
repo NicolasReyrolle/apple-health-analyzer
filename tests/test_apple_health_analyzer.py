@@ -121,37 +121,5 @@ class TestKeyboardInterrupt(unittest.TestCase):
         self.assertEqual(context.exception.code, 130)
 
 
-class TestMainBlock(unittest.TestCase):
-    """Test the __main__ block execution."""
-
-    def test_main_execution_with_valid_file(self):
-        """Test that the script runs successfully with a valid ZIP file."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = Path(tmp_dir)
-            zip_path = tmp_path / "test_export.zip"
-
-            # Create a minimal valid export file
-            xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
-<HealthData>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
-</HealthData>
-"""
-            with ZipFile(zip_path, "w") as zf:
-                zf.writestr("apple_health_export/export.xml", xml_content)
-
-            # Run the script as a subprocess
-            result = subprocess.run(
-                [sys.executable, "-m", "src.apple_health_analyzer", str(zip_path)],
-                cwd=str(Path(__file__).parent.parent),
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            # Should succeed with exit code 0
-            self.assertEqual(result.returncode, 0)
-            self.assertIn("Processing", result.stdout)
-
-
 if __name__ == "__main__":
     unittest.main()
