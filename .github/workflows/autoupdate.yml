@@ -10,6 +10,9 @@ on:
 jobs:
   autoupdate:
     name: autoupdate
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-22.04
     steps:
       - uses: docker://chinthakagodawita/autoupdate-action:v1
