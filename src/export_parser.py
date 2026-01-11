@@ -1,5 +1,6 @@
 """Export processor for Apple Health data."""
 
+from datetime import datetime
 import json
 import sys
 from types import TracebackType
@@ -12,6 +13,7 @@ import pandas as pd
 
 class WorkoutRecordRequired(TypedDict):
     """Required fields for workout record."""
+
     activityType: str
 
 
@@ -22,10 +24,24 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     startDate: Optional[str]
     endDate: Optional[str]
     source: Optional[str]
+    routeFile: Optional[str]
+    route: Optional[pd.DataFrame]
+
+
+class WorkoutRoute(TypedDict):
+    """Type definition for workout route structure."""
+
+    time: datetime
+    latitude: float
+    longitude: float
+    altitude: float
 
 
 class ExportParser:
     """Reads and parses Apple Health export files."""
+
+    # Columns to exclude from exports by default
+    DEFAULT_EXCLUDED_COLUMNS = {"routeFile", "route"}
 
     def __init__(self, export_file: str):
         self.export_file = export_file
@@ -121,7 +137,7 @@ class ExportParser:
 
                     if activity_type == workout_type:
                         record = self._create_workout_record(elem, activity_type)
-                        self._process_workout_children(elem, record)
+                        self._process_workout_children(elem, record, zipfile)
                         rows.append(record)
 
                     elem.clear()
@@ -146,7 +162,9 @@ class ExportParser:
             "source": elem.get("sourceName"),
         }
 
-    def _process_workout_children(self, elem: Element, record: WorkoutRecord) -> None:
+    def _process_workout_children(
+        self, elem: Element, record: WorkoutRecord, zipfile: ZipFile
+    ) -> None:
         """Process child elements of workout (statistics and metadata)."""
         for child in elem:
             if child.tag == "WorkoutStatistics":
@@ -154,7 +172,9 @@ class ExportParser:
             elif child.tag == "MetadataEntry":
                 self._process_metadata_entry(child, record)
             elif child.tag == "WorkoutActivity":
-                self._process_workout_children(child, record)
+                self._process_workout_children(child, record, zipfile)
+            elif child.tag == "WorkoutRoute":
+                self._process_workout_route(child, record, zipfile)
 
     def _process_workout_statistics(
         self, child: Element, record: WorkoutRecord
@@ -166,6 +186,55 @@ class ExportParser:
             if child.get(stat_attr):
                 record[f"{stat_attr}{stat_type}"] = child.get(stat_attr)
                 record[f"{stat_attr}{stat_type}Unit"] = child.get(f"{stat_attr}Unit")
+
+    def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[pd.DataFrame]:
+        """Load GPX route file from the export zip."""
+        try:
+            with zipfile.open(f"apple_health_export{route_path}") as route_file:
+                rows: List[WorkoutRoute] = []
+                for event, elem in iterparse(route_file, events=("start", "end")):
+                    if (
+                        event == "end"
+                        and elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt"
+                    ):
+                        latitude: str = elem.get("lat") or "0.0"
+                        longitude: str = elem.get("lon") or "0.0"
+
+                        # Extract child elements (ele and time are not attributes)
+                        ele_elem = elem.find("{http://www.topografix.com/GPX/1/1}ele")
+                        time_elem = elem.find("{http://www.topografix.com/GPX/1/1}time")
+
+                        altitude: str = (
+                            ele_elem.text or "0.0" if ele_elem is not None else "0.0"
+                        )
+                        time_str: str = (
+                            time_elem.text or "" if time_elem is not None else ""
+                        )
+
+                        rows.append(
+                            {
+                                "time": datetime.fromisoformat(
+                                    time_str.replace("Z", "+00:00")
+                                ),
+                                "latitude": float(latitude),
+                                "longitude": float(longitude),
+                                "altitude": float(altitude),
+                            }
+                        )
+                        elem.clear()
+                return pd.DataFrame(rows)
+        except KeyError:
+            print(f"Route file not found in export: {route_path}")
+            return None
+
+    def _process_workout_route(
+        self, elem: Element, record: WorkoutRecord, zipfile: ZipFile
+    ) -> None:
+        """Process workout route child element."""
+        for child in elem:
+            if child.tag == "FileReference":
+                record["routeFile"] = child.get("path")
+                record["route"] = self._load_route(zipfile, child.get("path") or "")
 
     def _process_metadata_entry(self, child: Element, record: WorkoutRecord) -> None:
         """Process metadata entry child element."""
@@ -199,10 +268,28 @@ class ExportParser:
             print(f"Apple Health Export file not found: {self.export_file}")
             sys.exit(1)
 
-    def export_to_json(self, output_file: str) -> None:
-        """Export to JSON: Schema first, specific column order, no nulls."""
+    def export_to_json(
+        self, output_file: str, exclude_columns: Optional[set[str]] = None
+    ) -> None:
+        """Export to JSON: Schema first, specific column order, no nulls.
+
+        Args:
+            output_file: Output file path.
+            exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
+        """
+        # Filter columns to exclude (default: routeFile and route)
+        excluded: set[str] = (
+            exclude_columns
+            if exclude_columns is not None
+            else self.DEFAULT_EXCLUDED_COLUMNS
+        )
+        cols_to_keep = [
+            col for col in self.running_workouts.columns if col not in excluded
+        ]
+        df_filtered = self.running_workouts[cols_to_keep]
+
         # 1. Get the raw JSON string
-        json_str = self.running_workouts.to_json(orient="table")  # type: ignore[misc]
+        json_str = df_filtered.to_json(orient="table")  # type: ignore[misc]
         raw_obj = json.loads(json_str)
 
         # Define the fixed order for specific columns
@@ -240,6 +327,22 @@ class ExportParser:
 
         print(f"Exported running workouts to {output_file}")
 
-    def export_to_csv(self, output_file: str) -> None:
-        """Export running workouts to a CSV file."""
-        self.running_workouts.to_csv(output_file)
+    def export_to_csv(
+        self, output_file: str, exclude_columns: Optional[set[str]] = None
+    ) -> None:
+        """Export running workouts to a CSV file.
+
+        Args:
+            output_file: Output file path.
+            exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
+        """
+        # Filter columns to exclude (default: routeFile and route)
+        excluded: set[str] = (
+            exclude_columns
+            if exclude_columns is not None
+            else self.DEFAULT_EXCLUDED_COLUMNS
+        )
+        cols_to_keep = [
+            col for col in self.running_workouts.columns if col not in excluded
+        ]
+        self.running_workouts[cols_to_keep].to_csv(output_file, index=False)
