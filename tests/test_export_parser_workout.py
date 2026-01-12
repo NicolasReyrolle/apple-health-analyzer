@@ -29,7 +29,8 @@ class TestCreateWorkoutRecord:
         record = parser._create_workout_record(elem, "Running")  # type: ignore[misc]
 
         assert record["activityType"] == "Running"
-        assert record.get("duration") == "30"
+        assert isinstance(record.get("duration"), float)
+        assert record.get("duration") == pytest.approx(30.0)  # type: ignore[misc]
         assert record.get("startDate") == "2024-01-01 10:00:00"
         assert record.get("endDate") == "2024-01-01 10:30:00"
         assert record.get("source") == "Apple Watch"
@@ -60,7 +61,7 @@ class TestProcessWorkoutStatistics:
             attrib={
                 "type": "HKQuantityTypeIdentifierDistanceWalkingRunning",
                 "sum": "5.2",
-                "sumUnit": "km",
+                "unit": "km",
             },
         )
         parser = ep.ExportParser("dummy.zip")
@@ -68,7 +69,8 @@ class TestProcessWorkoutStatistics:
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
 
-        assert record.get("sumDistanceWalkingRunning") == "5.2"
+        assert isinstance(record.get("sumDistanceWalkingRunning"), float)
+        assert record.get("sumDistanceWalkingRunning") == pytest.approx(5.2)  # type: ignore[misc]
         assert record.get("sumDistanceWalkingRunningUnit") == "km"
 
     def test_process_workout_statistics_with_average(self):
@@ -78,7 +80,7 @@ class TestProcessWorkoutStatistics:
             attrib={
                 "type": "HKQuantityTypeIdentifierHeartRate",
                 "average": "150",
-                "averageUnit": "count/min",
+                "unit": "count/min",
             },
         )
         parser = ep.ExportParser("dummy.zip")
@@ -86,7 +88,8 @@ class TestProcessWorkoutStatistics:
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
 
-        assert record.get("averageHeartRate") == "150"
+        assert isinstance(record.get("averageHeartRate"), float)
+        assert record.get("averageHeartRate") == 150
         assert record.get("averageHeartRateUnit") == "count/min"
 
     def test_process_workout_statistics_with_multiple_values(self):
@@ -96,9 +99,8 @@ class TestProcessWorkoutStatistics:
             attrib={
                 "type": "HKQuantityTypeIdentifierSpeed",
                 "minimum": "8.0",
-                "minimumUnit": "km/h",
+                "unit": "km/h",
                 "maximum": "12.0",
-                "maximumUnit": "km/h",
             },
         )
         parser = ep.ExportParser("dummy.zip")
@@ -106,9 +108,11 @@ class TestProcessWorkoutStatistics:
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
 
-        assert record.get("minimumSpeed") == "8.0"
+        assert isinstance(record.get("minimumSpeed"), float)
+        assert record.get("minimumSpeed") == pytest.approx(8.0)  # type: ignore[misc]
         assert record.get("minimumSpeedUnit") == "km/h"
-        assert record.get("maximumSpeed") == "12.0"
+        assert isinstance(record.get("maximumSpeed"), float)
+        assert record.get("maximumSpeed") == pytest.approx(12.0)  # type: ignore[misc]
         assert record.get("maximumSpeedUnit") == "km/h"
 
     def test_process_workout_statistics_with_no_values(self):
@@ -155,7 +159,7 @@ class TestProcessMetadataEntry:
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_metadata_entry(elem, record)  # type: ignore[misc]
-
+        assert isinstance(record.get("MetadataKeyElevationAscended"), float)
         assert record.get("MetadataKeyElevationAscended") == pytest.approx(  # type: ignore[misc]
             100.0
         )
@@ -193,10 +197,12 @@ class TestMetadataEntryAccumulation:
 
         parser._process_metadata_entry(elem1, record)  # type: ignore[misc]
         # After first entry: should have ElevationAscended = 100.0
+        assert isinstance(record.get("ElevationAscended"), float)
         assert record.get("ElevationAscended") == pytest.approx(100.0)  # type: ignore[misc]
 
         parser._process_metadata_entry(elem2, record)  # type: ignore[misc]
         # After second entry: should accumulate to 150.0
+        assert isinstance(record.get("ElevationAscended"), float)
         assert record.get("ElevationAscended") == pytest.approx(150.0)  # type: ignore[misc]
 
     def test_process_metadata_entry_skips_interval_step_key(self) -> None:
@@ -229,6 +235,7 @@ class TestMetadataEntryAccumulation:
 
         parser._process_metadata_entry(elem2, record)  # type: ignore[misc]
         # Should overwrite with numeric value (not accumulate)
+        assert isinstance(record.get("TestKey"), float)
         assert record.get("TestKey") == pytest.approx(100.0)  # type: ignore[misc]
 
 
@@ -252,7 +259,7 @@ class TestProcessWorkoutChildren:
             attrib={
                 "type": "HKQuantityTypeIdentifierDistance",
                 "sum": "10.0",
-                "sumUnit": "km",
+                "unit": "km",
             },
         )
         parent.append(stats_elem)
@@ -263,7 +270,8 @@ class TestProcessWorkoutChildren:
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_children(parent, record, zf)  # type: ignore[misc]
 
-        assert record.get("sumDistance") == "10.0"
+        assert isinstance(record.get("sumDistance"), float)
+        assert record.get("sumDistance") == pytest.approx(10.0)  # type: ignore[misc]
         assert record.get("sumDistanceUnit") == "km"
 
     def test_process_workout_children_with_metadata(self, tmp_path: Path) -> None:
@@ -322,7 +330,8 @@ class TestProcessWorkoutChildren:
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_children(parent, record, zf)  # type: ignore[misc]
 
-        assert record.get("sumDistance") == "5.0"
+        assert isinstance(record.get("sumDistance"), float)
+        assert record.get("sumDistance") == pytest.approx(5.0)  # type: ignore[misc]
         assert record.get("MetadataKeyTimeZone") == "UTC"
 
     def test_process_workout_children_with_unknown_element(
@@ -401,4 +410,8 @@ class TestLoadWorkouts:
 
         assert len(parser.running_workouts) == 1
         # Verify statistics from nested element were captured
-        assert parser.running_workouts.iloc[0].get("sumDistance") == "5.0"
+        assert isinstance(parser.running_workouts.iloc[0].get("sumDistance"), float)
+        assert parser.running_workouts.iloc[0].get(
+            "sumDistance") == pytest.approx( # type: ignore[misc]
+            5.0
+        )

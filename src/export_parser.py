@@ -20,7 +20,7 @@ class WorkoutRecordRequired(TypedDict):
 class WorkoutRecord(WorkoutRecordRequired, total=False):
     """Type definition for workout record structure."""
 
-    duration: Optional[str]
+    duration: Optional[float]
     startDate: Optional[str]
     endDate: Optional[str]
     source: Optional[str]
@@ -154,9 +154,10 @@ class ExportParser:
         self, elem: Element, activity_type: str
     ) -> WorkoutRecord:
         """Create base workout record from element attributes."""
+        duration_str = elem.get("duration")
         return {
             "activityType": activity_type,
-            "duration": elem.get("duration"),
+            "duration": float(duration_str) if duration_str else None,
             "startDate": elem.get("startDate"),
             "endDate": elem.get("endDate"),
             "source": elem.get("sourceName"),
@@ -184,8 +185,9 @@ class ExportParser:
 
         for stat_attr in ["sum", "average", "minimum", "maximum"]:
             if child.get(stat_attr):
-                record[f"{stat_attr}{stat_type}"] = child.get(stat_attr)
-                record[f"{stat_attr}{stat_type}Unit"] = child.get(f"{stat_attr}Unit")
+                stat_attr_str = child.get(stat_attr) or "0"
+                record[f"{stat_attr}{stat_type}"] = float(stat_attr_str)
+                record[f"{stat_attr}{stat_type}Unit"] = child.get("unit")
 
     def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[pd.DataFrame]:
         """Load GPX route file from the export zip."""

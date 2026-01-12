@@ -135,4 +135,4 @@ class TestLoadRunningWorkouts:
         # First parse should have 2 workouts
         assert len(parser.running_workouts) == 2
         # Check duration values are captured (as strings from XML attributes)
-        assert list(parser.running_workouts["duration"]) == ["30", "25"]
+        assert list(parser.running_workouts["duration"]) == [30, 25]

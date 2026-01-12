@@ -71,7 +71,7 @@ class TestComplexRealWorldWorkout:
         assert workout["activityType"] == "Running"
         assert workout["startDate"] == "2025-12-20 12:51:00 +0100"
         assert workout["endDate"] == "2025-12-20 14:50:16 +0100"
-        assert workout["duration"] == "119.2710362156232"
+        assert workout["duration"] == pytest.approx(119.27103, abs=0.001)  # type: ignore[misc]
         assert workout["source"] == "Apple Watch de Nicolas"
 
         # Verify metadata entries were captured
@@ -85,14 +85,14 @@ class TestComplexRealWorldWorkout:
         )  # 47.6418 degF -> ~8.690 degC
 
         # Verify statistics were captured
-        assert workout["sumStepCount"] == "17599"
-        assert workout["averageRunningGroundContactTime"] == "323.718"
-        assert workout["minimumRunningGroundContactTime"] == "224"
-        assert workout["maximumRunningGroundContactTime"] == "369"
-        assert workout["averageRunningPower"] == "222.789"
-        assert workout["sumActiveEnergyBurned"] == "1389.98"
-        assert workout["sumDistanceWalkingRunning"] == "16.1244"
-        assert workout["averageHeartRate"] == "140.139"
+        assert workout["sumStepCount"] == 17599
+        assert workout["averageRunningGroundContactTime"] == pytest.approx(323.718) # type: ignore[misc]
+        assert workout["minimumRunningGroundContactTime"] == 224
+        assert workout["maximumRunningGroundContactTime"] == 369
+        assert workout["averageRunningPower"] == pytest.approx(222.789) # type: ignore[misc]
+        assert workout["sumActiveEnergyBurned"] == pytest.approx(1389.98) # type: ignore[misc]
+        assert workout["sumDistanceWalkingRunning"] == pytest.approx(16.1244) # type: ignore[misc]
+        assert workout["averageHeartRate"] == pytest.approx(140.139) # type: ignore[misc]
 
         # Verify statistics under WorkoutActivity are captured
         assert workout["ElevationAscended"] == pytest.approx(554.43, abs=0.01)  # type: ignore[misc]
