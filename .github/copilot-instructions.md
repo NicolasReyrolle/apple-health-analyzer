@@ -58,4 +58,6 @@ CI validates all checks on push/PR to main/develop (`.github/workflows/tests.yml
 - **Dependencies**: Check GPL-3.0 license compatibility for additions
 - **Entry point**: Sync CLI script name `apple-health-analyzer` in `pyproject.toml` with `main()` function
 - **Memory**: Use iterparse + `.clear()` pattern for large XML files (see `_load_running_workouts()`)
-
+- **Data types**: Convert numeric strings to `int`/`float` when parsing XML attributes (see recent changes in `test_export_parser_workout.py` and `export_parser.py`)
+- **Documentation**: Update README.md for new features or changes
+- **Development**: Use a TDD approach. First write the tests, ensure they fail, then adapt the code
