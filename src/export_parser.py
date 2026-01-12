@@ -143,7 +143,16 @@ class ExportParser:
                     elem.clear()
 
             self.running_workouts = pd.DataFrame(rows)
-            print(f"Loaded {len(self.running_workouts)} running workouts.")
+            self.running_workouts["startDate"] = pd.to_datetime(
+                self.running_workouts["startDate"]
+            )
+            self.running_workouts = self.running_workouts.set_index(
+                "startDate"
+            ).sort_index()
+            print(
+                f"Loaded {len(self.running_workouts)} running workouts, "
+                f"for a distance of {self.running_workouts['sumDistanceWalkingRunning'].sum():.2f} km."
+            )
 
     def _extract_activity_type(self, elem: Element) -> str:
         """Extract and clean activity type from workout element."""
