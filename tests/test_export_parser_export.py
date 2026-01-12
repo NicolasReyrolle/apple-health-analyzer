@@ -135,6 +135,7 @@ class TestExportToCsv:
         assert "startDate" in df.columns
         assert "endDate" in df.columns
         assert "duration" in df.columns
+        assert "durationUnit" in df.columns
 
     def test_export_to_csv_with_multiple_workouts(self, tmp_path: Path) -> None:
         """Test export_to_csv with multiple workouts."""
@@ -546,7 +547,8 @@ class TestDataTypeConversion:
             assert record["TestValue"] == 42
 
     def test_indoor_workout_never_exported_as_float(self, tmp_path: Path) -> None:
-        """Test that IndoorWorkout is NEVER exported as 0.0 or 1.0 (float) even with multiple entries."""
+        """Test that IndoorWorkout is NEVER exported as 0.0 or 1.0 (float) 
+        even with multiple entries."""
         zip_path = tmp_path / "test_export.zip"
         # Also includes multiple MetadataEntry elements with same key to trigger aggregation logic
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>

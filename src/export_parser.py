@@ -21,6 +21,7 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     """Type definition for workout record structure."""
 
     duration: Optional[float]
+    durationUnit: Optional[str]
     startDate: Optional[str]
     endDate: Optional[str]
     source: Optional[str]
@@ -158,6 +159,7 @@ class ExportParser:
         return {
             "activityType": activity_type,
             "duration": float(duration_str) if duration_str else None,
+            "durationUnit": elem.get("durationUnit"),
             "startDate": elem.get("startDate"),
             "endDate": elem.get("endDate"),
             "source": elem.get("sourceName"),
@@ -248,7 +250,8 @@ class ExportParser:
 
         value, unit = self._parse_value(child.get("value", ""))
 
-        # If the key already exists and both current and new values are numeric (but not bool), sum them
+        # If the key already exists and both current and new values are numeric (but not bool),
+        # sum them
         # Note: bool is a subclass of int, so we must explicitly exclude it
         if (
             key in record

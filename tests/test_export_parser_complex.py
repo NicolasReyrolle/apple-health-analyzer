@@ -72,6 +72,7 @@ class TestComplexRealWorldWorkout:
         assert workout["startDate"] == "2025-12-20 12:51:00 +0100"
         assert workout["endDate"] == "2025-12-20 14:50:16 +0100"
         assert workout["duration"] == pytest.approx(119.27103, abs=0.001)  # type: ignore[misc]
+        assert workout["durationUnit"] == "min"
         assert workout["source"] == "Apple Watch de Nicolas"
 
         # Verify metadata entries were captured
@@ -86,7 +87,9 @@ class TestComplexRealWorldWorkout:
 
         # Verify statistics were captured
         assert workout["sumStepCount"] == 17599
-        assert workout["averageRunningGroundContactTime"] == pytest.approx(323.718)  # type: ignore[misc]
+        assert workout["averageRunningGroundContactTime"] == pytest.approx(  # type: ignore[misc]
+            323.718
+        )
         assert workout["minimumRunningGroundContactTime"] == 224
         assert workout["maximumRunningGroundContactTime"] == 369
         assert workout["averageRunningPower"] == pytest.approx(222.789)  # type: ignore[misc]
