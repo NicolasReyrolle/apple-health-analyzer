@@ -248,11 +248,14 @@ class ExportParser:
 
         value, unit = self._parse_value(child.get("value", ""))
 
-        # If the key already exists and both current and new values are numeric, sum them
+        # If the key already exists and both current and new values are numeric (but not bool), sum them
+        # Note: bool is a subclass of int, so we must explicitly exclude it
         if (
             key in record
             and isinstance(record[key], (int, float))
+            and not isinstance(record[key], bool)
             and isinstance(value, (int, float))
+            and not isinstance(value, bool)
         ):
             record[key] = record[key] + value
         else:

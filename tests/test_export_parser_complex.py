@@ -86,13 +86,13 @@ class TestComplexRealWorldWorkout:
 
         # Verify statistics were captured
         assert workout["sumStepCount"] == 17599
-        assert workout["averageRunningGroundContactTime"] == pytest.approx(323.718) # type: ignore[misc]
+        assert workout["averageRunningGroundContactTime"] == pytest.approx(323.718)  # type: ignore[misc]
         assert workout["minimumRunningGroundContactTime"] == 224
         assert workout["maximumRunningGroundContactTime"] == 369
-        assert workout["averageRunningPower"] == pytest.approx(222.789) # type: ignore[misc]
-        assert workout["sumActiveEnergyBurned"] == pytest.approx(1389.98) # type: ignore[misc]
-        assert workout["sumDistanceWalkingRunning"] == pytest.approx(16.1244) # type: ignore[misc]
-        assert workout["averageHeartRate"] == pytest.approx(140.139) # type: ignore[misc]
+        assert workout["averageRunningPower"] == pytest.approx(222.789)  # type: ignore[misc]
+        assert workout["sumActiveEnergyBurned"] == pytest.approx(1389.98)  # type: ignore[misc]
+        assert workout["sumDistanceWalkingRunning"] == pytest.approx(16.1244)  # type: ignore[misc]
+        assert workout["averageHeartRate"] == pytest.approx(140.139)  # type: ignore[misc]
 
         # Verify statistics under WorkoutActivity are captured
         assert workout["ElevationAscended"] == pytest.approx(554.43, abs=0.01)  # type: ignore[misc]
