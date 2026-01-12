@@ -585,3 +585,44 @@ class TestDataTypeConversion:
                     assert not isinstance(value, float), (
                         f"IndoorWorkout must not be float, got {value}"
                     )
+
+
+class TestStartDateTimezoneHandling:
+    """Test that startDate timezone handling doesn't break JSON export.
+    
+    Regression test for: AttributeError: 'datetime.timezone' object has no attribute 'zone'
+    This occurs when startDate is parsed as timezone-aware and pandas tries to build JSON schema.
+    """
+
+    def test_export_to_json_with_timezone_aware_startdate(self, tmp_path: Path) -> None:
+        """Test that export_to_json works with startDate timestamps that may have timezone info.
+        
+        This test ensures that when startDate is converted to a timestamp or datetime with
+        timezone information, the pandas JSON export still works without AttributeError.
+        """
+        zip_path = tmp_path / "test_export.zip"
+        xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<HealthData>
+    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01 10:30:45 +0100" endDate="2024-01-01 11:00:00 +0100" duration="30"/>
+    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-02 14:15:30 +0100" endDate="2024-01-02 14:45:30 +0100" duration="30"/>
+</HealthData>
+"""
+        with ZipFile(zip_path, "w") as zf:
+            zf.writestr("apple_health_export/export.xml", xml_content)
+
+        output_file = tmp_path / "output.json"
+        parser = ep.ExportParser(str(zip_path))
+        with parser:
+            parser.parse()
+            # This should not raise: AttributeError: 'datetime.timezone' object has no attribute 'zone'
+            parser.export_to_json(str(output_file))
+
+        # Verify the output was created successfully
+        assert output_file.exists()
+
+        # Verify JSON is valid and contains the workouts
+        with open(output_file, encoding="utf-8") as f:
+            data = json.load(f)
+            assert "schema" in data
+            assert "data" in data
+            assert len(data["data"]) == 2

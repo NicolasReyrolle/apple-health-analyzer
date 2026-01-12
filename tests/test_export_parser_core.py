@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Generator
 from zipfile import ZipFile
 
+import pandas as pd
 import pytest
 from _pytest.capture import CaptureFixture
 
@@ -42,6 +43,7 @@ class TestExportParser:
             "endDate",
             "duration",
             "durationUnit",
+            "sumDistanceWalkingRunning",
         ]
 
     def test_context_manager_protocol(self, setup_data: ep.ExportParser) -> None:
@@ -92,8 +94,8 @@ class TestLoadRunningWorkouts:
         # Should have loaded only running workouts (2, not the cycling one)
         assert len(parser.running_workouts) == 2
         assert list(parser.running_workouts["startDate"]) == [
-            "2024-01-01",
-            "2024-01-03",
+            pd.Timestamp('2024-01-01 00:00:00'),
+            pd.Timestamp('2024-01-03 00:00:00')
         ]
 
     def test_load_running_workouts_empty(
@@ -114,7 +116,7 @@ class TestLoadRunningWorkouts:
 
         assert len(parser.running_workouts) == 0
         captured = capsys.readouterr()
-        assert "Loaded 0 running workouts" in captured.out
+        assert "No data loaded for running workouts" in captured.out
 
     def test_load_multiple_workouts_accumulate(self, tmp_path: Path) -> None:
         """Test that multiple workouts are loaded into DataFrame."""
