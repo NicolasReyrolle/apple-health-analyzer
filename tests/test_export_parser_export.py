@@ -547,7 +547,7 @@ class TestDataTypeConversion:
             assert record["TestValue"] == 42
 
     def test_indoor_workout_never_exported_as_float(self, tmp_path: Path) -> None:
-        """Test that IndoorWorkout is NEVER exported as 0.0 or 1.0 (float) 
+        """Test that IndoorWorkout is NEVER exported as 0.0 or 1.0 (float)
         even with multiple entries."""
         zip_path = tmp_path / "test_export.zip"
         # Also includes multiple MetadataEntry elements with same key to trigger aggregation logic
@@ -589,14 +589,14 @@ class TestDataTypeConversion:
 
 class TestStartDateTimezoneHandling:
     """Test that startDate timezone handling doesn't break JSON export.
-    
+
     Regression test for: AttributeError: 'datetime.timezone' object has no attribute 'zone'
     This occurs when startDate is parsed as timezone-aware and pandas tries to build JSON schema.
     """
 
     def test_export_to_json_with_timezone_aware_startdate(self, tmp_path: Path) -> None:
         """Test that export_to_json works with startDate timestamps that may have timezone info.
-        
+
         This test ensures that when startDate is converted to a timestamp or datetime with
         timezone information, the pandas JSON export still works without AttributeError.
         """
@@ -614,7 +614,8 @@ class TestStartDateTimezoneHandling:
         parser = ep.ExportParser(str(zip_path))
         with parser:
             parser.parse()
-            # This should not raise: AttributeError: 'datetime.timezone' object has no attribute 'zone'
+            # This should not raise: AttributeError: 'datetime.timezone'
+            # object has no attribute 'zone'
             parser.export_to_json(str(output_file))
 
         # Verify the output was created successfully
