@@ -27,6 +27,7 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     source: Optional[str]
     routeFile: Optional[str]
     route: Optional[pd.DataFrame]
+    sumDistanceWalkingRunning: Optional[float]
 
 
 class WorkoutRoute(TypedDict):
@@ -47,7 +48,13 @@ class ExportParser:
     def __init__(self, export_file: str):
         self.export_file = export_file
         self.running_workouts: pd.DataFrame = pd.DataFrame(
-            columns=["startDate", "endDate", "duration", "durationUnit"]
+            columns=[
+                "startDate",
+                "endDate",
+                "duration",
+                "durationUnit",
+                "sumDistanceWalkingRunning",
+            ]
         )
 
     def __enter__(self) -> "ExportParser":
@@ -125,6 +132,17 @@ class ExportParser:
 
         return val, unit
 
+    @staticmethod
+    def _duration_to_seconds(value: float, unit: str = "min") -> int:
+        if unit == "min" or unit == "":
+            return int(value * 60)
+        elif unit == "h":
+            return int(value * 3600)
+        elif unit == "s":
+            return int(value)
+        else:
+            raise ValueError(f"Unknown duration unit: {unit}")
+
     def _load_workouts(self, zipfile: ZipFile, workout_type: str) -> None:
         """Load workouts of a specific type from the export file."""
         print(f"Loading the {workout_type} workouts...")
@@ -144,7 +162,29 @@ class ExportParser:
                     elem.clear()
 
             self.running_workouts = pd.DataFrame(rows)
-            print(f"Loaded {len(self.running_workouts)} running workouts.")
+            if len(self.running_workouts) > 0:
+                self.running_workouts["startDate"] = pd.to_datetime(
+                    self.running_workouts["startDate"]
+                ).dt.tz_localize(None)
+
+    def print_statistics(self) -> None:
+        """Print global statistics of the loaded data."""
+        if not self.running_workouts.empty:
+            print(f"Total running workouts: {len(self.running_workouts)}")
+            if "sumDistanceWalkingRunning" in self.running_workouts.columns:
+                print(
+                    f"Total distance of "
+                    f"{self.running_workouts['sumDistanceWalkingRunning'].sum():.2f} km."
+                )
+            if "duration" in self.running_workouts.columns:
+                total_duration_sec = self.running_workouts["duration"].sum()
+                hours, remainder = divmod(total_duration_sec, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                print(
+                    f"Total duration of {int(hours)}h {int(minutes)}m {int(seconds)}s."
+                )
+        else:
+            print("No running workouts loaded.")
 
     def _extract_activity_type(self, elem: Element) -> str:
         """Extract and clean activity type from workout element."""
@@ -156,10 +196,15 @@ class ExportParser:
     ) -> WorkoutRecord:
         """Create base workout record from element attributes."""
         duration_str = elem.get("duration")
+        duration_unit_str: str = elem.get("durationUnit") or ""
         return {
             "activityType": activity_type,
-            "duration": float(duration_str) if duration_str else None,
-            "durationUnit": elem.get("durationUnit"),
+            "duration": self._duration_to_seconds(
+                float(duration_str), duration_unit_str
+            )
+            if duration_str
+            else None,
+            "durationUnit": "seconds",
             "startDate": elem.get("startDate"),
             "endDate": elem.get("endDate"),
             "source": elem.get("sourceName"),
@@ -350,7 +395,22 @@ class ExportParser:
             if exclude_columns is not None
             else self.DEFAULT_EXCLUDED_COLUMNS
         )
-        cols_to_keep = [
-            col for col in self.running_workouts.columns if col not in excluded
-        ]
-        self.running_workouts[cols_to_keep].to_csv(output_file, index=False)
+
+        # If DataFrame is empty, create one with expected columns
+        if self.running_workouts.empty:
+            expected_columns = [
+                "activityType",
+                "duration",
+                "durationUnit",
+                "startDate",
+                "endDate",
+                "source",
+            ]
+            cols_to_keep = [col for col in expected_columns if col not in excluded]
+            empty_df = pd.DataFrame(columns=cols_to_keep)
+            empty_df.to_csv(output_file, index=False)
+        else:
+            cols_to_keep = [
+                col for col in self.running_workouts.columns if col not in excluded
+            ]
+            self.running_workouts[cols_to_keep].to_csv(output_file, index=False)

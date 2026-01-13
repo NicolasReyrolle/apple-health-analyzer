@@ -30,6 +30,7 @@ def main() -> None:
 
     with ExportParser(result['export_file']) as parser:
         parser.parse()
+        parser.print_statistics()
         parser.export_to_json("output/running_workouts.json")
         parser.export_to_csv("output/running_workouts.csv")
 

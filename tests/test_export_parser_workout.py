@@ -29,8 +29,8 @@ class TestCreateWorkoutRecord:
         record = parser._create_workout_record(elem, "Running")  # type: ignore[misc]
 
         assert record["activityType"] == "Running"
-        assert isinstance(record.get("duration"), float)
-        assert record.get("duration") == pytest.approx(30.0)  # type: ignore[misc]
+        assert isinstance(record.get("duration"), int)
+        assert record.get("duration") == 1800
         assert record.get("startDate") == "2024-01-01 10:00:00"
         assert record.get("endDate") == "2024-01-01 10:30:00"
         assert record.get("source") == "Apple Watch"

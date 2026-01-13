@@ -69,10 +69,10 @@ class TestComplexRealWorldWorkout:
 
         # Verify basic attributes
         assert workout["activityType"] == "Running"
-        assert workout["startDate"] == "2025-12-20 12:51:00 +0100"
+        assert workout["startDate"] == pd.Timestamp('2025-12-20 12:51:00')
         assert workout["endDate"] == "2025-12-20 14:50:16 +0100"
-        assert workout["duration"] == pytest.approx(119.27103, abs=0.001)  # type: ignore[misc]
-        assert workout["durationUnit"] == "min"
+        assert workout["duration"] == 7156
+        assert workout["durationUnit"] == "seconds"
         assert workout["source"] == "Apple Watch de Nicolas"
 
         # Verify metadata entries were captured

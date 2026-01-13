@@ -21,15 +21,16 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [project.scripts]
 apple-health-analyzer = "apple_health_analyzer:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/apple-health-analyzer"
-Repository = "https://github.com/yourusername/apple-health-analyzer.git"
-Issues = "https://github.com/yourusername/apple-health-analyzer/issues"
+Homepage = "https://github.com/NicolasReyrolle/apple-health-analyzer"
+Repository = "https://github.com/NicolasReyrolle/apple-health-analyzer.git"
+Issues = "https://github.com/NicolasReyrolle/apple-health-analyzer/issues"
 
 [tool.setuptools]
 packages = ["src"]
