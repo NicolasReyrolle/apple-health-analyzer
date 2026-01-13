@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 import pytest
 
-from src import export_parser as ep
+import export_parser as ep
 
 
 class TestCreateWorkoutRecord:

@@ -6,11 +6,7 @@
 import sys
 import unittest
 from unittest.mock import patch, MagicMock
-import subprocess
-import tempfile
-from zipfile import ZipFile
-from pathlib import Path
-from src import apple_health_analyzer as ah
+import apple_health_analyzer as ah
 
 
 class TestParseCliArguments(unittest.TestCase):
@@ -38,8 +34,8 @@ class TestParseCliArguments(unittest.TestCase):
 class TestMain(unittest.TestCase):
     """Test the main() entry point."""
 
-    @patch("src.apple_health_analyzer.ExportParser")
-    @patch("src.apple_health_analyzer.parse_cli_arguments")
+    @patch("apple_health_analyzer.ExportParser")
+    @patch("apple_health_analyzer.parse_cli_arguments")
     def test_main_calls_parser(
         self, mock_parse_args: MagicMock, mock_export_parser: MagicMock
     ):
@@ -71,13 +67,13 @@ class TestMainIntegration(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 ah.main()
 
-    @patch("src.apple_health_analyzer.parse_cli_arguments")
+    @patch("apple_health_analyzer.parse_cli_arguments")
     def test_main_calls_export_methods(self, mock_parse_args: MagicMock):
         """Test that main() calls both export methods."""
         mock_parse_args.return_value = {"export_file": "test.zip"}
         mock_parser_instance = MagicMock()
 
-        with patch("src.apple_health_analyzer.ExportParser") as mock_export_parser:
+        with patch("apple_health_analyzer.ExportParser") as mock_export_parser:
             mock_export_parser.return_value.__enter__.return_value = (
                 mock_parser_instance
             )
@@ -105,7 +101,7 @@ class TestKeyboardInterrupt(unittest.TestCase):
             exit_code = 130
             self.assertEqual(exit_code, 130)
 
-    @patch("src.apple_health_analyzer.main")
+    @patch("apple_health_analyzer.main")
     def test_keyboard_interrupt_in_main(self, mock_main: MagicMock):
         """Test that KeyboardInterrupt in main is handled gracefully."""
         mock_main.side_effect = KeyboardInterrupt()

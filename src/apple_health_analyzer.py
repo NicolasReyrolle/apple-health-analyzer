@@ -9,7 +9,7 @@ import sys
 import argparse
 from typing import Dict, Any
 
-from src.export_parser import ExportParser
+from export_parser import ExportParser
 
 def parse_cli_arguments() -> Dict[str, Any]:
     """Parse command line arguments."""

@@ -9,8 +9,8 @@ import pandas as pd
 import pytest
 from _pytest.capture import CaptureFixture
 
-from src import apple_health_analyzer as ah
-from src import export_parser as ep
+from apple_health_analyzer import main as ah_main
+from export_parser import ExportParser, WorkoutRecord
 
 
 class TestComplexRealWorldWorkout:
@@ -57,7 +57,7 @@ class TestComplexRealWorldWorkout:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ExportParser(str(zip_path))
         with parser:
             parser.parse()
 
@@ -132,7 +132,7 @@ class TestLoadRoute:
                 "apple_health_export/workout-routes/test_route.gpx", gpx_content
             )
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ExportParser(str(zip_path))
         with ZipFile(zip_path, "r") as zf:
             result = parser._load_route(zf, "/workout-routes/test_route.gpx")  # type: ignore[misc]
 
@@ -155,7 +155,7 @@ class TestLoadRoute:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ExportParser(str(zip_path))
         with ZipFile(zip_path, "r") as zf:
             result = parser._load_route(zf, "/workout-routes/nonexistent.gpx")  # type: ignore[misc]
 
@@ -179,7 +179,7 @@ class TestLoadRoute:
                 "apple_health_export/workout-routes/empty_route.gpx", gpx_content
             )
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ExportParser(str(zip_path))
         with ZipFile(zip_path, "r") as zf:
             result = parser._load_route(zf, "/workout-routes/empty_route.gpx")  # type: ignore[misc]
 
@@ -204,7 +204,7 @@ class TestLoadRoute:
                 "apple_health_export/workout-routes/incomplete_route.gpx", gpx_content
             )
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ExportParser(str(zip_path))
         with ZipFile(zip_path, "r") as zf:
             # This should raise a ValueError when trying to parse empty time string
             with pytest.raises(ValueError):
@@ -252,8 +252,8 @@ class TestProcessWorkoutRoute:
         )
         route_elem.append(file_ref)
 
-        parser = ep.ExportParser(str(zip_path))
-        record: ep.WorkoutRecord = {"activityType": "Running"}
+        parser = ExportParser(str(zip_path))
+        record: WorkoutRecord = {"activityType": "Running"}
 
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_route(route_elem, record, zf)  # type: ignore[misc]
@@ -276,8 +276,8 @@ class TestProcessWorkoutRoute:
 
         route_elem = Element("WorkoutRoute")
 
-        parser = ep.ExportParser(str(zip_path))
-        record: ep.WorkoutRecord = {"activityType": "Running"}
+        parser = ExportParser(str(zip_path))
+        record: WorkoutRecord = {"activityType": "Running"}
 
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_route(route_elem, record, zf)  # type: ignore[misc]
@@ -301,11 +301,11 @@ class TestMainErrorHandling:
         mock_export_parser.return_value.__enter__.return_value = mock_parser_instance
 
         with pytest.raises(SystemExit) as exc_info:
-            ah.main()
+            ah_main()
         assert exc_info.value.code == 1
 
-    @patch("src.apple_health_analyzer.ExportParser")
-    @patch("src.apple_health_analyzer.parse_cli_arguments")
+    @patch("apple_health_analyzer.ExportParser")
+    @patch("apple_health_analyzer.parse_cli_arguments")
     def test_main_with_file_not_found_error(
         self, mock_parse_args: MagicMock, mock_export_parser: MagicMock
     ) -> None:
@@ -316,10 +316,10 @@ class TestMainErrorHandling:
         mock_export_parser.return_value.__enter__.return_value = mock_parser_instance
 
         with pytest.raises(FileNotFoundError):
-            ah.main()
+            ah_main()
 
-    @patch("src.apple_health_analyzer.ExportParser")
-    @patch("src.apple_health_analyzer.parse_cli_arguments")
+    @patch("apple_health_analyzer.ExportParser")
+    @patch("apple_health_analyzer.parse_cli_arguments")
     def test_main_export_methods_called_on_success(
         self, mock_parse_args: MagicMock, mock_export_parser: MagicMock
     ) -> None:
@@ -328,7 +328,7 @@ class TestMainErrorHandling:
         mock_parser_instance = MagicMock()
         mock_export_parser.return_value.__enter__.return_value = mock_parser_instance
 
-        ah.main()
+        ah_main()
 
         # Verify both export methods are called
         mock_parser_instance.parse.assert_called_once()
@@ -339,8 +339,8 @@ class TestMainErrorHandling:
             "output/running_workouts.csv"
         )
 
-    @patch("src.apple_health_analyzer.ExportParser")
-    @patch("src.apple_health_analyzer.parse_cli_arguments")
+    @patch("apple_health_analyzer.ExportParser")
+    @patch("apple_health_analyzer.parse_cli_arguments")
     def test_main_uses_context_manager(
         self, mock_parse_args: MagicMock, mock_export_parser: MagicMock
     ) -> None:
@@ -350,7 +350,7 @@ class TestMainErrorHandling:
         mock_export_parser.return_value.__enter__.return_value = mock_parser_instance
         mock_export_parser.return_value.__exit__.return_value = None
 
-        ah.main()
+        ah_main()
 
         # Verify context manager is used
         mock_export_parser.return_value.__enter__.assert_called_once()
