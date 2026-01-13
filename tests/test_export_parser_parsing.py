@@ -3,7 +3,7 @@
 from xml.etree.ElementTree import Element
 import pytest
 
-from src import export_parser as ep
+import export_parser as ep
 
 
 class TestParseValue:

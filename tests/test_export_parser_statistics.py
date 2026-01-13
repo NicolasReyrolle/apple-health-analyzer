@@ -1,7 +1,7 @@
 """Test suite for ExportParser statistics methods"""
 import pandas as pd
 import pytest
-from src import export_parser as ep
+import export_parser as ep
 
 class TestPrintStatistics:
     """Test suite for ExportParser.print_statistics method."""
