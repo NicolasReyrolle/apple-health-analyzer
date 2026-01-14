@@ -1,7 +1,7 @@
 name: SonarQube Analysis
 
 on:
-  # Trigger analysis when pushing in master or pull requests, and when creating
+  # Trigger analysis when pushing in main or pull requests, and when creating
   # a pull request.
   push:
     branches:
@@ -21,7 +21,7 @@ jobs:
 
       # Triggering SonarQube analysis as results of it are required by Quality Gate check.
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v6
+        uses: sonarsource/sonarqube-scan-action@master
         env:
           # yamllint disable-line rule:truthy
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
