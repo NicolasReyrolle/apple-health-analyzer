@@ -21,6 +21,7 @@ jobs:
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
         env:
+          # yamllint disable-line rule:truthy
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       # Check the Quality Gate status.
@@ -30,4 +31,5 @@ jobs:
         with:
           pollingTimeoutSec: 600
         env:
+          # yamllint disable-line rule:truthy
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
