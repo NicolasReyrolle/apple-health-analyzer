@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "A Python project for analyzing Apple Health data"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     {name = "Nicolas Reyrolle", email = "405928+NicolasReyrolle@users.noreply.github.com"},
 ]
@@ -18,10 +18,11 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 [project.scripts]
@@ -44,7 +45,7 @@ profile = "black"
 line_length = 100
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
