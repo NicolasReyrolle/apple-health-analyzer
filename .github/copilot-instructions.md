@@ -13,7 +13,7 @@
 
 ## Development Workflow
 
-**Setup**: Python 3.9+ with virtual environment (`.\.venv\Scripts\Activate.ps1` on Windows)
+**Setup**: Python 3.10+ with virtual environment (`.\.venv\Scripts\Activate.ps1` on Windows)
 
 **Testing**: `pytest --cov=src tests/`
 - Tests gracefully skip if `tests/fixtures/` missing sample files
