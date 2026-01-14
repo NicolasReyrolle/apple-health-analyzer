@@ -9,6 +9,28 @@ import pandas as pd
 import export_parser as ep
 
 
+def create_test_zip(zip_path: Path, xml_content: bytes) -> None:
+    """Helper to create a test ZIP file with XML content."""
+    with ZipFile(zip_path, "w") as zf:
+        zf.writestr("apple_health_export/export.xml", xml_content)
+
+
+def parse_and_export_json(zip_path: Path, output_file: Path) -> None:
+    """Helper to parse ZIP and export to JSON."""
+    parser = ep.ExportParser(str(zip_path))
+    with parser:
+        parser.parse()
+        parser.export_to_json(str(output_file))
+
+
+def parse_and_export_csv(zip_path: Path, output_file: Path) -> None:
+    """Helper to parse ZIP and export to CSV."""
+    parser = ep.ExportParser(str(zip_path))
+    with parser:
+        parser.parse()
+        parser.export_to_csv(str(output_file))
+
+
 class TestExportToJson:
     """Test the export_to_json method."""
 
@@ -20,14 +42,9 @@ class TestExportToJson:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
+        create_test_zip(zip_path, xml_content)
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         assert output_file.exists()
 
@@ -46,14 +63,9 @@ class TestExportToJson:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
+        create_test_zip(zip_path, xml_content)
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -72,14 +84,9 @@ class TestExportToJson:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-02" endDate="2024-01-02" duration="28"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
+        create_test_zip(zip_path, xml_content)
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -93,14 +100,9 @@ class TestExportToJson:
 <HealthData>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
+        create_test_zip(zip_path, xml_content)
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         assert output_file.exists()
         with open(output_file, encoding="utf-8") as f:
@@ -119,14 +121,9 @@ class TestExportToCsv:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
+        create_test_zip(zip_path, xml_content)
         output_file = tmp_path / "output.csv"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_csv(str(output_file))
+        parse_and_export_csv(zip_path, output_file)
 
         assert output_file.exists()
 
@@ -146,14 +143,9 @@ class TestExportToCsv:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-02" endDate="2024-01-02" duration="25"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
+        create_test_zip(zip_path, xml_content)
         output_file = tmp_path / "output.csv"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_csv(str(output_file))
+        parse_and_export_csv(zip_path, output_file)
 
         df = pd.read_csv(output_file)  # type: ignore[misc]
         assert len(df) == 2
@@ -165,14 +157,9 @@ class TestExportToCsv:
 <HealthData>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
+        create_test_zip(zip_path, xml_content)
         output_file = tmp_path / "output.csv"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_csv(str(output_file))
+        parse_and_export_csv(zip_path, output_file)
 
         assert output_file.exists()
         try:
@@ -199,14 +186,9 @@ class TestColumnExclusion:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
+        create_test_zip(zip_path, xml_content)
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -223,8 +205,7 @@ class TestColumnExclusion:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
         parser = ep.ExportParser(str(zip_path))
@@ -244,8 +225,7 @@ class TestColumnExclusion:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
         parser = ep.ExportParser(str(zip_path))
@@ -269,8 +249,7 @@ class TestColumnExclusion:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
         parser = ep.ExportParser(str(zip_path))
@@ -293,8 +272,7 @@ class TestColumnExclusion:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
         parser = ep.ExportParser(str(zip_path))
@@ -323,8 +301,7 @@ class TestColumnExclusion:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
         parser = ep.ExportParser(str(zip_path))
@@ -347,8 +324,7 @@ class TestColumnExclusion:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
         parser = ep.ExportParser(str(zip_path))
@@ -372,8 +348,7 @@ class TestColumnExclusion:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
         parser = ep.ExportParser(str(zip_path))
@@ -407,14 +382,10 @@ class TestDataTypeConversion:
     </Workout>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -440,8 +411,7 @@ class TestDataTypeConversion:
     </Workout>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
         parser = ep.ExportParser(str(zip_path))
@@ -476,14 +446,10 @@ class TestDataTypeConversion:
     </Workout>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -502,14 +468,10 @@ class TestDataTypeConversion:
     </Workout>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -528,14 +490,10 @@ class TestDataTypeConversion:
     </Workout>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -562,14 +520,10 @@ class TestDataTypeConversion:
     </Workout>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
-        with parser:
-            parser.parse()
-            parser.export_to_json(str(output_file))
+        parse_and_export_json(zip_path, output_file)
 
         with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -607,8 +561,7 @@ class TestStartDateTimezoneHandling:
     <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-02 14:15:30 +0100" endDate="2024-01-02 14:45:30 +0100" duration="30"/>
 </HealthData>
 """
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+        create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
         parser = ep.ExportParser(str(zip_path))
