@@ -32,8 +32,8 @@ Homepage = "https://github.com/NicolasReyrolle/apple-health-analyzer"
 Repository = "https://github.com/NicolasReyrolle/apple-health-analyzer.git"
 Issues = "https://github.com/NicolasReyrolle/apple-health-analyzer/issues"
 
-[tool.setuptools]
-packages = ["src"]
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.black]
 line-length = 100
@@ -51,3 +51,6 @@ disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+[tool.pylint.MASTER]
+init-hook = 'import sys; sys.path.append("src")'

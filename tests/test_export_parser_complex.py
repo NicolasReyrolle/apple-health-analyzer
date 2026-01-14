@@ -289,8 +289,8 @@ class TestProcessWorkoutRoute:
 class TestMainErrorHandling:
     """Test error handling in the main() entry point."""
 
-    @patch("src.apple_health_analyzer.ExportParser")
-    @patch("src.apple_health_analyzer.parse_cli_arguments")
+    @patch("apple_health_analyzer.ExportParser")
+    @patch("apple_health_analyzer.parse_cli_arguments")
     def test_main_with_system_exit_from_parser(
         self, mock_parse_args: MagicMock, mock_export_parser: MagicMock
     ) -> None:

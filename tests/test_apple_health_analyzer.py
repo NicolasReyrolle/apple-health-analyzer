@@ -54,12 +54,12 @@ class TestMain(unittest.TestCase):
 class TestMainIntegration(unittest.TestCase):
     """Integration tests for the main CLI."""
 
-    @patch("src.apple_health_analyzer.parse_cli_arguments")
+    @patch("apple_health_analyzer.parse_cli_arguments")
     def test_main_with_export_parser_error(self, mock_parse_args: MagicMock):
         """Test main() when ExportParser raises SystemExit."""
         mock_parse_args.return_value = {"export_file": "nonexistent.zip"}
 
-        with patch("src.apple_health_analyzer.ExportParser") as mock_parser:
+        with patch("apple_health_analyzer.ExportParser") as mock_parser:
             mock_instance = MagicMock()
             mock_instance.parse.side_effect = SystemExit(1)
             mock_parser.return_value.__enter__.return_value = mock_instance
