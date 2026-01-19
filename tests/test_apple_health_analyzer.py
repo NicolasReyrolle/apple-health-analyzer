@@ -1,121 +1,58 @@
-"""Tests for the Apple Health Analyzer CLI module."""
+"""Tests for the Apple Health Analyzer main GUI module."""
 
-# pyright: reportGeneralTypeIssues=false
-# pyright: reportUnknownParameterType=false
-# pyright: ignore[reportUnknownMemberType]
-import sys
-import unittest
-from unittest.mock import patch, MagicMock
-import apple_health_analyzer as ah
+from nicegui.testing import User
 
-
-class TestParseCliArguments(unittest.TestCase):
-    """Test the CLI argument parsing."""
-
-    def test_parse_cli_arguments(self):
-        """Check the parser will return the provided arguments."""
-        sys.argv = ["apple_health_analyzer.py", "test_export.zip"]
-        result = ah.parse_cli_arguments()
-        self.assertEqual(result, {"export_file": "test_export.zip"})
-
-    def test_parse_cli_arguments_with_path(self):
-        """Test parsing with full file path."""
-        sys.argv = ["apple_health_analyzer.py", "/path/to/export.zip"]
-        result = ah.parse_cli_arguments()
-        self.assertEqual(result, {"export_file": "/path/to/export.zip"})
-
-    def test_parse_cli_arguments_with_spaces(self):
-        """Test parsing file path with spaces."""
-        sys.argv = ["apple_health_analyzer.py", "path with spaces/export.zip"]
-        result = ah.parse_cli_arguments()
-        self.assertEqual(result, {"export_file": "path with spaces/export.zip"})
-
-
-class TestMain(unittest.TestCase):
-    """Test the main() entry point."""
-
-    @patch("apple_health_analyzer.ExportParser")
-    @patch("apple_health_analyzer.parse_cli_arguments")
-    def test_main_calls_parser(
-        self, mock_parse_args: MagicMock, mock_export_parser: MagicMock
-    ):
-        """Test that main() calls parse_cli_arguments and ExportParser."""
-        mock_parse_args.return_value = {"export_file": "test.zip"}
-        mock_parser_instance = MagicMock()
-        mock_export_parser.return_value.__enter__.return_value = mock_parser_instance
-
-        ah.main()
-
-        mock_parse_args.assert_called_once()
-        mock_export_parser.assert_called_once_with("test.zip")
-        mock_parser_instance.parse.assert_called_once()
-
-
-class TestMainIntegration(unittest.TestCase):
+class TestMainWindow:
     """Integration tests for the main CLI."""
 
-    @patch("apple_health_analyzer.parse_cli_arguments")
-    def test_main_with_export_parser_error(self, mock_parse_args: MagicMock):
-        """Test main() when ExportParser raises SystemExit."""
-        mock_parse_args.return_value = {"export_file": "nonexistent.zip"}
+    async def test_click_browse(self, user: User) -> None:
+        """Test that the browse button works."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Browse").click()
+        await user.should_see("Ok")
 
-        with patch("apple_health_analyzer.ExportParser") as mock_parser:
-            mock_instance = MagicMock()
-            mock_instance.parse.side_effect = SystemExit(1)
-            mock_parser.return_value.__enter__.return_value = mock_instance
+    async def test_load_without_file(self, user: User) -> None:
+        """Test that loading without selecting a file shows a notification."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Load").click()
+        await user.should_see("Please select an Apple Health export file first.")
 
-            with self.assertRaises(SystemExit):
-                ah.main()
+    async def test_load_with_non_existent_file(self, user: User) -> None:
+        """Test that loading a non-existent file shows an error notification."""
 
-    @patch("apple_health_analyzer.parse_cli_arguments")
-    def test_main_calls_export_methods(self, mock_parse_args: MagicMock):
-        """Test that main() calls both export methods."""
-        mock_parse_args.return_value = {"export_file": "test.zip"}
-        mock_parser_instance = MagicMock()
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Apple Health export file").type("invalid_export.zip")
+        user.find("Load").click()
+        await user.should_see("No such file or directory")
 
-        with patch("apple_health_analyzer.ExportParser") as mock_export_parser:
-            mock_export_parser.return_value.__enter__.return_value = (
-                mock_parser_instance
-            )
+    async def test_load_with_valid_file(self, user: User) -> None:
+        """Test that loading a valid export file shows statistics."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Apple Health export file").type("tests/fixtures/export_sample.zip")
+        user.find("Load").click()
+        await user.should_see("No running workouts loaded")
 
-            ah.main()
+    async def test_browse_button_opens_picker(self, user: User) -> None:
+        """Test that the browse button opens the file picker dialog."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Browse").click()
+        await user.should_see("Ok")
 
-            # Verify export methods are called
-            mock_parser_instance.export_to_json.assert_called_once_with(
-                "output/running_workouts.json"
-            )
-            mock_parser_instance.export_to_csv.assert_called_once_with(
-                "output/running_workouts.csv"
-            )
+    async def test_input_file_persists_in_storage(self, user: User) -> None:
+        """Test that the input file path is persisted in app storage."""
+        await user.open("/")
+        user.find("Apple Health export file").type("tests/fixtures/export_sample.zip")
+        await user.open("/")
+        await user.should_see("tests/fixtures/export_sample.zip")
 
-
-class TestKeyboardInterrupt(unittest.TestCase):
-    """Test KeyboardInterrupt handling."""
-
-    def test_keyboard_interrupt_simulated(self):
-        """Test that KeyboardInterrupt results in exit code 130 (simulated)."""
-        # This simulates what the __main__ block does
-        try:
-            raise KeyboardInterrupt()
-        except KeyboardInterrupt:
-            exit_code = 130
-            self.assertEqual(exit_code, 130)
-
-    @patch("apple_health_analyzer.main")
-    def test_keyboard_interrupt_in_main(self, mock_main: MagicMock):
-        """Test that KeyboardInterrupt in main is handled gracefully."""
-        mock_main.side_effect = KeyboardInterrupt()
-
-        with patch("sys.stderr"):
-            with self.assertRaises(SystemExit) as context:
-                try:
-                    ah.main()
-                except KeyboardInterrupt:
-                    print("\nInterrupted by user", file=sys.stderr)
-                    sys.exit(130)
-
-        self.assertEqual(context.exception.code, 130)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    async def test_parse_error_shows_notification(self, user: User) -> None:
+        """Test that parse errors display error notification."""
+        await user.open("/")
+        user.find("Apple Health export file").type("tests/fixtures/corrupt_export.zip")
+        user.find("Load").click()
+        await user.should_see("Error parsing file")

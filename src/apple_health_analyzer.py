@@ -1,42 +1,75 @@
 #!/usr/bin/env python3
 """
-Apple Health Analyzer CLI
+Apple Health Analyzer GUI
 
-A command-line interface for analyzing Apple Health data.
+A graphical user interface for analyzing Apple Health data.
 """
 
-import sys
-import argparse
-from typing import Dict, Any
+import asyncio
+import os
+from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
+
+from nicegui import ui, app
 
 from export_parser import ExportParser
+from local_file_picker import local_file_picker
 
-def parse_cli_arguments() -> Dict[str, Any]:
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Analyse data from an Apple Health export."
-    )
-    parser.add_argument('export_file', type=str, help='Path to the Apple Health export zip file')
 
-    args = parser.parse_args()
+@ui.page("/")
+def welcome_page() -> None:
+    """Welcome page for the Apple Health Analyzer."""
 
-    return {'export_file': args.export_file}
+    async def pick_file() -> None:
+        """Open a file picker dialog to select the Apple Health export file."""
+        result: str = await local_file_picker("~", multiple=False)
+        if not result:
+            ui.notify("No file selected")
+            return
+
+        input_file.value = result[0]
+
+    async def load_file() -> None:
+        """Load and parse the selected Apple Health export file."""
+        if input_file.value == "":
+            ui.notify("Please select an Apple Health export file first.")
+            return
+
+        try:
+            with ExportParser(input_file.value, log) as parser:
+                loop = asyncio.get_event_loop()
+                with ThreadPoolExecutor() as executor:
+                    await loop.run_in_executor(executor, parser.parse)
+                log.push(parser.get_statistics())
+                ui.notify("File parsed successfully.")
+        except Exception as e:  # pylint: disable=broad-except
+            ui.notify(f"Error parsing file: {e}")
+
+    ui.label("Apple Health Analyzer")
+    with ui.row().classes("w-full items-center"):
+        input_file = (
+            ui.input(
+                "Apple Health export file",
+                placeholder="Select an Apple Health export file...",
+            )
+            .classes("flex-grow")
+            .bind_value(app.storage.user, "input_file_path")
+        )
+        ui.button("Browse", on_click=pick_file, icon="folder_open")
+
+    with ui.row().classes("w-full items-center mt-4"):
+        ui.button("Load", on_click=load_file, icon="play_arrow").classes("flex-grow")
+
+    log = ui.log(max_lines=10).classes("w-full h-20")
 
 
 def main() -> None:
-    """Main entry point for the CLI application."""
-    result = parse_cli_arguments()
-    print(f"Processing {result['export_file']}")
+    """Main entry point for the application."""
 
-    with ExportParser(result['export_file']) as parser:
-        parser.parse()
-        parser.print_statistics()
-        parser.export_to_json("output/running_workouts.json")
-        parser.export_to_csv("output/running_workouts.csv")
+    ui.run(  # type: ignore[misc]
+        title="Apple Health Analyzer",
+        storage_secret=os.getenv('STORAGE_SECRET', 'default-dev-key'),
+    )
 
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\nInterrupted by user", file=sys.stderr)
-        sys.exit(130)
+
+if __name__ in {"__main__", "__mp_main__"}:
+    main()

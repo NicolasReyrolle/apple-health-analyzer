@@ -2,12 +2,12 @@
 
 from datetime import datetime
 import json
-import sys
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Tuple, Type, TypedDict
 from xml.etree.ElementTree import Element, iterparse
 from zipfile import ZipFile
 
+from nicegui import ui
 import pandas as pd
 
 
@@ -45,8 +45,9 @@ class ExportParser:
     # Columns to exclude from exports by default
     DEFAULT_EXCLUDED_COLUMNS = {"routeFile", "route"}
 
-    def __init__(self, export_file: str):
+    def __init__(self, export_file: str, log: Optional[ui.log] = None) -> None:
         self.export_file = export_file
+        self.log = log
         self.running_workouts: pd.DataFrame = pd.DataFrame(
             columns=[
                 "startDate",
@@ -143,9 +144,15 @@ class ExportParser:
         else:
             raise ValueError(f"Unknown duration unit: {unit}")
 
+    def _log(self, message: str) -> None:
+        """Log a message if logging is enabled."""
+        if self.log:
+            self.log.push(message)
+
     def _load_workouts(self, zipfile: ZipFile, workout_type: str) -> None:
         """Load workouts of a specific type from the export file."""
-        print(f"Loading the {workout_type} workouts...")
+        if self.log:
+            self._log(f"Loading the {workout_type} workouts...")
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
             rows: List[WorkoutRecord] = []
@@ -167,12 +174,12 @@ class ExportParser:
                     self.running_workouts["startDate"]
                 ).dt.tz_localize(None)
 
-    def print_statistics(self) -> None:
+    def get_statistics(self) -> str:
         """Print global statistics of the loaded data."""
         if not self.running_workouts.empty:
-            print(f"Total running workouts: {len(self.running_workouts)}")
+            result = f"Total running workouts: {len(self.running_workouts)}"
             if "sumDistanceWalkingRunning" in self.running_workouts.columns:
-                print(
+                result += (
                     f"Total distance of "
                     f"{self.running_workouts['sumDistanceWalkingRunning'].sum():.2f} km."
                 )
@@ -180,11 +187,13 @@ class ExportParser:
                 total_duration_sec = self.running_workouts["duration"].sum()
                 hours, remainder = divmod(total_duration_sec, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                print(
+                result += (
                     f"Total duration of {int(hours)}h {int(minutes)}m {int(seconds)}s."
                 )
         else:
-            print("No running workouts loaded.")
+            result = "No running workouts loaded."
+
+        return result
 
     def _extract_activity_type(self, elem: Element) -> str:
         """Extract and clean activity type from workout element."""
@@ -273,7 +282,7 @@ class ExportParser:
                         elem.clear()
                 return pd.DataFrame(rows)
         except KeyError:
-            print(f"Route file not found in export: {route_path}")
+            self._log(f"Route file not found in export: {route_path}")
             return None
 
     def _process_workout_route(
@@ -313,13 +322,10 @@ class ExportParser:
 
     def parse(self) -> None:
         """Parse the export file."""
-        try:
-            with ZipFile(self.export_file, "r") as zipfile:
-                self._load_workouts(zipfile, "Running")
-
-        except FileNotFoundError:
-            print(f"Apple Health Export file not found: {self.export_file}")
-            sys.exit(1)
+        self._log("Starting to parse the Apple Health export file...")
+        with ZipFile(self.export_file, "r") as zipfile:
+            self._load_workouts(zipfile, "Running")
+        self._log("Finished parsing the Apple Health export file.")
 
     def export_to_json(
         self, output_file: str, exclude_columns: Optional[set[str]] = None
@@ -378,7 +384,7 @@ class ExportParser:
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(final_obj, f, indent=2)
 
-        print(f"Exported running workouts to {output_file}")
+        self._log(f"Exported running workouts to {output_file}")
 
     def export_to_csv(
         self, output_file: str, exclude_columns: Optional[set[str]] = None

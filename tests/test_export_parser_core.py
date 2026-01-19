@@ -7,9 +7,8 @@ from zipfile import ZipFile
 
 import pandas as pd
 import pytest
-from _pytest.capture import CaptureFixture
 
-import export_parser as ep
+from src import export_parser as ep
 
 
 class TestExportParser:
@@ -60,16 +59,6 @@ class TestExportParser:
             except FileNotFoundError:
                 # If file doesn't exist or is invalid, that's okay for this test
                 pass
-
-    def test_missing_file_exits_gracefully(self, capsys: CaptureFixture[str]) -> None:
-        """Test that parse() handles missing files gracefully."""
-        parser = ep.ExportParser("nonexistent_file.zip")
-        with pytest.raises(SystemExit) as exc_info:
-            parser.parse()
-        assert exc_info.value.code == 1
-        captured = capsys.readouterr()
-        assert "Apple Health Export file not found" in captured.out
-
 
 class TestLoadRunningWorkouts:
     """Test the _load_running_workouts method."""
