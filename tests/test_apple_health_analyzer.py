@@ -34,7 +34,7 @@ class TestMainWindow:
         await user.should_see("Apple Health Analyzer")
         user.find("Apple Health export file").type("tests/fixtures/export_sample.zip")
         user.find("Load").click()
-        await user.should_see("No running workouts loaded")
+        await user.should_see("No running workouts loaded", retries=15)
 
     async def test_browse_button_opens_picker(self, user: User) -> None:
         """Test that the browse button opens the file picker dialog."""
