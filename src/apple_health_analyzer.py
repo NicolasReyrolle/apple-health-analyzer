@@ -21,7 +21,7 @@ def welcome_page() -> None:
 
     async def pick_file() -> None:
         """Open a file picker dialog to select the Apple Health export file."""
-        result: str = await LocalFilePicker("~", multiple=False)
+        result: str = await LocalFilePicker("~", multiple=False, file_filter=".zip")
         if not result:
             ui.notify("No file selected")
             return
