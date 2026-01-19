@@ -177,18 +177,18 @@ class ExportParser:
     def get_statistics(self) -> str:
         """Print global statistics of the loaded data."""
         if not self.running_workouts.empty:
-            result = f"Total running workouts: {len(self.running_workouts)}"
+            result = f"Total running workouts: {len(self.running_workouts)}\n"
             if "sumDistanceWalkingRunning" in self.running_workouts.columns:
                 result += (
                     f"Total distance of "
-                    f"{self.running_workouts['sumDistanceWalkingRunning'].sum():.2f} km."
+                    f"{self.running_workouts['sumDistanceWalkingRunning'].sum():.2f} km.\n"
                 )
             if "duration" in self.running_workouts.columns:
                 total_duration_sec = self.running_workouts["duration"].sum()
                 hours, remainder = divmod(total_duration_sec, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 result += (
-                    f"Total duration of {int(hours)}h {int(minutes)}m {int(seconds)}s."
+                    f"Total duration of {int(hours)}h {int(minutes)}m {int(seconds)}s.\n"
                 )
         else:
             result = "No running workouts loaded."
