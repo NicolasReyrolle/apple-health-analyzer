@@ -23,6 +23,7 @@ class TestUpdateGrid:
         picker.path = tmp_path
         picker.upper_limit = None
         picker.show_hidden_files = False
+        picker.file_filter = None
         picker.grid = MagicMock()
         picker.grid.options = {"rowData": []}
 
@@ -45,6 +46,7 @@ class TestUpdateGrid:
         picker.path = tmp_path
         picker.upper_limit = None
         picker.show_hidden_files = False
+        picker.file_filter = None
         picker.grid = MagicMock()
         picker.grid.options = {"rowData": []}
 
@@ -69,6 +71,7 @@ class TestUpdateGrid:
         picker.path = tmp_path
         picker.upper_limit = None
         picker.show_hidden_files = True
+        picker.file_filter = None
         picker.grid = MagicMock()
         picker.grid.options = {"rowData": []}
 
@@ -95,6 +98,7 @@ class TestUpdateGrid:
         picker.path = tmp_path
         picker.upper_limit = None
         picker.show_hidden_files = False
+        picker.file_filter = None
         picker.grid = MagicMock()
         picker.grid.options = {"rowData": []}
 
@@ -122,6 +126,7 @@ class TestUpdateGrid:
         picker.path = subdir
         picker.upper_limit = None
         picker.show_hidden_files = False
+        picker.file_filter = None
         picker.grid = MagicMock()
         picker.grid.options = {"rowData": []}
 
@@ -142,6 +147,7 @@ class TestUpdateGrid:
         picker.path = tmp_path
         picker.upper_limit = tmp_path
         picker.show_hidden_files = False
+        picker.file_filter = None
         picker.grid = MagicMock()
         picker.grid.options = {"rowData": []}
 
@@ -330,3 +336,129 @@ class TestAddDrivesToggle:
             assert mock_toggle.called
             # Verify that the attribute was correctly assigned to the picker
             assert hasattr(picker, "drives_toggle")
+
+
+class TestFileFilter:
+    """Test the file_filter feature for filtering files by extension."""
+
+    def test_update_grid_with_file_filter(self, tmp_path: Path) -> None:
+        """Test that file_filter correctly filters files by extension."""
+        # Create test structure
+        (tmp_path / "file1.xml").touch()
+        (tmp_path / "file2.xml").touch()
+        (tmp_path / "file3.txt").touch()
+        (tmp_path / "file4.csv").touch()
+        (tmp_path / "subdir").mkdir()
+
+        # Create a mock picker with file_filter
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = None
+        picker.show_hidden_files = False
+        picker.file_filter = ".xml"
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        file_names: List[str] = [r["name"] for r in row_data]
+
+        # Should only show .xml files and directories
+        assert any("file1.xml" in name for name in file_names)
+        assert any("file2.xml" in name for name in file_names)
+        assert not any("file3.txt" in name for name in file_names)
+        assert not any("file4.csv" in name for name in file_names)
+        # Directories should always be shown
+        assert any("subdir" in name for name in file_names)
+
+    def test_update_grid_with_file_filter_case_insensitive(
+        self, tmp_path: Path
+    ) -> None:
+        """Test that file_filter is case-insensitive."""
+        # Create test structure with mixed case
+        (tmp_path / "file1.XML").touch()
+        (tmp_path / "file2.Xml").touch()
+        (tmp_path / "file3.txt").touch()
+
+        # Create a mock picker with lowercase filter
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = None
+        picker.show_hidden_files = False
+        picker.file_filter = ".xml"
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        file_names: List[str] = [r["name"] for r in row_data]
+
+        # Should match both uppercase and mixed case extensions
+        assert any("file1.XML" in name for name in file_names)
+        assert any("file2.Xml" in name for name in file_names)
+        assert not any("file3.txt" in name for name in file_names)
+
+    def test_update_grid_without_file_filter(self, tmp_path: Path) -> None:
+        """Test that without file_filter, all files are shown."""
+        # Create test structure
+        (tmp_path / "file1.xml").touch()
+        (tmp_path / "file2.txt").touch()
+        (tmp_path / "file3.csv").touch()
+
+        # Create a mock picker without file_filter
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = None
+        picker.show_hidden_files = False
+        picker.file_filter = None
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        file_names: List[str] = [r["name"] for r in row_data]
+
+        # All files should be shown
+        assert any("file1.xml" in name for name in file_names)
+        assert any("file2.txt" in name for name in file_names)
+        assert any("file3.csv" in name for name in file_names)
+
+    def test_file_filter_always_shows_directories(self, tmp_path: Path) -> None:
+        """Test that file_filter doesn't filter out directories."""
+        # Create test structure
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "data").mkdir()
+        (tmp_path / "file1.xml").touch()
+        (tmp_path / "file2.txt").touch()
+
+        # Create a mock picker with file_filter
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = None
+        picker.show_hidden_files = False
+        picker.file_filter = ".xml"
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        file_names: List[str] = [r["name"] for r in row_data]
+
+        # Both directories should be shown regardless of filter
+        assert any("docs" in name for name in file_names)
+        assert any("data" in name for name in file_names)
+        # Only matching files should be shown
+        assert any("file1.xml" in name for name in file_names)
+        assert not any("file2.txt" in name for name in file_names)

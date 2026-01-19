@@ -20,6 +20,7 @@ class LocalFilePicker(ui.dialog):
         upper_limit: Optional[str] = None,
         multiple: bool = False,
         show_hidden_files: bool = False,
+        file_filter: Optional[str] = None,
     ) -> None:
         """Local File Picker
 
@@ -27,10 +28,12 @@ class LocalFilePicker(ui.dialog):
         where NiceGUI is running.
 
         :param directory: The directory to start in.
-        :param upper_limit: The directory to stop at (None: no limit, default: same as the 
+        :param upper_limit: The directory to stop at (None: no limit, default: same as the
             starting directory).
         :param multiple: Whether to allow multiple files to be selected.
         :param show_hidden_files: Whether to show hidden files.
+        :param file_filter: Optional file extension filter (e.g. ".xml") to only show files
+            with the specified extension.
         """
         super().__init__()
 
@@ -40,6 +43,7 @@ class LocalFilePicker(ui.dialog):
         else:
             self.upper_limit = Path(upper_limit).expanduser()
         self.show_hidden_files = show_hidden_files
+        self.file_filter = file_filter
 
         with self, ui.card():
             self.add_drives_toggle()
@@ -86,6 +90,14 @@ class LocalFilePicker(ui.dialog):
         paths = list(self.path.glob("*"))
         if not self.show_hidden_files:
             paths = [p for p in paths if not p.name.startswith(".")]
+
+        # Filter files by extension, but keep all directories
+        if self.file_filter:
+            paths = [
+                p
+                for p in paths
+                if p.is_dir() or p.name.lower().endswith(self.file_filter.lower())
+            ]
         paths.sort(key=lambda p: p.name.lower())
         paths.sort(key=lambda p: not p.is_dir())
 
