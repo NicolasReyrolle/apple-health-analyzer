@@ -3,5 +3,6 @@
   "typeCheckingMode": "strict",
   "include": ["src"],
   "exclude": ["build", ".venv", "tests"],
-  "extraPaths": ["src"]
+  "extraPaths": ["src"],
+  "reportMissingModuleSource": false
 }

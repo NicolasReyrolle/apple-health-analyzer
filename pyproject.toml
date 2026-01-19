@@ -63,3 +63,4 @@ init-hook = 'import sys; sys.path.append("src")'
 [tool.pylint.TYPECHECK]
 ignored-modules = []
 ignored-classes = []
+extension-pkg-allow-list = ["win32api"] # Allow Pylint to check C extensions for win32api

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from local_file_picker import local_file_picker
+from local_file_picker import LocalFilePicker as local_file_picker
 
 
 class TestUpdateGrid:
@@ -222,7 +222,7 @@ class TestHandleOk:
         picker.submit = MagicMock()
 
         # Call the actual method
-        await local_file_picker._handle_ok(picker)  # type: ignore[attr-defined]
+        await local_file_picker._handle_ok(picker)  # type: ignore[misc]  # pylint: disable=protected-access
 
         picker.submit.assert_called_once_with([str(file_path)])
 
@@ -246,7 +246,7 @@ class TestHandleOk:
         picker.submit = MagicMock()
 
         # Call the actual method
-        await local_file_picker._handle_ok(picker)  # type: ignore[attr-defined]
+        await local_file_picker._handle_ok(picker)  # type: ignore[misc]  # pylint: disable=protected-access
 
         picker.submit.assert_called_once_with([str(file1), str(file2)])
 
@@ -321,12 +321,12 @@ class TestAddDrivesToggle:
         """Test that add_drives_toggle adds the drives_toggle attribute."""
         # Create a mock for the picker instance
         picker = MagicMock()
-        
+
         # Patch ui.toggle to prevent it from looking for a NiceGUI slot
-        with patch('local_file_picker.ui.toggle') as mock_toggle:
+        with patch("local_file_picker.ui.toggle") as mock_toggle:
             local_file_picker.add_drives_toggle(picker)
-            
+
             # Verify that ui.toggle was called with expected logic
             assert mock_toggle.called
             # Verify that the attribute was correctly assigned to the picker
-            assert hasattr(picker, 'drives_toggle')
+            assert hasattr(picker, "drives_toggle")

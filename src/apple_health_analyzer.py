@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-
 from nicegui import ui, app
 
 from export_parser import ExportParser
-from local_file_picker import local_file_picker
+from local_file_picker import LocalFilePicker
 
 
 @ui.page("/")
@@ -21,7 +21,7 @@ def welcome_page() -> None:
 
     async def pick_file() -> None:
         """Open a file picker dialog to select the Apple Health export file."""
-        result: str = await local_file_picker("~", multiple=False)
+        result: str = await LocalFilePicker("~", multiple=False)
         if not result:
             ui.notify("No file selected")
             return
