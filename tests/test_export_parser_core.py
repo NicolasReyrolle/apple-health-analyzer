@@ -8,7 +8,7 @@ from zipfile import ZipFile
 import pandas as pd
 import pytest
 
-from src import export_parser as ep
+import export_parser as ep
 
 
 class TestExportParser:
