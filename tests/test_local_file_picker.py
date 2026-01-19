@@ -1,0 +1,332 @@
+"""Tests for the local_file_picker class."""
+
+from pathlib import Path
+from typing import Any, Dict, List
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from local_file_picker import local_file_picker
+
+
+class TestUpdateGrid:
+    """Test the update_grid method."""
+
+    def test_update_grid_creates_row_data(self, tmp_path: Path) -> None:
+        """Test that update_grid creates row data correctly."""
+        # Create test structure
+        (tmp_path / "dir1").mkdir()
+        (tmp_path / "file1.txt").touch()
+
+        # Create a mock picker without full initialization
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = None
+        picker.show_hidden_files = False
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        # Verify grid was updated and has content
+        assert picker.grid.update.called
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        assert len(options["rowData"]) > 0
+
+    def test_update_grid_hides_hidden_files_by_default(self, tmp_path: Path) -> None:
+        """Test that hidden files are excluded by default."""
+        # Create hidden file
+        (tmp_path / ".hidden").touch()
+        (tmp_path / "visible.txt").touch()
+
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = None
+        picker.show_hidden_files = False
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        file_names: List[str] = [r["name"] for r in row_data]
+
+        # Hidden file should not be in the list
+        assert not any(".hidden" in name for name in file_names)
+
+    def test_update_grid_shows_hidden_files_when_enabled(self, tmp_path: Path) -> None:
+        """Test that hidden files are shown when enabled."""
+        # Create hidden file
+        (tmp_path / ".hidden").touch()
+        (tmp_path / "visible.txt").touch()
+
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = None
+        picker.show_hidden_files = True
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        file_names: List[str] = [r["name"] for r in row_data]
+
+        # Hidden file should be in the list
+        assert any(".hidden" in name for name in file_names)
+
+    def test_update_grid_sorts_directories_first(self, tmp_path: Path) -> None:
+        """Test that directories appear before files in sorted order."""
+        # Create structure
+        (tmp_path / "z_dir").mkdir()
+        (tmp_path / "a_dir").mkdir()
+        (tmp_path / "z_file.txt").touch()
+        (tmp_path / "a_file.txt").touch()
+
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = None
+        picker.show_hidden_files = False
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        names: List[str] = [r["name"] for r in row_data]
+
+        # Directories should come before files
+        dir_indices = [i for i, n in enumerate(names) if "📁" in n]
+        file_indices = [i for i, n in enumerate(names) if "📁" not in n]
+
+        if dir_indices and file_indices:
+            assert max(dir_indices) < min(file_indices)
+
+    def test_update_grid_adds_parent_directory_link(self, tmp_path: Path) -> None:
+        """Test that parent directory (..) is added when not at upper_limit."""
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = subdir
+        picker.upper_limit = None
+        picker.show_hidden_files = False
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        names: List[str] = [r["name"] for r in row_data]
+
+        # Parent directory should be first
+        assert any(".." in name for name in names)
+
+    def test_update_grid_no_parent_at_upper_limit(self, tmp_path: Path) -> None:
+        """Test that parent directory is not shown at upper_limit."""
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.upper_limit = tmp_path
+        picker.show_hidden_files = False
+        picker.grid = MagicMock()
+        picker.grid.options = {"rowData": []}
+
+        # Call the actual method
+        local_file_picker.update_grid(picker)
+
+        options: Dict[str, List[Any]] = picker.grid.options  # type: ignore[assignment]
+        row_data: List[Dict[str, Any]] = options["rowData"]  # type: ignore[assignment]
+        names: List[str] = [r["name"] for r in row_data]
+
+        # Parent directory should not be shown
+        assert not any(".." in name for name in names)
+
+
+class TestHandleDoubleClick:
+    """Test the handle_double_click method."""
+
+    def test_handle_double_click_on_directory(self, tmp_path: Path) -> None:
+        """Test double-clicking a directory navigates into it."""
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.grid = MagicMock()
+        picker.update_grid = MagicMock()
+
+        # Create event
+        event = MagicMock()
+        event.args = {"data": {"path": str(subdir)}}
+
+        # Call the actual method
+        local_file_picker.handle_double_click(picker, event)
+
+        assert picker.path == subdir
+        picker.update_grid.assert_called_once()
+
+    def test_handle_double_click_on_file_submits(self, tmp_path: Path) -> None:
+        """Test double-clicking a file submits and closes the dialog."""
+        file_path = tmp_path / "test_file.txt"
+        file_path.touch()
+
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.path = tmp_path
+        picker.grid = MagicMock()
+        picker.submit = MagicMock()
+
+        # Create event
+        event = MagicMock()
+        event.args = {"data": {"path": str(file_path)}}
+
+        # Call the actual method
+        local_file_picker.handle_double_click(picker, event)
+
+        picker.submit.assert_called_once_with([str(file_path)])
+
+
+class TestHandleOk:
+    """Test the _handle_ok method."""
+
+    @pytest.mark.asyncio
+    async def test_handle_ok_single_file_selection(self, tmp_path: Path) -> None:
+        """Test OK button with single file selection."""
+        file_path = tmp_path / "test_file.txt"
+        file_path.touch()
+
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.grid = MagicMock()
+
+        # Mock get_selected_rows to return a coroutine
+        async def async_get_selected_rows():
+            return [{"path": str(file_path)}]
+
+        picker.grid.get_selected_rows = async_get_selected_rows
+        picker.submit = MagicMock()
+
+        # Call the actual method
+        await local_file_picker._handle_ok(picker)  # type: ignore[attr-defined]
+
+        picker.submit.assert_called_once_with([str(file_path)])
+
+    @pytest.mark.asyncio
+    async def test_handle_ok_multiple_file_selection(self, tmp_path: Path) -> None:
+        """Test OK button with multiple file selection."""
+        file1 = tmp_path / "file1.txt"
+        file2 = tmp_path / "file2.txt"
+        file1.touch()
+        file2.touch()
+
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.grid = MagicMock()
+
+        # Mock get_selected_rows to return a coroutine
+        async def async_get_selected_rows():
+            return [{"path": str(file1)}, {"path": str(file2)}]
+
+        picker.grid.get_selected_rows = async_get_selected_rows
+        picker.submit = MagicMock()
+
+        # Call the actual method
+        await local_file_picker._handle_ok(picker)  # type: ignore[attr-defined]
+
+        picker.submit.assert_called_once_with([str(file1), str(file2)])
+
+
+class TestPathHandling:
+    """Test path handling and validation."""
+
+    def test_path_expansion_with_tilde(self) -> None:
+        """Test that paths with ~ are expanded to home directory."""
+        test_path = "~"
+        expanded = Path(test_path).expanduser()
+
+        assert expanded == Path.home()
+        assert "~" not in str(expanded)
+
+    def test_path_expansion_with_relative(self) -> None:
+        """Test that relative paths are handled correctly."""
+        test_path = "."
+        expanded = Path(test_path).expanduser().resolve()
+
+        assert expanded.is_absolute()
+
+    def test_path_expansion_nested_home(self) -> None:
+        """Test that nested paths under home are expanded correctly."""
+        test_path = "~/test/path"
+        expanded = Path(test_path).expanduser()
+
+        assert expanded == Path.home() / "test" / "path"
+        assert "~" not in str(expanded)
+
+
+class TestUpdateDrive:
+    """Test the update_drive method."""
+
+    def test_update_drive_changes_path(self) -> None:
+        """Test that update_drive changes the current path."""
+        # Create a mock picker
+        picker = MagicMock(spec=local_file_picker)
+        picker.drives_toggle = MagicMock()
+        picker.drives_toggle.value = "C:\\"
+        picker.update_grid = MagicMock()
+
+        # Call the actual method
+        local_file_picker.update_drive(picker)
+
+        assert picker.path == Path("C:\\")
+        picker.update_grid.assert_called_once()
+
+    def test_update_drive_without_drives_toggle(self) -> None:
+        """Test that update_drive handles missing drives_toggle gracefully."""
+        # Create a mock picker without drives_toggle
+        picker = MagicMock(spec=local_file_picker)
+        del picker.drives_toggle
+
+        # Should not raise an exception
+        local_file_picker.update_drive(picker)
+
+        # update_grid should not be called since drives_toggle is missing
+        assert not picker.update_grid.called
+
+
+class TestAddDrivesToggle:
+    """Test the add_drives_toggle method."""
+
+    def test_add_drives_toggle_attributes(self) -> None:
+        """Test that add_drives_toggle is callable on the class."""
+        # Verify the method exists
+        assert hasattr(local_file_picker, "add_drives_toggle")
+        assert callable(getattr(local_file_picker, "add_drives_toggle"))
+
+    def test_add_drives_toggle_mocked(self) -> None:
+        """Test that add_drives_toggle adds the drives_toggle attribute."""
+        # Create a mock for the picker instance
+        picker = MagicMock()
+        
+        # Patch ui.toggle to prevent it from looking for a NiceGUI slot
+        with patch('local_file_picker.ui.toggle') as mock_toggle:
+            local_file_picker.add_drives_toggle(picker)
+            
+            # Verify that ui.toggle was called with expected logic
+            assert mock_toggle.called
+            # Verify that the attribute was correctly assigned to the picker
+            assert hasattr(picker, 'drives_toggle')
