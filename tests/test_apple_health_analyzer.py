@@ -1,5 +1,7 @@
 """Tests for the Apple Health Analyzer main GUI module."""
 
+from typing import Callable
+
 from nicegui.testing import User
 
 
@@ -29,12 +31,14 @@ class TestMainWindow:
         user.find("Load").click()
         await user.should_see("No such file or directory")
 
-    async def test_load_with_valid_file(self, user: User) -> None:
+    async def test_load_with_valid_file(
+        self, user: User, create_health_zip: Callable[..., str]
+    ) -> None:
         """Test that loading a valid export file shows statistics."""
         await user.open("/")
         # 1. Prepare the input
-        file_input = user.find("Apple Health export file")
-        file_input.type("tests/fixtures/export_sample.zip")
+        zip_path = create_health_zip()
+        user.find("Apple Health export file").type(zip_path)
 
         # 2. Trigger the processing
         user.find("Load").click()
@@ -47,8 +51,9 @@ class TestMainWindow:
         # We use a higher retry count (100 * 0.1s = 10s) to handle slow CI runners.
         await user.should_see("Finished parsing", retries=100)
 
-        # 5. Final assertion: Verify the UI state after data processing
-        await user.should_see("No running workouts loaded")
+        # 5.Check if the UI correctly displays data from our XML
+        await user.should_see("16.12 km", retries=50)
+        await user.should_see("140 bpm")
 
     async def test_browse_button_opens_picker(self, user: User) -> None:
         """Test that the browse button opens the file picker dialog."""
