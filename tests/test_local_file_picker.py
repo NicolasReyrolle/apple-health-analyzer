@@ -324,18 +324,31 @@ class TestAddDrivesToggle:
         assert callable(getattr(local_file_picker, "add_drives_toggle"))
 
     def test_add_drives_toggle_mocked(self) -> None:
-        """Test that add_drives_toggle adds the drives_toggle attribute."""
+        """Test that add_drives_toggle adds the drives_toggle attribute by mocking Windows."""
         # Create a mock for the picker instance
         picker = MagicMock()
 
-        # Patch ui.toggle to prevent it from looking for a NiceGUI slot
-        with patch("local_file_picker.ui.toggle") as mock_toggle:
+        # We need to mock BOTH the platform and the ui.toggle
+        with (
+            patch("local_file_picker.platform.system") as mock_system,
+            patch("local_file_picker.ui.toggle") as mock_toggle,
+            patch("local_file_picker.win32api", create=True) as mock_win32,
+        ):
+            # 1. Force platform.system() to return "Windows"
+            mock_system.return_value = "Windows"
+
+            # 2. Mock the win32api call to return a dummy drive string
+            mock_win32.GetLogicalDriveStrings.return_value = "C:\\\000"
+
+            # 3. Call the method
             local_file_picker.add_drives_toggle(picker)
 
-            # Verify that ui.toggle was called with expected logic
+            # Now ui.toggle should be called because we are "on Windows"
             assert mock_toggle.called
-            # Verify that the attribute was correctly assigned to the picker
-            assert hasattr(picker, "drives_toggle")
+            # Optionally check if it was called with the correct drive
+            mock_toggle.assert_called_with(
+                ["C:\\"], value="C:\\", on_change=picker.update_drive
+            )
 
 
 class TestFileFilter:
