@@ -21,8 +21,9 @@ class TestExportParser:
         parser = ep.ExportParser(create_health_zip())
         yield parser
 
-    def test_init(self, sample_file: str):
+    def test_init(self, create_health_zip: Callable[..., str]):
         """Test that the ExportParser instance is correctly initialized."""
+        sample_file = create_health_zip()
         parser = ep.ExportParser(sample_file)
         assert parser.export_file == sample_file
         assert len(parser.running_workouts) == 0
