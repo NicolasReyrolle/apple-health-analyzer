@@ -2,6 +2,7 @@
 
 from nicegui.testing import User
 
+
 class TestMainWindow:
     """Integration tests for the main CLI."""
 
@@ -31,10 +32,23 @@ class TestMainWindow:
     async def test_load_with_valid_file(self, user: User) -> None:
         """Test that loading a valid export file shows statistics."""
         await user.open("/")
-        await user.should_see("Apple Health Analyzer")
-        user.find("Apple Health export file").type("tests/fixtures/export_sample.zip")
+        # 1. Prepare the input
+        file_input = user.find("Apple Health export file")
+        file_input.type("tests/fixtures/export_sample.zip")
+
+        # 2. Trigger the processing
         user.find("Load").click()
-        await user.should_see("No running workouts loaded", retries=150)
+
+        # 3. Robust check: Wait for the log to confirm start
+        # This confirms the click was registered and the function is running
+        await user.should_see("Starting to parse", retries=20)
+
+        # 4. Critical step: Wait for the processing to finish
+        # We use a higher retry count (100 * 0.1s = 10s) to handle slow CI runners.
+        await user.should_see("Finished parsing", retries=100)
+
+        # 5. Final assertion: Verify the UI state after data processing
+        await user.should_see("No running workouts loaded")
 
     async def test_browse_button_opens_picker(self, user: User) -> None:
         """Test that the browse button opens the file picker dialog."""
