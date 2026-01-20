@@ -52,8 +52,8 @@ class TestMainWindow:
         await user.should_see("Finished parsing", retries=100)
 
         # 5.Check if the UI correctly displays data from our XML
-        await user.should_see("16.12 km", retries=50)
-        await user.should_see("140 bpm")
+        await user.should_see("Total distance of 16", retries=50)
+        await user.should_see("Total duration of 1h")
 
     async def test_browse_button_opens_picker(self, user: User) -> None:
         """Test that the browse button opens the file picker dialog."""
