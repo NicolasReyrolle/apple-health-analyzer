@@ -2,4 +2,9 @@ coverage:
   status:
     project:
       default:
-        informational: true
+        target: auto
+        threshold: 5%  # Allows a 5% drop in overall coverage
+    patch:
+      default:
+        target: auto
+        threshold: 10% # Allows the new code in this PR to be slightly less covered
