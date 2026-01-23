@@ -1,6 +1,9 @@
 """Tests for the Apple Health Analyzer main GUI module."""
 
-from typing import Callable
+import asyncio
+import os
+import tempfile
+from typing import Callable, Any
 
 from nicegui.testing import User
 
@@ -75,3 +78,48 @@ class TestMainWindow:
         user.find("Apple Health export file").type("tests/fixtures/corrupt_export.zip")
         user.find("Load").click()
         await user.should_see("Error parsing file")
+
+    async def test_browse_no_file_selected(
+        self, user: User, mock_file_picker_context: Any
+    ) -> None:
+        """Test that not selecting a file (mock returns empty) shows a notification."""
+
+        with mock_file_picker_context(None):  # None = empty result
+            await user.open("/")
+            user.find("Browse").click()
+
+            # Wait for the async operation
+            await asyncio.sleep(0.5)
+
+            # Should see "No file selected" notification
+            await user.should_see("No file selected")
+
+    async def test_browse_file_selected(
+        self, user: User, mock_file_picker_context: Any
+    ) -> None:
+        """Test that selecting a file via the dialog updates the input_file value."""
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            # Create a dummy zip file
+            zip_name = "test_data.zip"
+            zip_path = os.path.join(tmpdirname, zip_name)
+            with open(zip_path, "w", encoding="utf-8") as f:
+                f.write("dummy content")
+
+            with mock_file_picker_context(zip_path):
+                await user.open("/")
+
+                # Verify input is initially empty
+                input_elements = list(user.find("Apple Health export file").elements)
+                input_field = input_elements[0] if input_elements else None
+                assert input_field is not None
+                actual_value = input_field.value  # type: ignore[union-attr]
+                assert actual_value == "", "Input should start empty"
+
+                # Click Browse
+                user.find("Browse").click()
+                await asyncio.sleep(1.0)
+
+                # Check if value was set
+                assert zip_path in input_field.value, (  # type: ignore[union-attr]
+                    f"Expected {zip_path} in {input_field.value}"  # type: ignore[union-attr]
+                )

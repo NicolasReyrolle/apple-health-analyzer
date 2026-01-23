@@ -4,9 +4,12 @@ import shutil
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Callable, Generator
+from typing import Callable, Generator, Any
 
 import pytest
+
+import local_file_picker
+import apple_health_analyzer as aha_module
 
 # Centralized default XML structure
 DEFAULT_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -67,3 +70,64 @@ def create_health_zip() -> Generator[Callable[[str], str], None, None]:
     # Cleanup after the test is finished
     for d in temp_dirs:
         shutil.rmtree(d, ignore_errors=True)
+
+
+def create_mock_file_picker(return_path: str | None = None) -> Callable[..., Any]:
+    """Create a mock LocalFilePicker that returns the given path.
+
+    Args:
+        return_path: The file path to return, or None for empty result.
+    """
+
+    def mock_picker(*args: Any, **kwargs: Any) -> Any:  # pylint: disable=unused-argument
+        class MockFilePicker:
+            """Mock class for LocalFilePicker."""
+
+            def __init__(self, *init_args: Any, **init_kw: Any) -> None:  # pylint: disable=unused-argument
+                pass
+
+            async def __aenter__(self) -> "MockFilePicker":
+                return self
+
+            async def __aexit__(self, *exit_args: Any) -> None:  # pylint: disable=unused-argument
+                pass
+
+            def __await__(self) -> Generator[Any, None, list[str]]:
+                async def _return_file() -> list[str]:
+                    if return_path:
+                        return [return_path]
+                    return []
+
+                return _return_file().__await__()  # type: ignore # pylint: disable=no-member
+
+        return MockFilePicker()
+
+    return mock_picker
+
+
+@pytest.fixture
+def mock_file_picker_context() -> Callable[[str | None], Any]:
+    """Context manager for temporarily mocking LocalFilePicker.
+
+    Usage:
+        with mock_file_picker_context("/path/to/file.zip") as original:
+            # Test code here
+    """
+
+    original = local_file_picker.LocalFilePicker
+
+    def _context_manager(return_path: str | None = None) -> Any:
+        class _Ctx:
+            def __enter__(self) -> Any:
+                mock_picker = create_mock_file_picker(return_path)
+                local_file_picker.LocalFilePicker = mock_picker  # type: ignore[assignment]
+                aha_module.LocalFilePicker = mock_picker  # type: ignore[attr-defined]
+                return original
+
+            def __exit__(self, *args: Any) -> None:  # pylint: disable=unused-argument
+                local_file_picker.LocalFilePicker = original
+                aha_module.LocalFilePicker = original  # type: ignore[attr-defined]
+
+        return _Ctx()
+
+    return _context_manager

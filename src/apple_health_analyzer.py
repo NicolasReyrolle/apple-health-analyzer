@@ -8,11 +8,14 @@ A graphical user interface for analyzing Apple Health data.
 import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
+from typing import Any
 
 from nicegui import ui, app
 
 from assets import APP_ICON_BASE64
 from export_parser import ExportParser
+
+import apple_health_analyzer as _module
 from local_file_picker import LocalFilePicker
 
 
@@ -22,7 +25,11 @@ def welcome_page() -> None:
 
     async def pick_file() -> None:
         """Open a file picker dialog to select the Apple Health export file."""
-        result: str = await LocalFilePicker("~", multiple=False, file_filter=".zip")
+        # Use a module-level lookup to allow for testing with mocks
+        picker_class: Any = getattr(_module, "LocalFilePicker", None)
+        if picker_class is None:
+            picker_class = LocalFilePicker
+        result: list[str] = await picker_class("~", multiple=False, file_filter=".zip")
         if not result:
             ui.notify("No file selected")
             return
