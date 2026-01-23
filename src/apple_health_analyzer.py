@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-
 
 from nicegui import ui, app
 
+from assets import APP_ICON_BASE64
 from export_parser import ExportParser
 from local_file_picker import LocalFilePicker
 
@@ -44,7 +45,10 @@ def welcome_page() -> None:
         except Exception as e:  # pylint: disable=broad-except
             ui.notify(f"Error parsing file: {e}")
 
-    ui.label("Apple Health Analyzer")
+    with ui.row().classes("w-full items-center"):
+        ui.image(APP_ICON_BASE64).classes("w-16 h-16")
+        ui.label("Apple Health Analyzer")
+
     with ui.row().classes("w-full items-center"):
         input_file = (
             ui.input(
@@ -67,7 +71,8 @@ def main() -> None:
 
     ui.run(  # type: ignore[misc]
         title="Apple Health Analyzer",
-        storage_secret=os.getenv('STORAGE_SECRET', 'default-dev-key'),
+        favicon=APP_ICON_BASE64,
+        storage_secret=os.getenv("STORAGE_SECRET", "default-dev-key"),
     )
 
 
