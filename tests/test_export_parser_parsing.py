@@ -116,7 +116,7 @@ class TestExtractActivityType:
         elem = Element(
             "Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeRunning"}
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         result = parser._extract_activity_type(elem)  # type: ignore[misc]
         assert result == "Running"
 
@@ -125,13 +125,13 @@ class TestExtractActivityType:
         elem = Element(
             "Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeCycling"}
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         result = parser._extract_activity_type(elem)  # type: ignore[misc]
         assert result == "Cycling"
 
     def test_extract_activity_type_missing_attribute(self):
         """Test extracting activity type when attribute is missing."""
         elem = Element("Workout")
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         result = parser._extract_activity_type(elem)  # type: ignore[misc]
         assert result == ""

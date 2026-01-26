@@ -9,14 +9,14 @@ class TestGetStatistics:
 
     def test_get_statistics_empty_dataframe(self) -> None:
         """Test get_statistics with empty running_workouts DataFrame."""
-        parser = ep.ExportParser("dummy_path.zip")
+        parser = ep.ExportParser()
         parser.running_workouts = pd.DataFrame()
 
         assert "No running workouts loaded." in parser.get_statistics()
 
     def test_get_statistics_with_workouts_no_distance(self) -> None:
         """Test get_statistics with workouts but no distance column."""
-        parser = ep.ExportParser("dummy_path.zip")
+        parser = ep.ExportParser()
         parser.running_workouts = pd.DataFrame(
             {
                 "activityType": ["Running", "Running"],
@@ -31,7 +31,7 @@ class TestGetStatistics:
 
     def test_get_statistics_with_distance(self) -> None:
         """Test get_statistics with distance column."""
-        parser = ep.ExportParser("dummy_path.zip")
+        parser = ep.ExportParser()
         parser.running_workouts = pd.DataFrame(
             {
                 "activityType": ["Running", "Running"],
@@ -48,7 +48,7 @@ class TestGetStatistics:
 
     def test_get_statistics_duration_calculation(self) -> None:
         """Test duration formatting (hours, minutes, seconds)."""
-        parser = ep.ExportParser("dummy_path.zip")
+        parser = ep.ExportParser()
         parser.running_workouts = pd.DataFrame(
             {
                 "activityType": ["Running"],
@@ -62,7 +62,7 @@ class TestGetStatistics:
 
     def test_get_statistics_single_workout(self) -> None:
         """Test get_statistics with a single workout."""
-        parser = ep.ExportParser("dummy_path.zip")
+        parser = ep.ExportParser()
         parser.running_workouts = pd.DataFrame(
             {
                 "activityType": ["Running"],
@@ -79,7 +79,7 @@ class TestGetStatistics:
 
     def test_get_statistics_zero_distance(self) -> None:
         """Test get_statistics with zero total distance."""
-        parser = ep.ExportParser("dummy_path.zip")
+        parser = ep.ExportParser()
         parser.running_workouts = pd.DataFrame(
             {
                 "activityType": ["Running"],
@@ -94,7 +94,7 @@ class TestGetStatistics:
 
     def test_get_statistics_large_duration(self) -> None:
         """Test get_statistics with large duration (multiple hours)."""
-        parser = ep.ExportParser("dummy_path.zip")
+        parser = ep.ExportParser()
         parser.running_workouts = pd.DataFrame(
             {
                 "activityType": ["Running"],

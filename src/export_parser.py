@@ -45,9 +45,8 @@ class ExportParser:
     # Columns to exclude from exports by default
     DEFAULT_EXCLUDED_COLUMNS = {"routeFile", "route"}
 
-    def __init__(self, export_file: str, log: Optional[ui.log] = None) -> None:
-        self.export_file = export_file
-        self.log = log
+    def __init__(self) -> None:
+        self.log = None
         self.running_workouts: pd.DataFrame = pd.DataFrame(
             columns=[
                 "startDate",
@@ -320,10 +319,11 @@ class ExportParser:
             if unit:
                 record[f"{key}Unit"] = unit
 
-    def parse(self) -> None:
+    def parse(self, export_file: str, log: Optional[ui.log] = None) -> None:
         """Parse the export file."""
+        self.log = log
         self._log("Starting to parse the Apple Health export file...")
-        with ZipFile(self.export_file, "r") as zipfile:
+        with ZipFile(export_file, "r") as zipfile:
             self._load_workouts(zipfile, "Running")
         self._log("Finished parsing the Apple Health export file.")
 

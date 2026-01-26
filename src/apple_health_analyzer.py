@@ -18,6 +18,8 @@ from export_parser import ExportParser
 import apple_health_analyzer as _module
 from local_file_picker import LocalFilePicker
 
+parser: ExportParser = ExportParser()
+
 
 @ui.page("/")
 def welcome_page() -> None:
@@ -43,12 +45,13 @@ def welcome_page() -> None:
             return
 
         try:
-            with ExportParser(input_file.value, log) as parser:
-                loop = asyncio.get_event_loop()
-                with ThreadPoolExecutor() as executor:
-                    await loop.run_in_executor(executor, parser.parse)
-                log.push(parser.get_statistics())
-                ui.notify("File parsed successfully.")
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as executor:
+                await loop.run_in_executor(
+                    executor, lambda: parser.parse(input_file.value, log=log)
+                )
+            log.push(parser.get_statistics())
+            ui.notify("File parsed successfully.")
         except Exception as e:  # pylint: disable=broad-except
             ui.notify(f"Error parsing file: {e}")
 

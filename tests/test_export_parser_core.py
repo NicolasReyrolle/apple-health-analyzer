@@ -1,7 +1,7 @@
 """Core tests for the ExportParser module."""
 
 from pathlib import Path
-from typing import Generator, Callable
+from typing import Callable
 from zipfile import ZipFile
 
 import pandas as pd
@@ -13,19 +13,9 @@ import export_parser as ep
 class TestExportParser:
     """Test cases for the ExportParser class."""
 
-    @pytest.fixture
-    def setup_data(
-        self, create_health_zip: Callable[..., str]
-    ) -> Generator[ep.ExportParser, None, None]:
-        """Create ExportParser instance for testing."""
-        parser = ep.ExportParser(create_health_zip())
-        yield parser
-
-    def test_init(self, create_health_zip: Callable[..., str]):
+    def test_init(self):
         """Test that the ExportParser instance is correctly initialized."""
-        sample_file = create_health_zip()
-        parser = ep.ExportParser(sample_file)
-        assert parser.export_file == sample_file
+        parser = ep.ExportParser()
         assert len(parser.running_workouts) == 0
         assert list(parser.running_workouts.columns) == [
             "startDate",
@@ -35,20 +25,16 @@ class TestExportParser:
             "sumDistanceWalkingRunning",
         ]
 
-    def test_context_manager_protocol(self, setup_data: ep.ExportParser) -> None:
-        """Test that ExportParser correctly implements context manager protocol."""
-        with setup_data as result:
-            assert result is setup_data
-
-    def test_parse_with_sample_file(self, setup_data: ep.ExportParser) -> None:
+    def test_parse_with_sample_file(self, create_health_zip: Callable[..., str]) -> None:
         """Test that parse() method can be called without error."""
-        with setup_data:
-            # This should not raise an error (file may not have data, but should parse)
-            try:
-                setup_data.parse()
-            except FileNotFoundError:
-                # If file doesn't exist or is invalid, that's okay for this test
-                pass
+        sample_file = create_health_zip()
+        parser = ep.ExportParser()
+        # This should not raise an error (file may not have data, but should parse)
+        try:
+            parser.parse(sample_file)
+        except FileNotFoundError:
+            # If file doesn't exist or is invalid, that's okay for this test
+            pass
 
 
 class TestLoadRunningWorkouts:
@@ -67,9 +53,9 @@ class TestLoadRunningWorkouts:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
 
         # Should have loaded only running workouts (2, not the cycling one)
         assert len(parser.running_workouts) == 2
@@ -88,9 +74,9 @@ class TestLoadRunningWorkouts:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
 
         assert len(parser.running_workouts) == 0
 
@@ -106,9 +92,9 @@ class TestLoadRunningWorkouts:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
 
         # First parse should have 2 workouts
         assert len(parser.running_workouts) == 2

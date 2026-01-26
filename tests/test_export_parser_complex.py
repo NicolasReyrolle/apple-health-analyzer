@@ -53,9 +53,9 @@ class TestComplexRealWorldWorkout:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ExportParser(str(zip_path))
+        parser = ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
 
         # Verify the workout was parsed
         assert len(parser.running_workouts) == 1
@@ -128,7 +128,7 @@ class TestLoadRoute:
                 "apple_health_export/workout-routes/test_route.gpx", gpx_content
             )
 
-        parser = ExportParser(str(zip_path))
+        parser = ExportParser()
         with ZipFile(zip_path, "r") as zf:
             result = parser._load_route(zf, "/workout-routes/test_route.gpx")  # type: ignore[misc]
 
@@ -155,7 +155,7 @@ class TestLoadRoute:
                 "apple_health_export/workout-routes/empty_route.gpx", gpx_content
             )
 
-        parser = ExportParser(str(zip_path))
+        parser = ExportParser()
         with ZipFile(zip_path, "r") as zf:
             result = parser._load_route(zf, "/workout-routes/empty_route.gpx")  # type: ignore[misc]
 
@@ -180,7 +180,7 @@ class TestLoadRoute:
                 "apple_health_export/workout-routes/incomplete_route.gpx", gpx_content
             )
 
-        parser = ExportParser(str(zip_path))
+        parser = ExportParser()
         with ZipFile(zip_path, "r") as zf:
             # This should raise a ValueError when trying to parse empty time string
             with pytest.raises(ValueError):
@@ -228,7 +228,7 @@ class TestProcessWorkoutRoute:
         )
         route_elem.append(file_ref)
 
-        parser = ExportParser(str(zip_path))
+        parser = ExportParser()
         record: WorkoutRecord = {"activityType": "Running"}
 
         with ZipFile(zip_path, "r") as zf:
@@ -252,7 +252,7 @@ class TestProcessWorkoutRoute:
 
         route_elem = Element("WorkoutRoute")
 
-        parser = ExportParser(str(zip_path))
+        parser = ExportParser()
         record: WorkoutRecord = {"activityType": "Running"}
 
         with ZipFile(zip_path, "r") as zf:

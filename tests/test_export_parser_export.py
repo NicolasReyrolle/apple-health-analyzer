@@ -17,17 +17,17 @@ def create_test_zip(zip_path: Path, xml_content: bytes) -> None:
 
 def parse_and_export_json(zip_path: Path, output_file: Path) -> None:
     """Helper to parse ZIP and export to JSON."""
-    parser = ep.ExportParser(str(zip_path))
+    parser = ep.ExportParser()
     with parser:
-        parser.parse()
+        parser.parse(str(zip_path))
         parser.export_to_json(str(output_file))
 
 
 def parse_and_export_csv(zip_path: Path, output_file: Path) -> None:
     """Helper to parse ZIP and export to CSV."""
-    parser = ep.ExportParser(str(zip_path))
+    parser = ep.ExportParser()
     with parser:
-        parser.parse()
+        parser.parse(str(zip_path))
         parser.export_to_csv(str(output_file))
 
 
@@ -208,9 +208,9 @@ class TestColumnExclusion:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             parser.export_to_csv(str(output_file))
 
         df = pd.read_csv(output_file)  # type: ignore[misc]
@@ -228,9 +228,9 @@ class TestColumnExclusion:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             # Export with empty exclude set to include all columns
             parser.export_to_json(str(output_file), exclude_columns=set())
 
@@ -252,9 +252,9 @@ class TestColumnExclusion:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             # Export with empty exclude set to include all columns
             parser.export_to_csv(str(output_file), exclude_columns=set())
 
@@ -275,9 +275,9 @@ class TestColumnExclusion:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             # Exclude custom columns: duration and durationUnit
             parser.export_to_json(
                 str(output_file), exclude_columns={"duration", "durationUnit"}
@@ -304,9 +304,9 @@ class TestColumnExclusion:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             # Exclude custom columns: startDate
             parser.export_to_csv(str(output_file), exclude_columns={"startDate"})
 
@@ -327,9 +327,9 @@ class TestColumnExclusion:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             # Exclude a column that doesn't exist
             parser.export_to_json(
                 str(output_file), exclude_columns={"nonexistent_column"}
@@ -351,9 +351,9 @@ class TestColumnExclusion:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             # Exclude a column that doesn't exist
             parser.export_to_csv(
                 str(output_file), exclude_columns={"nonexistent_column"}
@@ -414,9 +414,9 @@ class TestDataTypeConversion:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.csv"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             parser.export_to_csv(str(output_file))
 
         df = pd.read_csv(output_file)  # type: ignore[misc]
@@ -564,9 +564,9 @@ class TestStartDateTimezoneHandling:
         create_test_zip(zip_path, xml_content)
 
         output_file = tmp_path / "output.json"
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
             # This should not raise: AttributeError: 'datetime.timezone'
             # object has no attribute 'zone'
             parser.export_to_json(str(output_file))
