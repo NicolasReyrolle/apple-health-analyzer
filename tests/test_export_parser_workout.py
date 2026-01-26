@@ -25,7 +25,7 @@ class TestCreateWorkoutRecord:
                 "sourceName": "Apple Watch",
             },
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record = parser._create_workout_record(elem, "Running")  # type: ignore[misc]
 
         assert record["activityType"] == "Running"
@@ -40,7 +40,7 @@ class TestCreateWorkoutRecord:
         elem = Element(
             "Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeRunning"}
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record = parser._create_workout_record(elem, "Running")  # type: ignore[misc]
 
         assert record["activityType"] == "Running"
@@ -64,7 +64,7 @@ class TestProcessWorkoutStatistics:
                 "unit": "km",
             },
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
@@ -83,7 +83,7 @@ class TestProcessWorkoutStatistics:
                 "unit": "count/min",
             },
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
@@ -103,7 +103,7 @@ class TestProcessWorkoutStatistics:
                 "maximum": "12.0",
             },
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
@@ -123,7 +123,7 @@ class TestProcessWorkoutStatistics:
                 "type": "HKQuantityTypeIdentifierEnergy",
             },
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
@@ -142,7 +142,7 @@ class TestProcessMetadataEntry:
             "MetadataEntry",
             attrib={"key": "HKMetadataKeyTimeZone", "value": "Europe/Luxembourg"},
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_metadata_entry(elem, record)  # type: ignore[misc]
@@ -155,7 +155,7 @@ class TestProcessMetadataEntry:
             "MetadataEntry",
             attrib={"key": "HKMetadataKeyElevationAscended", "value": "100 m"},
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_metadata_entry(elem, record)  # type: ignore[misc]
@@ -171,7 +171,7 @@ class TestProcessMetadataEntry:
             "MetadataEntry",
             attrib={"key": "HKMetadataKeyIsIndoorWorkout", "value": "1"},
         )
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_metadata_entry(elem, record)  # type: ignore[misc]
@@ -192,7 +192,7 @@ class TestMetadataEntryAccumulation:
             "MetadataEntry", attrib={"key": "HKElevationAscended", "value": "50 m"}
         )
 
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_metadata_entry(elem1, record)  # type: ignore[misc]
@@ -212,7 +212,7 @@ class TestMetadataEntryAccumulation:
             attrib={"key": "HKWOIntervalStepKeyPath", "value": "0.0.0"},
         )
 
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_metadata_entry(elem, record)  # type: ignore[misc]
@@ -227,7 +227,7 @@ class TestMetadataEntryAccumulation:
         )
         elem2 = Element("MetadataEntry", attrib={"key": "HKTestKey", "value": "100 m"})
 
-        parser = ep.ExportParser("dummy.zip")
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         parser._process_metadata_entry(elem1, record)  # type: ignore[misc]
@@ -264,7 +264,7 @@ class TestProcessWorkoutChildren:
         )
         parent.append(stats_elem)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         with ZipFile(zip_path, "r") as zf:
@@ -291,7 +291,7 @@ class TestProcessWorkoutChildren:
         )
         parent.append(metadata_elem)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         with ZipFile(zip_path, "r") as zf:
@@ -324,7 +324,7 @@ class TestProcessWorkoutChildren:
         parent.append(stats_elem)
         parent.append(metadata_elem)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         with ZipFile(zip_path, "r") as zf:
@@ -350,7 +350,7 @@ class TestProcessWorkoutChildren:
         unknown_elem = Element("UnknownElement", attrib={"some": "attribute"})
         parent.append(unknown_elem)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
 
         with ZipFile(zip_path, "r") as zf:
@@ -378,7 +378,7 @@ class TestLoadWorkouts:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with ZipFile(zip_path, "r") as zf:
             parser._load_workouts(zf, "Running")  # type: ignore[misc]
 
@@ -404,7 +404,7 @@ class TestLoadWorkouts:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with ZipFile(zip_path, "r") as zf:
             parser._load_workouts(zf, "Running")  # type: ignore[misc]
 
