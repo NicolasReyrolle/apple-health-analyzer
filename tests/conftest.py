@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 from typing import Callable, Generator, Any, Optional, Protocol
 
+import nicegui.storage
 from nicegui.testing import UserInteraction
 import pytest
 
@@ -202,3 +203,29 @@ def assert_ui_state() -> StateAssertion:
             assert actual_enabled == enabled, f"Element should be {state_str}."
 
     return _assert
+
+
+# --- Global Patch to prevent WinError 32 during teardown ---
+PersistentDict = getattr(nicegui.storage, "PersistentDict")
+
+
+def patched_clear(self: Any) -> None:
+    """
+    Safely clear NiceGUI storage by ignoring Windows file locks.
+    This prevents PermissionError (WinError 32) during pytest teardown.
+    """
+    if not self.path.exists():
+        return
+
+    for filepath in self.path.glob("storage-*.json"):
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except (PermissionError, OSError):
+            # Silently ignore locked files on Windows.
+            # These are temp files and will be cleared by the OS/Session cleanup.
+            pass
+
+
+# Apply the monkeypatch to the class
+PersistentDict.clear = patched_clear
