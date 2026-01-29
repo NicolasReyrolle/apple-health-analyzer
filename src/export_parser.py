@@ -319,11 +319,16 @@ class ExportParser:
 
     def parse(self, export_file: str, log: Optional[ui.log] = None) -> None:
         """Parse the export file."""
-        self.log = log
-        self._log("Starting to parse the Apple Health export file...")
-        with ZipFile(export_file, "r") as zipfile:
-            self._load_workouts(zipfile, "Running")
-        self._log("Finished parsing the Apple Health export file.")
+
+        try:
+            self.log = log
+            self._log("Starting to parse the Apple Health export file...")
+            with ZipFile(export_file, "r") as zipfile:
+                self._load_workouts(zipfile, "Running")
+            self._log("Finished parsing the Apple Health export file.")
+        except Exception as e:
+            self._log(f"Error during parsing: {e}")
+            raise
 
     def export_to_json(self, exclude_columns: Optional[set[str]] = None) -> str:
         """Export to JSON: Schema first, specific column order, no nulls. Return JSON string.
