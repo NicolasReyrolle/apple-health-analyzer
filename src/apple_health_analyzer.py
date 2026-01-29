@@ -7,6 +7,8 @@ A graphical user interface for analyzing Apple Health data.
 
 import asyncio
 import os
+import uuid
+import sys
 from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
 from typing import Any
 
@@ -18,12 +20,20 @@ from export_parser import ExportParser
 import apple_health_analyzer as _module
 from local_file_picker import LocalFilePicker
 
-parser: ExportParser = ExportParser()
+
+class AppState:
+    """Application state."""
+
+    def __init__(self) -> None:
+        self.parser: ExportParser = ExportParser()
+        self.file_loaded: bool = False
 
 
-@ui.page("/")
-def welcome_page() -> None:
-    """Welcome page for the Apple Health Analyzer."""
+state = AppState()
+
+
+def main() -> None:
+    """Main entry point for the application."""
 
     async def pick_file() -> None:
         """Open a file picker dialog to select the Apple Health export file."""
@@ -48,16 +58,16 @@ def welcome_page() -> None:
             loop = asyncio.get_event_loop()
             with ThreadPoolExecutor() as executor:
                 await loop.run_in_executor(
-                    executor, lambda: parser.parse(input_file.value, log=log)
+                    executor, lambda: state.parser.parse(input_file.value, log=log)
                 )
-            log.push(parser.get_statistics())
+            log.push(state.parser.get_statistics())
             ui.notify("File parsed successfully.")
+            state.file_loaded = True
         except Exception as e:  # pylint: disable=broad-except
             ui.notify(f"Error parsing file: {e}")
 
-    with ui.row().classes("w-full items-center"):
-        ui.image(APP_ICON_BASE64).classes("w-16 h-16")
-        ui.label("Apple Health Analyzer")
+    generate_header()
+    generate_left_drawer()
 
     with ui.row().classes("w-full items-center"):
         input_file = (
@@ -70,21 +80,114 @@ def welcome_page() -> None:
         )
         ui.button("Browse", on_click=pick_file, icon="folder_open")
 
-    with ui.row().classes("w-full items-center mt-4"):
+    with ui.row().classes("w-full items-center"):
         ui.button("Load", on_click=load_file, icon="play_arrow").classes("flex-grow")
 
-    log = ui.log(max_lines=10).classes("w-full h-20")
+    with ui.footer():
+        log = ui.log(max_lines=10).classes("w-full h-20")
+
+    app.add_static_files("/resources", "resources")
+    ui.add_head_html('<link rel="stylesheet" href="/resources/style.css">', shared=True)
 
 
-def main() -> None:
-    """Main entry point for the application."""
+def handle_json_export() -> None:
+    """Handle exporting data to JSON format."""
+    print("Export to JSON")
+    json_data = state.parser.export_to_json()
+    ui.download(json_data.encode("utf-8"), "apple_health_export.json")
 
-    ui.run(  # type: ignore[misc]
-        title="Apple Health Analyzer",
-        favicon=APP_ICON_BASE64,
-        storage_secret=os.getenv("STORAGE_SECRET", "default-dev-key"),
-    )
+
+def handle_csv_export() -> None:
+    """Handle exporting data to CSV format."""
+    print("Export to CSV")
+    csv_data = state.parser.export_to_csv()
+    ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
+
+
+def generate_left_drawer():
+    """Generate the left drawer with filters."""
+    with ui.left_drawer():
+        ui.label("Activities")
+        ui.radio(["All", "Running", "Walking", "Cycling"]).bind_value(
+            app.storage.user, "activity_filter"
+        ).props("disable")
+
+        ui.separator()
+
+        ui.label("Date Range")
+
+        months = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+        ]
+        years = [2024, 2025, 2026]
+        with ui.row().classes("items-center gap-2"):
+            ui.label("From").classes("text-sm text-muted")
+            ui.select(months, value="Jan").classes("w-20").props("dense flat").props(
+                "disable"
+            )
+            ui.select(years, value=2025).classes("w-24").props("dense flat").props(
+                "disable"
+            )
+
+            ui.label("to").classes("text-sm text-muted")
+            ui.select(months, value="Dec").classes("w-20").props("dense flat").props(
+                "disable"
+            )
+            ui.select(years, value=2025).classes("w-24").props("dense flat").props(
+                "disable"
+            )
+
+        ui.separator()
+        with ui.dropdown_button("Export data", icon="download").bind_enabled_from(
+            state, "file_loaded"
+        ):
+            ui.button("to JSON", on_click=handle_json_export).props("flat").classes(
+                "w-full"
+            )
+            ui.button("to CSV", on_click=handle_csv_export).props("flat").classes(
+                "w-full"
+            )
+
+
+def generate_header():
+    """Generate the application header with a dark mode toggle."""
+    dark = ui.dark_mode()
+    with ui.header().classes("items-center justify-between border-b"):
+        ui.image(APP_ICON_BASE64).classes("w-16 h-16")
+        ui.label("Apple Health Analyzer").classes("font-bold text-xl")
+
+        # Toggle button with dynamic icon
+        ui.button(icon="dark_mode", on_click=dark.enable).bind_visibility_from(
+            dark, "value", backward=lambda v: not v
+        ).props("flat round")
+        ui.button(icon="light_mode", on_click=dark.disable).bind_visibility_from(
+            dark, "value"
+        ).props("flat round").classes("text-main")
 
 
 if __name__ in {"__main__", "__mp_main__"}:
-    main()
+    secret = (
+        uuid.uuid4().hex
+        if "pytest" in sys.modules
+        else os.getenv("STORAGE_SECRET", "secret")
+    )
+
+    ui.run(  # type: ignore[misc]
+        main,
+        title="Apple Health Analyzer",
+        favicon=APP_ICON_BASE64,
+        storage_secret=secret,
+        uvicorn_reload_includes="resources/**,src/**",
+        uvicorn_reload_excludes="tests/**",
+    )

@@ -1,11 +1,13 @@
 """Fixtures for testing Apple Health Analyzer."""
 
+import os
 import shutil
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Callable, Generator, Any
+from typing import Callable, Generator, Any, Optional, Protocol
 
+from nicegui.testing import UserInteraction
 import pytest
 
 import local_file_picker
@@ -131,3 +133,72 @@ def mock_file_picker_context() -> Callable[[str | None], Any]:
         return _Ctx()
 
     return _context_manager
+
+
+@pytest.fixture(autouse=True, scope="session")
+def cleanup_windows_storage():
+    """Fixture to clean up NiceGUI storage on Windows after tests."""
+    yield
+    temp_storage = Path(".nicegui")
+    if temp_storage.exists():
+        shutil.rmtree(temp_storage, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def setup_test_environment():
+    """Fixture to set up a temporary NiceGUI storage path for tests."""
+    test_dir = tempfile.mkdtemp()
+    os.environ["NICEGUI_STORAGE_PATH"] = test_dir
+
+    yield
+
+    shutil.rmtree(test_dir, ignore_errors=True)
+
+
+# Define a Protocol to describe the helper signature precisely
+class StateAssertion(Protocol):
+    """Protocol for UI state assertion functions."""
+
+    def __call__(
+        self,
+        interaction: UserInteraction[Any],
+        enabled: Optional[bool] = None,
+        visible: Optional[bool] = None,
+    ) -> None: ...
+
+
+@pytest.fixture
+def assert_ui_state() -> StateAssertion:
+    """
+    Helper fixture to verify the state of a NiceGUI element.
+    Using a Protocol instead of Callable to support optional arguments
+    without triggering 'Expected more positional arguments' errors.
+    """
+
+    def _assert(
+        interaction: UserInteraction[Any],
+        enabled: Optional[bool] = None,
+        visible: Optional[bool] = None,
+    ) -> None:
+        # Check if any elements were found
+        assert interaction.elements, f"No elements found for: {interaction}"
+
+        # Get the underlying element
+        element = next(iter(interaction.elements))
+
+        # 1. Check Visibility
+        if visible is not None:
+            actual_visible = element.visible
+            state_str = "visible" if visible else "hidden"
+            assert actual_visible == visible, f"Element should be {state_str}."
+
+        # 2. Check Enabled state
+        if enabled is not None:
+            # Cast to Any to access protected member _props
+            element_any: Any = element
+            is_disabled = element_any._props.get("disable", False)  # pylint: disable=protected-access
+            actual_enabled = not is_disabled
+            state_str = "enabled" if enabled else "disabled"
+            assert actual_enabled == enabled, f"Element should be {state_str}."
+
+    return _assert

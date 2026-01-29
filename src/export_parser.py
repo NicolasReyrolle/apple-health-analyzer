@@ -186,9 +186,7 @@ class ExportParser:
                 total_duration_sec = self.running_workouts["duration"].sum()
                 hours, remainder = divmod(total_duration_sec, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                result += (
-                    f"Total duration of {int(hours)}h {int(minutes)}m {int(seconds)}s.\n"
-                )
+                result += f"Total duration of {int(hours)}h {int(minutes)}m {int(seconds)}s.\n"
         else:
             result = "No running workouts loaded."
 
@@ -327,13 +325,10 @@ class ExportParser:
             self._load_workouts(zipfile, "Running")
         self._log("Finished parsing the Apple Health export file.")
 
-    def export_to_json(
-        self, output_file: str, exclude_columns: Optional[set[str]] = None
-    ) -> None:
-        """Export to JSON: Schema first, specific column order, no nulls.
+    def export_to_json(self, exclude_columns: Optional[set[str]] = None) -> str:
+        """Export to JSON: Schema first, specific column order, no nulls. Return JSON string.
 
         Args:
-            output_file: Output file path.
             exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
         """
         # Filter columns to exclude (default: routeFile and route)
@@ -380,19 +375,13 @@ class ExportParser:
             "data": cleaned_data,
         }
 
-        # 5. Write to file
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(final_obj, f, indent=2)
+        # 5. Return the JSON string
+        return json.dumps(final_obj, indent=2)
 
-        self._log(f"Exported running workouts to {output_file}")
-
-    def export_to_csv(
-        self, output_file: str, exclude_columns: Optional[set[str]] = None
-    ) -> None:
-        """Export running workouts to a CSV file.
+    def export_to_csv(self, exclude_columns: Optional[set[str]] = None) -> str:
+        """Export running workouts to a CSV format, returns the CSV string.
 
         Args:
-            output_file: Output file path.
             exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
         """
         # Filter columns to exclude (default: routeFile and route)
@@ -401,6 +390,8 @@ class ExportParser:
             if exclude_columns is not None
             else self.DEFAULT_EXCLUDED_COLUMNS
         )
+
+        result: str = ""
 
         # If DataFrame is empty, create one with expected columns
         if self.running_workouts.empty:
@@ -414,9 +405,11 @@ class ExportParser:
             ]
             cols_to_keep = [col for col in expected_columns if col not in excluded]
             empty_df = pd.DataFrame(columns=cols_to_keep)
-            empty_df.to_csv(output_file, index=False)
+            result = empty_df.to_csv(index=False)
         else:
             cols_to_keep = [
                 col for col in self.running_workouts.columns if col not in excluded
             ]
-            self.running_workouts[cols_to_keep].to_csv(output_file, index=False)
+            result = self.running_workouts[cols_to_keep].to_csv(index=False)
+
+        return result

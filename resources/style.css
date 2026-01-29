@@ -1,0 +1,42 @@
+:root {
+    --bg-app: #F5F5F7;
+    --text-main: #1D1D1F;
+    --bg-card: #FFFFFF;
+}
+
+.dark {
+    --bg-app: #121212 !important;
+    --text-main: #F5F5F7 !important;
+    --bg-card: #1C1C1E !important;
+}
+
+.dark, 
+.dark .q-layout, 
+.dark .q-header, 
+.dark .q-drawer, 
+.dark .q-page-container {
+    background-color: var(--bg-app) !important;
+    color: var(--text-main) !important;
+}
+.dark .q-btn {
+    color: var(--q-primary) !important; 
+}
+
+.nicegui-content {
+    background-color: transparent !important;
+}
+
+.nicegui-card, .q-card {
+    background-color: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+}
+
+.q-btn--flat .q-icon {
+    color: var(--text-main) !important;
+    opacity: 1 !important;
+}
+
+.q-btn--flat:hover {
+    background: rgba(128, 128, 128, 0.1) !important;
+}
