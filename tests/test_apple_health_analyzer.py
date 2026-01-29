@@ -1,121 +1,278 @@
-"""Tests for the Apple Health Analyzer CLI module."""
+"""Tests for the Apple Health Analyzer main GUI module."""
 
-# pyright: reportGeneralTypeIssues=false
-# pyright: reportUnknownParameterType=false
-# pyright: ignore[reportUnknownMemberType]
-import sys
-import unittest
-from unittest.mock import patch, MagicMock
-import apple_health_analyzer as ah
+import asyncio
+import json
+import os
+import tempfile
+from typing import Callable, Any
 
-
-class TestParseCliArguments(unittest.TestCase):
-    """Test the CLI argument parsing."""
-
-    def test_parse_cli_arguments(self):
-        """Check the parser will return the provided arguments."""
-        sys.argv = ["apple_health_analyzer.py", "test_export.zip"]
-        result = ah.parse_cli_arguments()
-        self.assertEqual(result, {"export_file": "test_export.zip"})
-
-    def test_parse_cli_arguments_with_path(self):
-        """Test parsing with full file path."""
-        sys.argv = ["apple_health_analyzer.py", "/path/to/export.zip"]
-        result = ah.parse_cli_arguments()
-        self.assertEqual(result, {"export_file": "/path/to/export.zip"})
-
-    def test_parse_cli_arguments_with_spaces(self):
-        """Test parsing file path with spaces."""
-        sys.argv = ["apple_health_analyzer.py", "path with spaces/export.zip"]
-        result = ah.parse_cli_arguments()
-        self.assertEqual(result, {"export_file": "path with spaces/export.zip"})
+from conftest import StateAssertion
+from nicegui.testing import User
 
 
-class TestMain(unittest.TestCase):
-    """Test the main() entry point."""
-
-    @patch("apple_health_analyzer.ExportParser")
-    @patch("apple_health_analyzer.parse_cli_arguments")
-    def test_main_calls_parser(
-        self, mock_parse_args: MagicMock, mock_export_parser: MagicMock
-    ):
-        """Test that main() calls parse_cli_arguments and ExportParser."""
-        mock_parse_args.return_value = {"export_file": "test.zip"}
-        mock_parser_instance = MagicMock()
-        mock_export_parser.return_value.__enter__.return_value = mock_parser_instance
-
-        ah.main()
-
-        mock_parse_args.assert_called_once()
-        mock_export_parser.assert_called_once_with("test.zip")
-        mock_parser_instance.parse.assert_called_once()
+def is_valid_json(data_string: str) -> bool:
+    """Check if a string is valid JSON."""
+    try:
+        json.loads(data_string)
+        return True
+    except (json.JSONDecodeError, TypeError):
+        return False
 
 
-class TestMainIntegration(unittest.TestCase):
+def is_valid_csv(data_string: str, expected_column: str = "") -> bool:
+    """Check if a string is valid CSV."""
+    first_line = data_string.splitlines()[0] if data_string else ""
+
+    for delimiter in [",", ";"]:
+        if delimiter in first_line:
+            if expected_column and expected_column in first_line.split(delimiter):
+                return True
+            if not expected_column:
+                return True
+    return False
+
+
+class TestMainWindow:
     """Integration tests for the main CLI."""
 
-    @patch("apple_health_analyzer.parse_cli_arguments")
-    def test_main_with_export_parser_error(self, mock_parse_args: MagicMock):
-        """Test main() when ExportParser raises SystemExit."""
-        mock_parse_args.return_value = {"export_file": "nonexistent.zip"}
+    async def test_click_browse(self, user: User) -> None:
+        """Test that the browse button works."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Browse").click()
+        await user.should_see("Ok")
 
-        with patch("apple_health_analyzer.ExportParser") as mock_parser:
-            mock_instance = MagicMock()
-            mock_instance.parse.side_effect = SystemExit(1)
-            mock_parser.return_value.__enter__.return_value = mock_instance
+    async def test_load_without_file(self, user: User) -> None:
+        """Test that loading without selecting a file shows a notification."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Load").click()
+        await user.should_see("Please select an Apple Health export file first.")
 
-            with self.assertRaises(SystemExit):
-                ah.main()
+    async def test_load_with_non_existent_file(self, user: User) -> None:
+        """Test that loading a non-existent file shows an error notification."""
 
-    @patch("apple_health_analyzer.parse_cli_arguments")
-    def test_main_calls_export_methods(self, mock_parse_args: MagicMock):
-        """Test that main() calls both export methods."""
-        mock_parse_args.return_value = {"export_file": "test.zip"}
-        mock_parser_instance = MagicMock()
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Apple Health export file").type("invalid_export.zip")
+        user.find("Load").click()
+        await user.should_see("No such file or directory")
 
-        with patch("apple_health_analyzer.ExportParser") as mock_export_parser:
-            mock_export_parser.return_value.__enter__.return_value = (
-                mock_parser_instance
-            )
+    async def test_load_with_valid_file(
+        self, user: User, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Test that loading a valid export file shows statistics."""
+        await user.open("/")
+        # 1. Prepare the input
+        zip_path = create_health_zip()
+        user.find("Apple Health export file").type(zip_path)
 
-            ah.main()
+        # 2. Trigger the processing
+        user.find("Load").click()
 
-            # Verify export methods are called
-            mock_parser_instance.export_to_json.assert_called_once_with(
-                "output/running_workouts.json"
-            )
-            mock_parser_instance.export_to_csv.assert_called_once_with(
-                "output/running_workouts.csv"
-            )
+        # 3. Robust check: Wait for the log to confirm start
+        # This confirms the click was registered and the function is running
+        await user.should_see("Starting to parse", retries=20)
 
+        # 4. Critical step: Wait for the processing to finish
+        # We use a higher retry count (100 * 0.1s = 10s) to handle slow CI runners.
+        await user.should_see("Finished parsing", retries=100)
 
-class TestKeyboardInterrupt(unittest.TestCase):
-    """Test KeyboardInterrupt handling."""
+        # 5.Check if the UI correctly displays data from our XML
+        await user.should_see("Total distance of 16", retries=50)
+        await user.should_see("Total duration of 1h")
 
-    def test_keyboard_interrupt_simulated(self):
-        """Test that KeyboardInterrupt results in exit code 130 (simulated)."""
-        # This simulates what the __main__ block does
-        try:
-            raise KeyboardInterrupt()
-        except KeyboardInterrupt:
-            exit_code = 130
-            self.assertEqual(exit_code, 130)
+    async def test_browse_button_opens_picker(self, user: User) -> None:
+        """Test that the browse button opens the file picker dialog."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Browse").click()
+        await user.should_see("Ok")
+        # Small delay to ensure Windows releases file handles before teardown
+        await asyncio.sleep(0.2)
 
-    @patch("apple_health_analyzer.main")
-    def test_keyboard_interrupt_in_main(self, mock_main: MagicMock):
-        """Test that KeyboardInterrupt in main is handled gracefully."""
-        mock_main.side_effect = KeyboardInterrupt()
+    async def test_input_file_persists_in_storage(self, user: User) -> None:
+        """Test that the input file path is persisted in app storage."""
+        await user.open("/")
+        user.find("Apple Health export file").type("tests/fixtures/export_sample.zip")
+        await user.open("/")
+        await user.should_see("tests/fixtures/export_sample.zip")
 
-        with patch("sys.stderr"):
-            with self.assertRaises(SystemExit) as context:
-                try:
-                    ah.main()
-                except KeyboardInterrupt:
-                    print("\nInterrupted by user", file=sys.stderr)
-                    sys.exit(130)
+    async def test_parse_error_shows_notification(self, user: User) -> None:
+        """Test that parse errors display error notification."""
+        await user.open("/")
+        user.find("Apple Health export file").type("tests/fixtures/corrupt_export.zip")
+        user.find("Load").click()
+        await user.should_see("Error parsing file")
 
-        self.assertEqual(context.exception.code, 130)
+    async def test_browse_no_file_selected(
+        self, user: User, mock_file_picker_context: Any
+    ) -> None:
+        """Test that not selecting a file (mock returns empty) shows a notification."""
 
+        with mock_file_picker_context(None):  # None = empty result
+            await user.open("/")
+            user.find("Browse").click()
 
-if __name__ == "__main__":
-    unittest.main()
+            # Wait for the async operation
+            await asyncio.sleep(0.5)
+
+            # Should see "No file selected" notification
+            await user.should_see("No file selected")
+
+    async def test_browse_file_selected(
+        self, user: User, mock_file_picker_context: Any
+    ) -> None:
+        """Test that selecting a file via the dialog updates the input_file value."""
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            # Create a dummy zip file
+            zip_name = "test_data.zip"
+            zip_path = os.path.join(tmpdirname, zip_name)
+            with open(zip_path, "w", encoding="utf-8") as f:
+                f.write("dummy content")
+
+            with mock_file_picker_context(zip_path):
+                await user.open("/")
+
+                # Verify input is initially empty
+                input_elements = list(user.find("Apple Health export file").elements)
+                input_field = input_elements[0] if input_elements else None
+                assert input_field is not None
+                actual_value = input_field.value  # type: ignore[union-attr]
+                assert actual_value == "", "Input should start empty"
+
+                # Click Browse
+                user.find("Browse").click()
+                await asyncio.sleep(1.0)
+
+                # Check if value was set
+                assert zip_path in input_field.value, (  # type: ignore[union-attr]
+                    f"Expected {zip_path} in {input_field.value}"  # type: ignore[union-attr]
+                )
+
+    async def test_export_dropdown_has_json_option(self, user: User) -> None:
+        """Test that the export dropdown contains the 'to JSON' option."""
+        await user.open("/")
+
+        # 1. Open the export dropdown
+        export_button = user.find("Export data")
+        assert export_button is not None, "Export data button not found"
+        export_button.click()
+        await asyncio.sleep(0.2)
+
+        # 2. Verify the "to JSON" menu item is present
+        json_option = user.find("to JSON")
+        assert json_option is not None, "to JSON export option not found"
+
+    async def test_export_dropdown_has_csv_option(self, user: User) -> None:
+        """Test that the export dropdown contains the 'to CSV' option."""
+        await user.open("/")
+
+        # 1. Open the export dropdown
+        export_button = user.find("Export data")
+        assert export_button is not None, "Export data button not found"
+        export_button.click()
+        await asyncio.sleep(0.2)
+
+        # 2. Verify the "to CSV" menu item is present
+        csv_option = user.find("to CSV")
+        assert csv_option is not None, "to CSV export option not found"
+
+    async def test_export_to_json_click_executes(
+        self, user: User, create_health_zip: Callable[..., str], assert_ui_state: StateAssertion
+    ) -> None:
+        """Test that clicking 'Export data > to JSON' can be executed without errors.
+
+        This integration test verifies:
+        1. The export dropdown button is accessible after file loads
+        2. The "to JSON" menu item can be clicked without throwing an exception
+        3. The parser's export_to_json method works correctly
+        """
+        await user.open("/")
+
+        # Load a valid health data file
+        zip_path = create_health_zip()
+        user.find("Apple Health export file").type(zip_path)
+        user.find("Load").click()
+
+        # Wait for parsing to complete
+        await user.should_see("Finished parsing", retries=100)
+
+        # Verify the export dropdown is present
+        export_interaction = user.find("Export data")
+        assert_ui_state(export_interaction, enabled=True)
+        export_interaction.click()
+        await asyncio.sleep(0.5)
+
+        # Verify the "to JSON" menu item exists
+        await user.should_see("to JSON")
+
+        # Click the export button (this should trigger the download without error)
+        user.find("to JSON").click()
+
+        found = False
+        for _ in range(30):  # Wait up to 3 seconds (30 * 0.1s)
+            if user.download.http_responses:
+                found = True
+                break
+            await asyncio.sleep(0.1)
+
+        assert found, "No download was triggered"
+
+        res = user.download.http_responses[-1]
+        assert res.status_code == 200
+        assert is_valid_json(res.text)
+
+    async def test_export_to_csv_click_executes(
+        self, user: User, create_health_zip: Callable[..., str], assert_ui_state: StateAssertion
+    ) -> None:
+        """Test that clicking 'Export data > to CSV' can be executed without errors.
+
+        This integration test verifies:
+        1. The export dropdown button is accessible after file loads
+        2. The "to CSV" menu item can be clicked without throwing an exception
+        3. The parser's export_to_csv method works correctly
+        """
+        await user.open("/")
+
+        # Load a valid health data file
+        zip_path = create_health_zip()
+        user.find("Apple Health export file").type(zip_path)
+        user.find("Load").click()
+
+        # Wait for parsing to complete
+        await user.should_see("Finished parsing", retries=100)
+
+        # Verify the export dropdown is present
+        export_interaction = user.find("Export data")
+        assert_ui_state(export_interaction, enabled=True)
+        export_interaction.click()
+        await asyncio.sleep(0.2)
+
+        # Verify the "to CSV" menu item exists
+        await user.should_see("to CSV")
+
+        # Click the export button (this should trigger the download without error)
+        user.find("to CSV").click()
+
+        found = False
+        for _ in range(30):  # Wait up to 3 seconds (30 * 0.1s)
+            if user.download.http_responses:
+                found = True
+                break
+            await asyncio.sleep(0.1)
+
+        assert found, "No download was triggered"
+
+        res = user.download.http_responses[-1]
+        assert res.status_code == 200
+        assert is_valid_csv(res.text)
+
+    async def test_export_without_loading_file_is_disabled(
+        self, user: User, assert_ui_state: StateAssertion
+    ) -> None:
+        """Test that the export dropdown is disabled when no file is loaded."""
+        await user.open("/")
+
+        export_interaction = user.find("Export data")
+        assert_ui_state(export_interaction, enabled=False)

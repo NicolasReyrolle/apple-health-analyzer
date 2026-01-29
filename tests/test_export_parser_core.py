@@ -1,13 +1,11 @@
 """Core tests for the ExportParser module."""
 
-import os
 from pathlib import Path
-from typing import Generator
+from typing import Callable
 from zipfile import ZipFile
 
 import pandas as pd
 import pytest
-from _pytest.capture import CaptureFixture
 
 import export_parser as ep
 
@@ -15,28 +13,9 @@ import export_parser as ep
 class TestExportParser:
     """Test cases for the ExportParser class."""
 
-    @pytest.fixture
-    def sample_file(self) -> str:
-        """Provide path to sample export file for testing."""
-        sample_path = os.path.join(
-            os.path.dirname(__file__), "fixtures", "export_sample.zip"
-        )
-        if os.path.exists(sample_path):
-            return sample_path
-        # Skip if sample doesn't exist
-        pytest.skip("export_sample.zip not found in tests/fixtures/")
-        return ""  # This line won't be reached but satisfies pylint
-
-    @pytest.fixture
-    def setup_data(self, sample_file: str) -> Generator[ep.ExportParser, None, None]:
-        """Create ExportParser instance for testing."""
-        parser = ep.ExportParser(sample_file)
-        yield parser
-
-    def test_init(self, sample_file: str):
+    def test_init(self):
         """Test that the ExportParser instance is correctly initialized."""
-        parser = ep.ExportParser(sample_file)
-        assert parser.export_file == sample_file
+        parser = ep.ExportParser()
         assert len(parser.running_workouts) == 0
         assert list(parser.running_workouts.columns) == [
             "startDate",
@@ -46,29 +25,16 @@ class TestExportParser:
             "sumDistanceWalkingRunning",
         ]
 
-    def test_context_manager_protocol(self, setup_data: ep.ExportParser) -> None:
-        """Test that ExportParser correctly implements context manager protocol."""
-        with setup_data as result:
-            assert result is setup_data
-
-    def test_parse_with_sample_file(self, setup_data: ep.ExportParser) -> None:
+    def test_parse_with_sample_file(self, create_health_zip: Callable[..., str]) -> None:
         """Test that parse() method can be called without error."""
-        with setup_data:
-            # This should not raise an error (file may not have data, but should parse)
-            try:
-                setup_data.parse()
-            except FileNotFoundError:
-                # If file doesn't exist or is invalid, that's okay for this test
-                pass
-
-    def test_missing_file_exits_gracefully(self, capsys: CaptureFixture[str]) -> None:
-        """Test that parse() handles missing files gracefully."""
-        parser = ep.ExportParser("nonexistent_file.zip")
-        with pytest.raises(SystemExit) as exc_info:
-            parser.parse()
-        assert exc_info.value.code == 1
-        captured = capsys.readouterr()
-        assert "Apple Health Export file not found" in captured.out
+        sample_file = create_health_zip()
+        parser = ep.ExportParser()
+        # This should not raise an error (file may not have data, but should parse)
+        try:
+            parser.parse(sample_file)
+        except FileNotFoundError:
+            # If file doesn't exist or is invalid, that's okay for this test
+            pass
 
 
 class TestLoadRunningWorkouts:
@@ -87,20 +53,18 @@ class TestLoadRunningWorkouts:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
 
         # Should have loaded only running workouts (2, not the cycling one)
         assert len(parser.running_workouts) == 2
         assert list(parser.running_workouts["startDate"]) == [
-            pd.Timestamp('2024-01-01 00:00:00'),
-            pd.Timestamp('2024-01-03 00:00:00')
+            pd.Timestamp("2024-01-01 00:00:00"),
+            pd.Timestamp("2024-01-03 00:00:00"),
         ]
 
-    def test_load_running_workouts_empty(
-        self, tmp_path: Path
-    ) -> None:
+    def test_load_running_workouts_empty(self, tmp_path: Path) -> None:
         """Test loading workouts from ZIP with no running workouts."""
         zip_path = tmp_path / "empty_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -110,9 +74,9 @@ class TestLoadRunningWorkouts:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
 
         assert len(parser.running_workouts) == 0
 
@@ -128,9 +92,9 @@ class TestLoadRunningWorkouts:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        parser = ep.ExportParser(str(zip_path))
+        parser = ep.ExportParser()
         with parser:
-            parser.parse()
+            parser.parse(str(zip_path))
 
         # First parse should have 2 workouts
         assert len(parser.running_workouts) == 2
@@ -144,64 +108,64 @@ class TestDurationToSeconds:
     # pylint: disable=protected-access
     def test_duration_minutes_to_seconds(self) -> None:
         """Test converting minutes to seconds."""
-        assert ep.ExportParser._duration_to_seconds(1, "min") == 60 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(5, "min") == 300 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(30, "min") == 1800 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(119.27, "min") == 7156 # type: ignore
+        assert ep.ExportParser._duration_to_seconds(1, "min") == 60  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(5, "min") == 300  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(30, "min") == 1800  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(119.27, "min") == 7156  # type: ignore
 
     def test_duration_hours_to_seconds(self) -> None:
         """Test converting hours to seconds."""
-        assert ep.ExportParser._duration_to_seconds(1, "h") == 3600 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(2, "h") == 7200 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(0.5, "h") == 1800 # type: ignore
+        assert ep.ExportParser._duration_to_seconds(1, "h") == 3600  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(2, "h") == 7200  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(0.5, "h") == 1800  # type: ignore
 
     def test_duration_seconds_to_seconds(self) -> None:
         """Test that seconds remain unchanged."""
-        assert ep.ExportParser._duration_to_seconds(60, "s") == 60 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(3600, "s") == 3600 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(5, "s") == 5 # type: ignore
+        assert ep.ExportParser._duration_to_seconds(60, "s") == 60  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(3600, "s") == 3600  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(5, "s") == 5  # type: ignore
 
     def test_duration_zero_value(self) -> None:
         """Test handling zero duration."""
-        assert ep.ExportParser._duration_to_seconds(0, "min") == 0 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(0, "h") == 0 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(0, "s") == 0 # type: ignore
+        assert ep.ExportParser._duration_to_seconds(0, "min") == 0  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(0, "h") == 0  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(0, "s") == 0  # type: ignore
 
     def test_duration_decimal_values(self) -> None:
         """Test handling decimal values."""
-        assert ep.ExportParser._duration_to_seconds(1.5, "min") == 90 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(2.5, "h") == 9000 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(30.5, "s") == 30 # type: ignore
+        assert ep.ExportParser._duration_to_seconds(1.5, "min") == 90  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(2.5, "h") == 9000  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(30.5, "s") == 30  # type: ignore
 
     def test_duration_returns_int(self) -> None:
         """Test that the method always returns an integer."""
-        result = ep.ExportParser._duration_to_seconds(1.5, "min") # type: ignore
+        result = ep.ExportParser._duration_to_seconds(1.5, "min")  # type: ignore
         assert isinstance(result, int)
         assert result == 90
 
     def test_duration_invalid_unit_raises_error(self) -> None:
         """Test that invalid unit raises ValueError."""
         with pytest.raises(ValueError, match="Unknown duration unit"):
-            ep.ExportParser._duration_to_seconds(10, "invalid") # type: ignore
+            ep.ExportParser._duration_to_seconds(10, "invalid")  # type: ignore
 
         with pytest.raises(ValueError, match="Unknown duration unit"):
-            ep.ExportParser._duration_to_seconds(10, "sec") # type: ignore
+            ep.ExportParser._duration_to_seconds(10, "sec")  # type: ignore
 
     def test_missing_unit_processed_as_minutes(self) -> None:
         """Test that missing unit defaults to minutes."""
-        result = ep.ExportParser._duration_to_seconds(10, "") # type: ignore
+        result = ep.ExportParser._duration_to_seconds(10, "")  # type: ignore
         assert isinstance(result, int)
         assert result == 600
 
     def test_duration_large_values(self) -> None:
         """Test handling large duration values."""
         # 24 hours in seconds
-        assert ep.ExportParser._duration_to_seconds(24, "h") == 86400 # type: ignore
+        assert ep.ExportParser._duration_to_seconds(24, "h") == 86400  # type: ignore
         # 1000 minutes in seconds
-        assert ep.ExportParser._duration_to_seconds(1000, "min") == 60000 # type: ignore
+        assert ep.ExportParser._duration_to_seconds(1000, "min") == 60000  # type: ignore
 
     def test_duration_very_small_values(self) -> None:
         """Test handling very small decimal values."""
         # Truncates to integer
-        assert ep.ExportParser._duration_to_seconds(0.1, "min") == 6 # type: ignore
-        assert ep.ExportParser._duration_to_seconds(0.01, "h") == 36 # type: ignore
+        assert ep.ExportParser._duration_to_seconds(0.1, "min") == 6  # type: ignore
+        assert ep.ExportParser._duration_to_seconds(0.01, "h") == 36  # type: ignore
