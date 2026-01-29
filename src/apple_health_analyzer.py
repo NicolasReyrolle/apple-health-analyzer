@@ -27,6 +27,8 @@ class AppState:
     def __init__(self) -> None:
         self.parser: ExportParser = ExportParser()
         self.file_loaded: bool = False
+        self.input_file: ui.input
+        self.log: ui.log
 
 
 state = AppState()
@@ -35,56 +37,12 @@ state = AppState()
 def main() -> None:
     """Main entry point for the application."""
 
-    async def pick_file() -> None:
-        """Open a file picker dialog to select the Apple Health export file."""
-        # Use a module-level lookup to allow for testing with mocks
-        picker_class: Any = getattr(_module, "LocalFilePicker", None)
-        if picker_class is None:
-            picker_class = LocalFilePicker
-        result: list[str] = await picker_class("~", multiple=False, file_filter=".zip")
-        if not result:
-            ui.notify("No file selected")
-            return
-
-        input_file.value = result[0]
-
-    async def load_file() -> None:
-        """Load and parse the selected Apple Health export file."""
-        if input_file.value == "":
-            ui.notify("Please select an Apple Health export file first.")
-            return
-
-        try:
-            loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor() as executor:
-                await loop.run_in_executor(
-                    executor, lambda: state.parser.parse(input_file.value, log=log)
-                )
-            log.push(state.parser.get_statistics())
-            ui.notify("File parsed successfully.")
-            state.file_loaded = True
-        except Exception as e:  # pylint: disable=broad-except
-            ui.notify(f"Error parsing file: {e}")
-
     generate_header()
     generate_left_drawer()
-
-    with ui.row().classes("w-full items-center"):
-        input_file = (
-            ui.input(
-                "Apple Health export file",
-                placeholder="Select an Apple Health export file...",
-            )
-            .classes("flex-grow")
-            .bind_value(app.storage.user, "input_file_path")
-        )
-        ui.button("Browse", on_click=pick_file, icon="folder_open")
-
-    with ui.row().classes("w-full items-center"):
-        ui.button("Load", on_click=load_file, icon="play_arrow").classes("flex-grow")
+    generate_body()
 
     with ui.footer():
-        log = ui.log(max_lines=10).classes("w-full h-20")
+        state.log = ui.log(max_lines=10).classes("w-full h-20")
 
     app.add_static_files("/resources", "resources")
     ui.add_head_html('<link rel="stylesheet" href="/resources/style.css">', shared=True)
@@ -174,6 +132,56 @@ def generate_header():
         ui.button(icon="light_mode", on_click=dark.disable).bind_visibility_from(
             dark, "value"
         ).props("flat round").classes("text-main")
+
+
+async def pick_file() -> None:
+    """Open a file picker dialog to select the Apple Health export file."""
+    # Use a module-level lookup to allow for testing with mocks
+    picker_class: Any = getattr(_module, "LocalFilePicker", None)
+    if picker_class is None:
+        picker_class = LocalFilePicker
+    result: list[str] = await picker_class("~", multiple=False, file_filter=".zip")
+    if not result:
+        ui.notify("No file selected")
+        return
+
+    state.input_file.value = result[0]
+
+
+async def load_file() -> None:
+    """Load and parse the selected Apple Health export file."""
+    if state.input_file.value == "":
+        ui.notify("Please select an Apple Health export file first.")
+        return
+
+    try:
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            await loop.run_in_executor(
+                executor,
+                lambda: state.parser.parse(state.input_file.value, log=state.log),
+            )
+        state.log.push(state.parser.get_statistics())
+        ui.notify("File parsed successfully.")
+        state.file_loaded = True
+    except Exception as e:  # pylint: disable=broad-except
+        ui.notify(f"Error parsing file: {e}")
+
+def generate_body() -> None:
+    """Generate the main body of the application."""
+    with ui.row().classes("w-full items-center"):
+        state.input_file = (
+            ui.input(
+                "Apple Health export file",
+                placeholder="Select an Apple Health export file...",
+            )
+            .classes("flex-grow")
+            .bind_value(app.storage.user, "input_file_path")
+        )
+        ui.button("Browse", on_click=pick_file, icon="folder_open")
+
+    with ui.row().classes("w-full items-center"):
+        ui.button("Load", on_click=load_file, icon="play_arrow").classes("flex-grow")
 
 
 if __name__ in {"__main__", "__mp_main__"}:
