@@ -11,6 +11,7 @@ import nicegui.storage
 from nicegui.testing import UserInteraction
 import pytest
 
+from app_state import state as app_state
 import ui.local_file_picker
 import apple_health_analyzer as aha_module
 
@@ -241,3 +242,9 @@ def patched_clear(self: Any) -> None:
 
 # 3. Apply the patch
 PersistentDict.clear = patched_clear
+
+
+@pytest.fixture(autouse=True)
+def reset_app_state():
+    """Fixture to reset the application state before each test."""
+    app_state.reset()
