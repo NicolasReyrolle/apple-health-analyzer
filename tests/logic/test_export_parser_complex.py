@@ -7,7 +7,7 @@ from zipfile import ZipFile
 import pandas as pd
 import pytest
 
-from export_parser import ExportParser, WorkoutRecord
+from logic.export_parser import ExportParser, WorkoutRecord
 
 class TestComplexRealWorldWorkout:
     """Test parsing of a complex real-world Apple Health workout with multiple elements."""

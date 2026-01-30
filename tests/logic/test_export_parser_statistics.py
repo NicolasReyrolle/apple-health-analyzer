@@ -2,7 +2,7 @@
 
 
 import pandas as pd
-import export_parser as ep
+import logic.export_parser as ep
 
 class TestGetStatistics:
     """Test suite for ExportParser.get_statistics method."""

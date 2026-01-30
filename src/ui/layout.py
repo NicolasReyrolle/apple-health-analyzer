@@ -1,0 +1,177 @@
+"""UI layout components for Apple Health Analyzer application."""
+import asyncio
+from concurrent.futures import ThreadPoolExecutor   # pylint: disable=no-name-in-module
+from typing import Any
+
+from nicegui import app, ui
+
+from assets import APP_ICON_BASE64
+from ui.local_file_picker import LocalFilePicker
+
+from app_state import state
+import apple_health_analyzer as _module
+
+def handle_json_export() -> None:
+    """Handle exporting data to JSON format."""
+    print("Export to JSON")
+    json_data = state.parser.export_to_json()
+    ui.download(json_data.encode("utf-8"), "apple_health_export.json")
+
+
+def handle_csv_export() -> None:
+    """Handle exporting data to CSV format."""
+    print("Export to CSV")
+    csv_data = state.parser.export_to_csv()
+    ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
+
+
+def generate_left_drawer():
+    """Generate the left drawer with filters."""
+    with ui.left_drawer():
+        ui.label("Activities")
+        ui.radio(["All", "Running", "Walking", "Cycling"]).bind_value(
+            app.storage.user, "activity_filter"
+        ).props("disable")
+
+        ui.separator()
+
+        ui.label("Date Range")
+
+        months = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+        ]
+        years = [2024, 2025, 2026]
+        with ui.row().classes("items-center gap-2"):
+            ui.label("From").classes("text-sm text-muted")
+            ui.select(months, value="Jan").classes("w-20").props("dense flat").props(
+                "disable"
+            )
+            ui.select(years, value=2025).classes("w-24").props("dense flat").props(
+                "disable"
+            )
+
+            ui.label("to").classes("text-sm text-muted")
+            ui.select(months, value="Dec").classes("w-20").props("dense flat").props(
+                "disable"
+            )
+            ui.select(years, value=2025).classes("w-24").props("dense flat").props(
+                "disable"
+            )
+
+        ui.separator()
+        with ui.dropdown_button("Export data", icon="download").bind_enabled_from(
+            state, "file_loaded"
+        ):
+            ui.button("to JSON", on_click=handle_json_export).props("flat").classes(
+                "w-full"
+            )
+            ui.button("to CSV", on_click=handle_csv_export).props("flat").classes(
+                "w-full"
+            )
+
+
+def generate_header():
+    """Generate the application header with a dark mode toggle."""
+    dark = ui.dark_mode()
+    with ui.header().classes("items-center justify-between border-b"):
+        ui.image(APP_ICON_BASE64).classes("w-16 h-16")
+        ui.label("Apple Health Analyzer").classes("font-bold text-xl")
+
+        # Toggle button with dynamic icon
+        ui.button(icon="dark_mode", on_click=dark.enable).bind_visibility_from(
+            dark, "value", backward=lambda v: not v
+        ).props("flat round")
+        ui.button(icon="light_mode", on_click=dark.disable).bind_visibility_from(
+            dark, "value"
+        ).props("flat round").classes("text-main")
+
+
+def stat_card(label: str, value_ref: dict[str, int], key: str, unit: str = ""):
+    """
+    Create a reactive KPI card.
+    'value_ref' is a dictionary containing the totals, 
+    allowing automatic updates via NiceGUI binding.
+    """
+    with ui.card().classes('w-32 h-24 items-center justify-center shadow-sm'):
+        ui.label(label).classes('text-xs text-gray-500 uppercase')
+        with ui.row().classes('items-baseline gap-1'):
+            # Bind the text to the dictionary key for reactive updates
+            ui.label().classes('text-xl font-bold').bind_text_from(value_ref, key)
+            if unit:
+                ui.label(unit).classes('text-xs text-gray-400')
+
+
+async def pick_file() -> None:
+    """Open a file picker dialog to select the Apple Health export file."""
+    # Use a module-level lookup to allow for testing with mocks
+    picker_class: Any = getattr(_module, "LocalFilePicker", None)
+    if picker_class is None:
+        picker_class = LocalFilePicker
+    result: list[str] = await picker_class("~", multiple=False, file_filter=".zip")
+    if not result:
+        ui.notify("No file selected")
+        return
+
+    state.input_file.value = result[0]
+
+
+async def load_file() -> None:
+    """Load and parse the selected Apple Health export file."""
+    if state.input_file.value == "":
+        ui.notify("Please select an Apple Health export file first.")
+        return
+
+    try:
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            await loop.run_in_executor(
+                executor,
+                lambda: state.parser.parse(state.input_file.value, log=state.log),
+            )
+        state.log.push(state.parser.get_statistics())
+        ui.notify("File parsed successfully.")
+        state.file_loaded = True
+    except Exception as e:  # pylint: disable=broad-except
+        ui.notify(f"Error parsing file: {e}")
+
+
+def generate_body() -> None:
+    """Generate the main body of the application."""
+    with ui.row().classes("w-full items-center"):
+        state.input_file = (
+            ui.input(
+                "Apple Health export file",
+                placeholder="Select an Apple Health export file...",
+            )
+            .classes("flex-grow")
+            .bind_value(app.storage.user, "input_file_path")
+        )
+        ui.button("Browse", on_click=pick_file, icon="folder_open")
+
+    with ui.row().classes("w-full items-center"):
+        ui.button("Load", on_click=load_file, icon="play_arrow").classes("flex-grow")
+
+    with ui.tabs().classes('w-full') as tabs:
+        tab_summary = ui.tab("Overview")
+        ui.tab("Activities").props("disable")
+        ui.tab("Health Data").props("disable")
+        ui.tab("Trends").props("disable")
+
+    with ui.tab_panels(tabs, value=tab_summary).classes('w-full'):
+        with ui.tab_panel(tab_summary):
+            with ui.row().classes('w-full justify-center gap-4'):
+                stat_card("Distance", state.metrics, 'distance', "km")
+                stat_card("Duration", state.metrics, 'duration', "h")
+                stat_card("VO2Max", state.metrics, 'vo2max')
+                stat_card("Elevation", state.metrics, 'elevation', "m")

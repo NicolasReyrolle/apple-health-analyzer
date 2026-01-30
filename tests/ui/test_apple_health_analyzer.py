@@ -6,9 +6,9 @@ import os
 import tempfile
 from typing import Callable, Any
 
-from conftest import StateAssertion
 from nicegui.testing import User
 
+from tests.types_helper import StateAssertion
 
 def is_valid_json(data_string: str) -> bool:
     """Check if a string is valid JSON."""

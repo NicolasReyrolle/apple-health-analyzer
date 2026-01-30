@@ -11,7 +11,7 @@ import nicegui.storage
 from nicegui.testing import UserInteraction
 import pytest
 
-import local_file_picker
+import ui.local_file_picker
 import apple_health_analyzer as aha_module
 
 # Centralized default XML structure
@@ -117,18 +117,18 @@ def mock_file_picker_context() -> Callable[[str | None], Any]:
             # Test code here
     """
 
-    original = local_file_picker.LocalFilePicker
+    original = ui.local_file_picker.LocalFilePicker
 
     def _context_manager(return_path: str | None = None) -> Any:
         class _Ctx:
             def __enter__(self) -> Any:
                 mock_picker = create_mock_file_picker(return_path)
-                local_file_picker.LocalFilePicker = mock_picker  # type: ignore[assignment]
+                ui.local_file_picker.LocalFilePicker = mock_picker  # type: ignore[assignment]
                 aha_module.LocalFilePicker = mock_picker  # type: ignore[attr-defined]
                 return original
 
             def __exit__(self, *args: Any) -> None:  # pylint: disable=unused-argument
-                local_file_picker.LocalFilePicker = original
+                ui.local_file_picker.LocalFilePicker = original
                 aha_module.LocalFilePicker = original  # type: ignore[attr-defined]
 
         return _Ctx()
@@ -207,25 +207,37 @@ def assert_ui_state() -> StateAssertion:
 
 # --- Global Patch to prevent WinError 32 during teardown ---
 PersistentDict = getattr(nicegui.storage, "PersistentDict")
+original_clear = PersistentDict.clear
 
 
 def patched_clear(self: Any) -> None:
     """
     Safely clear NiceGUI storage by ignoring Windows file locks.
-    This prevents PermissionError (WinError 32) during pytest teardown.
+    Calls the original dictionary clear directly to avoid recursion.
     """
-    if not self.path.exists():
-        return
+    # Attempt to resolve the path attribute safely
+    path = getattr(self, "path", getattr(self, "_path", None))
 
-    for filepath in self.path.glob("storage-*.json"):
-        try:
-            if os.path.exists(filepath):
-                os.remove(filepath)
-        except (PermissionError, OSError):
-            # Silently ignore locked files on Windows.
-            # These are temp files and will be cleared by the OS/Session cleanup.
-            pass
+    if path is not None:
+        path_str = str(path)
+        if os.path.exists(path_str):
+            if os.path.isdir(path_str):
+                # Using list() to avoid issues with glob iterator
+                for filepath in list(path.glob("storage-*.json")):
+                    try:
+                        os.remove(str(filepath))
+                    except (PermissionError, OSError):
+                        pass
+            elif os.path.isfile(path_str):
+                try:
+                    os.remove(path_str)
+                except (PermissionError, OSError):
+                    pass
+
+    # 2. Instead of calling self.clear(), we call the original dict method
+    # This satisfies the linter AND prevents the RecursionError
+    dict.clear(self)  # type: ignore
 
 
-# Apply the monkeypatch to the class
+# 3. Apply the patch
 PersistentDict.clear = patched_clear

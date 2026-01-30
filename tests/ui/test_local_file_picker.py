@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from local_file_picker import LocalFilePicker as local_file_picker
+from ui.local_file_picker import LocalFilePicker as local_file_picker
 
 
 class TestUpdateGrid:
@@ -338,8 +338,8 @@ class TestAddDrivesToggle:
         # This prevents the 'ImportError' inside the method
         with (
             patch.dict(sys.modules, {"win32api": mock_win32}),
-            patch("local_file_picker.platform.system", return_value="Windows"),
-            patch("local_file_picker.ui.toggle") as mock_toggle,
+            patch("ui.local_file_picker.platform.system", return_value="Windows"),
+            patch("ui.local_file_picker.ui.toggle") as mock_toggle,
         ):
             # 3. Call the method
             # We call it as a static method passing our mock picker

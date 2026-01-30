@@ -8,7 +8,7 @@ from zipfile import ZipFile
 
 import pandas as pd
 
-import export_parser as ep
+import logic.export_parser as ep
 
 
 def create_test_zip(zip_path: Path, xml_content: bytes) -> None:

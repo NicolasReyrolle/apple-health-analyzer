@@ -7,7 +7,7 @@ from zipfile import ZipFile
 import pandas as pd
 import pytest
 
-import export_parser as ep
+import logic.export_parser as ep
 
 
 class TestExportParser:
