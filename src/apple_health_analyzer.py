@@ -30,6 +30,12 @@ class AppState:
         self.input_file: ui.input
         self.log: ui.log
 
+        self.totals = {
+            'distance': 0,
+            'duration': 0,
+            'elevation': 0,
+        }
+
 
 state = AppState()
 
@@ -61,6 +67,19 @@ def handle_csv_export() -> None:
     csv_data = state.parser.export_to_csv()
     ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
 
+def stat_card(label: str, value_ref: dict[str, int], key: str, unit: str = ""):
+    """
+    Create a reactive KPI card.
+    'value_ref' is a dictionary containing the totals, 
+    allowing automatic updates via NiceGUI binding.
+    """
+    with ui.card().classes('w-32 h-24 items-center justify-center shadow-sm'):
+        ui.label(label).classes('text-xs text-gray-500 uppercase')
+        with ui.row().classes('items-baseline gap-1'):
+            # Bind the text to the dictionary key for reactive updates
+            ui.label().classes('text-xl font-bold').bind_text_from(value_ref, key)
+            if unit:
+                ui.label(unit).classes('text-xs text-gray-400')
 
 def generate_left_drawer():
     """Generate the left drawer with filters."""
@@ -167,6 +186,7 @@ async def load_file() -> None:
     except Exception as e:  # pylint: disable=broad-except
         ui.notify(f"Error parsing file: {e}")
 
+
 def generate_body() -> None:
     """Generate the main body of the application."""
     with ui.row().classes("w-full items-center"):
@@ -183,6 +203,19 @@ def generate_body() -> None:
     with ui.row().classes("w-full items-center"):
         ui.button("Load", on_click=load_file, icon="play_arrow").classes("flex-grow")
 
+    with ui.tabs().classes('w-full') as tabs:
+        tab_summary = ui.tab("Overview")
+        ui.tab("Activities").props("disable")
+        ui.tab("Health Data").props("disable")
+        ui.tab("Trends").props("disable")
+
+    with ui.tab_panels(tabs, value=tab_summary).classes('w-full'):
+        with ui.tab_panel(tab_summary):
+            with ui.row().classes('w-full justify-center gap-4'):
+                stat_card("Distance", state.totals, 'distance', "km")
+                stat_card("Duration", state.totals, 'duration', "h")
+                stat_card("VO2Max", state.totals, 'vo2max')
+                stat_card("Elevation", state.totals, 'elevation', "m")
 
 if __name__ in {"__main__", "__mp_main__"}:
     secret = (
