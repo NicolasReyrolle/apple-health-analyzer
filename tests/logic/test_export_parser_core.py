@@ -8,22 +8,12 @@ import pandas as pd
 import pytest
 
 import logic.export_parser as ep
+import logic.workout_manager as wm
 
 
 class TestExportParser:
     """Test cases for the ExportParser class."""
 
-    def test_init(self):
-        """Test that the ExportParser instance is correctly initialized."""
-        parser = ep.ExportParser()
-        assert len(parser.running_workouts) == 0
-        assert list(parser.running_workouts.columns) == [
-            "startDate",
-            "endDate",
-            "duration",
-            "durationUnit",
-            "sumDistanceWalkingRunning",
-        ]
 
     def test_parse_with_sample_file(self, create_health_zip: Callable[..., str]) -> None:
         """Test that parse() method can be called without error."""
@@ -55,11 +45,11 @@ class TestLoadRunningWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            parser.parse(str(zip_path))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
         # Should have loaded only running workouts (2, not the cycling one)
-        assert len(parser.running_workouts) == 2
-        assert list(parser.running_workouts["startDate"]) == [
+        assert workouts.count() == 2
+        assert list(workouts.get_workouts()["startDate"]) == [
             pd.Timestamp("2024-01-01 00:00:00"),
             pd.Timestamp("2024-01-03 00:00:00"),
         ]
@@ -76,9 +66,9 @@ class TestLoadRunningWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            parser.parse(str(zip_path))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
-        assert len(parser.running_workouts) == 0
+        assert workouts.count() == 0
 
     def test_load_multiple_workouts_accumulate(self, tmp_path: Path) -> None:
         """Test that multiple workouts are loaded into DataFrame."""
@@ -94,12 +84,12 @@ class TestLoadRunningWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            parser.parse(str(zip_path))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
         # First parse should have 2 workouts
-        assert len(parser.running_workouts) == 2
+        assert workouts.count() == 2
         # Check duration values are captured in seconds
-        assert list(parser.running_workouts["duration"]) == [1800, 1500]
+        assert list(workouts.get_workouts()["duration"]) == [1800, 1500]
 
 
 class TestDurationToSeconds:

@@ -55,13 +55,13 @@ class TestComplexRealWorldWorkout:
 
         parser = ExportParser()
         with parser:
-            parser.parse(str(zip_path))
+            workouts = parser.parse(str(zip_path))
 
         # Verify the workout was parsed
-        assert len(parser.running_workouts) == 1
+        assert len(workouts) == 1
 
         # Get the parsed workout record
-        workout = parser.running_workouts.iloc[0]
+        workout = workouts.iloc[0]
 
         # Verify basic attributes
         assert workout["activityType"] == "Running"

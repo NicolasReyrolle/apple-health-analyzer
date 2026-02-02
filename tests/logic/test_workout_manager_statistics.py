@@ -2,106 +2,99 @@
 
 
 import pandas as pd
-import logic.export_parser as ep
+import logic.workout_manager as wm
 
 class TestGetStatistics:
     """Test suite for ExportParser.get_statistics method."""
 
     def test_get_statistics_empty_dataframe(self) -> None:
         """Test get_statistics with empty running_workouts DataFrame."""
-        parser = ep.ExportParser()
-        parser.running_workouts = pd.DataFrame()
+        workouts = wm.WorkoutManager(pd.DataFrame())
 
-        assert "No running workouts loaded." in parser.get_statistics()
+        assert "No workout loaded." in workouts.get_statistics()
 
     def test_get_statistics_with_workouts_no_distance(self) -> None:
         """Test get_statistics with workouts but no distance column."""
-        parser = ep.ExportParser()
-        parser.running_workouts = pd.DataFrame(
+        workouts = wm.WorkoutManager(pd.DataFrame(
             {
                 "activityType": ["Running", "Running"],
                 "duration": [3600, 1800],
             }
-        )
+        ))
 
-        stats = parser.get_statistics()
+        stats = workouts.get_statistics()
 
-        assert "Total running workouts: 2" in stats
+        assert "Total workouts: 2" in stats
         assert "Total duration of 1h 30m 0s." in stats
 
     def test_get_statistics_with_distance(self) -> None:
         """Test get_statistics with distance column."""
-        parser = ep.ExportParser()
-        parser.running_workouts = pd.DataFrame(
+        workouts = wm.WorkoutManager(pd.DataFrame(
             {
                 "activityType": ["Running", "Running"],
                 "duration": [3600, 3600],
                 "sumDistanceWalkingRunning": [5.0, 10.0],
             }
-        )
+        ))
 
-        stats = parser.get_statistics()
+        stats = workouts.get_statistics()
 
-        assert "Total running workouts: 2" in stats
+        assert "Total workouts: 2" in stats
         assert "Total distance of 15.00 km." in stats
         assert "Total duration of 2h 0m 0s." in stats
 
     def test_get_statistics_duration_calculation(self) -> None:
         """Test duration formatting (hours, minutes, seconds)."""
-        parser = ep.ExportParser()
-        parser.running_workouts = pd.DataFrame(
+        workouts = wm.WorkoutManager(pd.DataFrame(
             {
                 "activityType": ["Running"],
                 "duration": [3661],  # 1h 1m 1s
             }
-        )
+        ))
 
-        stats = parser.get_statistics()
+        stats = workouts.get_statistics()
 
         assert "Total duration of 1h 1m 1s." in stats
 
     def test_get_statistics_single_workout(self) -> None:
         """Test get_statistics with a single workout."""
-        parser = ep.ExportParser()
-        parser.running_workouts = pd.DataFrame(
+        workouts = wm.WorkoutManager(pd.DataFrame(
             {
                 "activityType": ["Running"],
                 "duration": [1800],
                 "sumDistanceWalkingRunning": [5.5],
             }
-        )
+        ))
 
-        stats = parser.get_statistics()
+        stats = workouts.get_statistics()
 
-        assert "Total running workouts: 1" in stats
+        assert "Total workouts: 1" in stats
         assert "Total distance of 5.50 km." in stats
         assert "Total duration of 0h 30m 0s." in stats
 
     def test_get_statistics_zero_distance(self) -> None:
         """Test get_statistics with zero total distance."""
-        parser = ep.ExportParser()
-        parser.running_workouts = pd.DataFrame(
+        workouts = wm.WorkoutManager(pd.DataFrame(
             {
                 "activityType": ["Running"],
                 "duration": [1800],
                 "sumDistanceWalkingRunning": [0.0],
             }
-        )
+        ))
 
-        stats = parser.get_statistics()
+        stats = workouts.get_statistics()
 
         assert "Total distance of 0.00 km." in stats
 
     def test_get_statistics_large_duration(self) -> None:
         """Test get_statistics with large duration (multiple hours)."""
-        parser = ep.ExportParser()
-        parser.running_workouts = pd.DataFrame(
+        workouts = wm.WorkoutManager(pd.DataFrame(
             {
                 "activityType": ["Running"],
                 "duration": [36000],  # 10 hours
             }
-        )
+        ))
 
-        stats = parser.get_statistics()
+        stats = workouts.get_statistics()
 
         assert "Total duration of 10h 0m 0s." in stats

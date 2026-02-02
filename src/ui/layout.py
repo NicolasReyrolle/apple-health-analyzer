@@ -1,6 +1,7 @@
 """UI layout components for Apple Health Analyzer application."""
+
 import asyncio
-from concurrent.futures import ThreadPoolExecutor   # pylint: disable=no-name-in-module
+from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
 from typing import Any
 
 from nicegui import app, ui
@@ -9,19 +10,22 @@ from assets import APP_ICON_BASE64
 from ui.local_file_picker import LocalFilePicker
 
 from app_state import state
+from logic.export_parser import ExportParser
+from logic.workout_manager import WorkoutManager
 import apple_health_analyzer as _module
+
 
 def handle_json_export() -> None:
     """Handle exporting data to JSON format."""
     print("Export to JSON")
-    json_data = state.parser.export_to_json()
+    json_data = state.workouts.export_to_json()
     ui.download(json_data.encode("utf-8"), "apple_health_export.json")
 
 
 def handle_csv_export() -> None:
     """Handle exporting data to CSV format."""
     print("Export to CSV")
-    csv_data = state.parser.export_to_csv()
+    csv_data = state.workouts.export_to_csv()
     ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
 
 
@@ -100,16 +104,16 @@ def generate_header():
 def stat_card(label: str, value_ref: dict[str, int], key: str, unit: str = ""):
     """
     Create a reactive KPI card.
-    'value_ref' is a dictionary containing the totals, 
+    'value_ref' is a dictionary containing the totals,
     allowing automatic updates via NiceGUI binding.
     """
-    with ui.card().classes('w-32 h-24 items-center justify-center shadow-sm'):
-        ui.label(label).classes('text-xs text-gray-500 uppercase')
-        with ui.row().classes('items-baseline gap-1'):
+    with ui.card().classes("w-32 h-24 items-center justify-center shadow-sm"):
+        ui.label(label).classes("text-xs text-gray-500 uppercase")
+        with ui.row().classes("items-baseline gap-1"):
             # Bind the text to the dictionary key for reactive updates
-            ui.label().classes('text-xl font-bold').bind_text_from(value_ref, key)
+            ui.label().classes("text-xl font-bold").bind_text_from(value_ref, key)
             if unit:
-                ui.label(unit).classes('text-xs text-gray-400')
+                ui.label(unit).classes("text-xs text-gray-400")
 
 
 async def pick_file() -> None:
@@ -126,6 +130,12 @@ async def pick_file() -> None:
     state.input_file.value = result[0]
 
 
+def load_workouts_from_file(file_path: str) -> None:
+    """Load and parse the Apple Health export file."""
+    ep = ExportParser()
+    state.workouts = WorkoutManager(ep.parse(file_path, log=state.log))
+
+
 async def load_file() -> None:
     """Load and parse the selected Apple Health export file."""
     if state.input_file.value == "":
@@ -137,9 +147,9 @@ async def load_file() -> None:
         with ThreadPoolExecutor() as executor:
             await loop.run_in_executor(
                 executor,
-                lambda: state.parser.parse(state.input_file.value, log=state.log),
+                lambda: load_workouts_from_file(state.input_file.value),
             )
-        state.log.push(state.parser.get_statistics())
+        state.log.push(state.workouts.get_statistics())
         ui.notify("File parsed successfully.")
         state.file_loaded = True
     except Exception as e:  # pylint: disable=broad-except
@@ -162,16 +172,16 @@ def generate_body() -> None:
     with ui.row().classes("w-full items-center"):
         ui.button("Load", on_click=load_file, icon="play_arrow").classes("flex-grow")
 
-    with ui.tabs().classes('w-full') as tabs:
+    with ui.tabs().classes("w-full") as tabs:
         tab_summary = ui.tab("Overview")
         ui.tab("Activities").props("disable")
         ui.tab("Health Data").props("disable")
         ui.tab("Trends").props("disable")
 
-    with ui.tab_panels(tabs, value=tab_summary).classes('w-full'):
+    with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
         with ui.tab_panel(tab_summary):
-            with ui.row().classes('w-full justify-center gap-4'):
-                stat_card("Distance", state.metrics, 'distance', "km")
-                stat_card("Duration", state.metrics, 'duration', "h")
-                stat_card("VO2Max", state.metrics, 'vo2max')
-                stat_card("Elevation", state.metrics, 'elevation', "m")
+            with ui.row().classes("w-full justify-center gap-4"):
+                stat_card("Distance", state.metrics, "distance", "km")
+                stat_card("Duration", state.metrics, "duration", "h")
+                stat_card("VO2Max", state.metrics, "vo2max")
+                stat_card("Elevation", state.metrics, "elevation", "m")

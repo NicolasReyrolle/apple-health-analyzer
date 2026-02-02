@@ -7,6 +7,7 @@ from zipfile import ZipFile
 import pytest
 
 import logic.export_parser as ep
+import logic.workout_manager as wm
 
 
 class TestCreateWorkoutRecord:
@@ -363,32 +364,6 @@ class TestProcessWorkoutChildren:
 class TestLoadWorkouts:
     """Test the _load_workouts method."""
 
-    # pylint: disable=protected-access
-    def test_load_workouts_filters_activity_type(self, tmp_path: Path) -> None:
-        """Test that _load_workouts only loads the specified activity type."""
-        zip_path = tmp_path / "workouts_export.zip"
-        xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
-<HealthData>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-02" endDate="2024-01-02" duration="25"/>
-    <Workout workoutActivityType="HKWorkoutActivityTypeCycling" startDate="2024-01-03" endDate="2024-01-03" duration="45"/>
-    <Workout workoutActivityType="HKWorkoutActivityTypeWalking" startDate="2024-01-04" endDate="2024-01-04" duration="20"/>
-</HealthData>
-"""
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
-        parser = ep.ExportParser()
-        with ZipFile(zip_path, "r") as zf:
-            parser._load_workouts(zf, "Running")  # type: ignore[misc]
-
-        # Should only load Running workouts
-        assert len(parser.running_workouts) == 2
-        assert all(
-            row["activityType"] == "Running"
-            for _, row in parser.running_workouts.iterrows()
-        )
-
     def test_load_workouts_with_nested_workout_activity(self, tmp_path: Path) -> None:
         """Test loading workouts with nested WorkoutActivity elements."""
         zip_path = tmp_path / "workouts_export.zip"
@@ -406,12 +381,12 @@ class TestLoadWorkouts:
 
         parser = ep.ExportParser()
         with ZipFile(zip_path, "r") as zf:
-            parser._load_workouts(zf, "Running")  # type: ignore[misc]
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
-        assert len(parser.running_workouts) == 1
+        assert workouts.count() == 1
         # Verify statistics from nested element were captured
-        assert isinstance(parser.running_workouts.iloc[0].get("sumDistance"), float)
-        assert parser.running_workouts.iloc[0].get(
+        assert isinstance(workouts.get_workouts().iloc[0].get("sumDistance"), float)
+        assert workouts.get_workouts().iloc[0].get(
             "sumDistance") == pytest.approx( # type: ignore[misc]
             5.0
         )

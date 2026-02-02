@@ -2,8 +2,7 @@
 
 from nicegui import ui
 
-from logic.export_parser import ExportParser
-
+from logic.workout_manager import WorkoutManager
 
 class AppState:
     """Application state."""
@@ -13,7 +12,7 @@ class AppState:
 
     def reset(self) -> None:
         """Reset the application state."""
-        self.parser: ExportParser = ExportParser()
+        self.workouts: WorkoutManager = WorkoutManager()
         self.file_loaded: bool = False
         self.input_file: ui.input
         self.log: ui.log

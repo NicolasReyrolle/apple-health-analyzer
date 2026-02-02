@@ -9,6 +9,7 @@ from zipfile import ZipFile
 import pandas as pd
 
 import logic.export_parser as ep
+import logic.workout_manager as wm
 
 
 def create_test_zip(zip_path: Path, xml_content: bytes) -> None:
@@ -23,8 +24,8 @@ def parse_and_export_json(
     """Helper to parse ZIP and export to JSON."""
     parser = ep.ExportParser()
     with parser:
-        parser.parse(str(zip_path))
-        return parser.export_to_json(exclude_columns=exclude_columns)
+        workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
+        return workouts.export_to_json(exclude_columns=exclude_columns)
 
 
 def parse_and_export_csv(
@@ -33,8 +34,8 @@ def parse_and_export_csv(
     """Helper to parse ZIP and export to CSV."""
     parser = ep.ExportParser()
     with parser:
-        parser.parse(str(zip_path))
-        return parser.export_to_csv(exclude_columns=exclude_columns)
+        workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
+        return workouts.export_to_csv(exclude_columns=exclude_columns)
 
 
 class TestExportToJson:
@@ -165,8 +166,8 @@ class TestColumnExclusion:
 
     def test_default_excluded_columns_constant(self) -> None:
         """Test that DEFAULT_EXCLUDED_COLUMNS is defined correctly."""
-        assert hasattr(ep.ExportParser, "DEFAULT_EXCLUDED_COLUMNS")
-        assert ep.ExportParser.DEFAULT_EXCLUDED_COLUMNS == {"routeFile", "route"}
+        assert hasattr(wm.WorkoutManager, "DEFAULT_EXCLUDED_COLUMNS")
+        assert wm.WorkoutManager.DEFAULT_EXCLUDED_COLUMNS == {"routeFile", "route"}
 
     def test_export_to_json_excludes_default_columns(self, tmp_path: Path) -> None:
         """Test that export_to_json excludes routeFile and route by default."""
