@@ -2,7 +2,6 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
-from typing import Any
 
 from nicegui import app, ui
 
@@ -12,7 +11,6 @@ from ui.local_file_picker import LocalFilePicker
 from app_state import state
 from logic.export_parser import ExportParser
 from logic.workout_manager import WorkoutManager
-import apple_health_analyzer as _module
 
 
 def handle_json_export() -> None:
@@ -118,11 +116,8 @@ def stat_card(label: str, value_ref: dict[str, int], key: str, unit: str = ""):
 
 async def pick_file() -> None:
     """Open a file picker dialog to select the Apple Health export file."""
-    # Use a module-level lookup to allow for testing with mocks
-    picker_class: Any = getattr(_module, "LocalFilePicker", None)
-    if picker_class is None:
-        picker_class = LocalFilePicker
-    result: list[str] = await picker_class("~", multiple=False, file_filter=".zip")
+    result: list[str] = await LocalFilePicker("~", multiple=False, file_filter=".zip")
+
     if not result:
         ui.notify("No file selected")
         return

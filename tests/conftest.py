@@ -1,19 +1,29 @@
 """Fixtures for testing Apple Health Analyzer."""
 
+import asyncio
+import contextlib
 import os
 import shutil
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Callable, Generator, Any, Optional, Protocol
+from typing import (
+    Callable,
+    Generator,
+    Any,
+    Optional,
+    Protocol,
+    ContextManager,
+    List,
+    Iterator,
+)
 
+from unittest.mock import patch, MagicMock
 import nicegui.storage
 from nicegui.testing import UserInteraction
 import pytest
 
 from app_state import state as app_state
-import ui.local_file_picker
-import apple_health_analyzer as aha_module
 
 # Centralized default XML structure
 DEFAULT_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -76,65 +86,34 @@ def create_health_zip() -> Generator[Callable[[str], str], None, None]:
         shutil.rmtree(d, ignore_errors=True)
 
 
-def create_mock_file_picker(return_path: str | None = None) -> Callable[..., Any]:
-    """Create a mock LocalFilePicker that returns the given path.
-
-    Args:
-        return_path: The file path to return, or None for empty result.
-    """
-
-    def mock_picker(*args: Any, **kwargs: Any) -> Any:  # pylint: disable=unused-argument
-        class MockFilePicker:
-            """Mock class for LocalFilePicker."""
-
-            def __init__(self, *init_args: Any, **init_kw: Any) -> None:  # pylint: disable=unused-argument
-                pass
-
-            async def __aenter__(self) -> "MockFilePicker":
-                return self
-
-            async def __aexit__(self, *exit_args: Any) -> None:  # pylint: disable=unused-argument
-                pass
-
-            def __await__(self) -> Generator[Any, None, list[str]]:
-                async def _return_file() -> list[str]:
-                    if return_path:
-                        return [return_path]
-                    return []
-
-                return _return_file().__await__()  # type: ignore # pylint: disable=no-member
-
-        return MockFilePicker()
-
-    return mock_picker
-
-
 @pytest.fixture
-def mock_file_picker_context() -> Callable[[str | None], Any]:
-    """Context manager for temporarily mocking LocalFilePicker.
-
-    Usage:
-        with mock_file_picker_context("/path/to/file.zip") as original:
-            # Test code here
+def mock_file_picker_context() -> Callable[[Optional[str]], ContextManager[None]]:
+    """
+    Fixture providing a Context Manager to mock-up LocalFilePicker.
     """
 
-    original = ui.local_file_picker.LocalFilePicker
+    @contextlib.contextmanager
+    def _mocker(return_path: Optional[str] = None) -> Iterator[None]:
+        target = "ui.layout.LocalFilePicker"
+        result_value: List[str] = [return_path] if return_path else []
 
-    def _context_manager(return_path: str | None = None) -> Any:
-        class _Ctx:
-            def __enter__(self) -> Any:
-                mock_picker = create_mock_file_picker(return_path)
-                ui.local_file_picker.LocalFilePicker = mock_picker  # type: ignore[assignment]
-                aha_module.LocalFilePicker = mock_picker  # type: ignore[attr-defined]
-                return original
+        async def _simulated_picker(*args: Any, **kwargs: Any): # pylint: disable=unused-argument
+            return result_value
 
-            def __exit__(self, *args: Any) -> None:  # pylint: disable=unused-argument
-                ui.local_file_picker.LocalFilePicker = original
-                aha_module.LocalFilePicker = original  # type: ignore[attr-defined]
+        with patch(target) as mock_class:
+            mock_instance = MagicMock()
 
-        return _Ctx()
+            future: asyncio.Future[List[str]] = asyncio.Future()
+            future.set_result(result_value)
 
-    return _context_manager
+            mock_instance.__await__ = future.__await__()
+
+            mock_class.return_value = mock_instance
+            mock_class.side_effect = _simulated_picker
+
+            yield
+
+    return _mocker
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -248,3 +227,20 @@ PersistentDict.clear = patched_clear
 def reset_app_state():
     """Fixture to reset the application state before each test."""
     app_state.reset()
+
+
+Storage = nicegui.storage.Storage
+
+def patched_storage_clear(self: Any) -> None:
+    """Patched clear method for NiceGUI Storage to avoid WinError 32."""
+    self._general.clear()  # pylint: disable=protected-access
+    self._users.clear()  # pylint: disable=protected-access
+
+    if self.path.exists():
+        for filepath in self.path.glob('storage-*.json'):
+            try:
+                filepath.unlink()
+            except OSError:
+                pass
+
+Storage.clear = patched_storage_clear
