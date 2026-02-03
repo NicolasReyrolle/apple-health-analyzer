@@ -4,6 +4,7 @@ from nicegui import ui
 
 from logic.workout_manager import WorkoutManager
 
+
 class AppState:
     """Application state."""
 
@@ -18,10 +19,14 @@ class AppState:
         self.log: ui.log
 
         self.metrics = {
+            "count": 0,
             "distance": 0,
             "duration": 0,
             "elevation": 0,
         }
+
+        self.selected_activity_type: str = "All"
+        self.activity_options: list[str] = ["All"]
 
 
 state = AppState()

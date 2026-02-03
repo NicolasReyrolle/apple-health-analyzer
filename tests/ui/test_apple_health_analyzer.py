@@ -2,11 +2,13 @@
 
 import asyncio
 import json
-from typing import Callable, Any
+from typing import Callable, Any, cast
 
 from nicegui.testing import User
+from nicegui import ui
 
 from tests.types_helper import StateAssertion
+
 
 def is_valid_json(data_string: str) -> bool:
     """Check if a string is valid JSON."""
@@ -172,7 +174,10 @@ class TestMainWindow:
         assert csv_option is not None, "to CSV export option not found"
 
     async def test_export_to_json_click_executes(
-        self, user: User, create_health_zip: Callable[..., str], assert_ui_state: StateAssertion
+        self,
+        user: User,
+        create_health_zip: Callable[..., str],
+        assert_ui_state: StateAssertion,
     ) -> None:
         """Test that clicking 'Export data > to JSON' can be executed without errors.
 
@@ -217,7 +222,10 @@ class TestMainWindow:
         assert is_valid_json(res.text)
 
     async def test_export_to_csv_click_executes(
-        self, user: User, create_health_zip: Callable[..., str], assert_ui_state: StateAssertion
+        self,
+        user: User,
+        create_health_zip: Callable[..., str],
+        assert_ui_state: StateAssertion,
     ) -> None:
         """Test that clicking 'Export data > to CSV' can be executed without errors.
 
@@ -269,3 +277,22 @@ class TestMainWindow:
 
         export_interaction = user.find("Export data")
         assert_ui_state(export_interaction, enabled=False)
+
+    async def test_activity_filter_checkbox_rendering(
+        self, user: User, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Test that activity filter checkboxes are rendered correctly after loading data."""
+
+        await user.open("/")
+
+        # 1. Load a valid health data file
+        zip_path = create_health_zip()
+        user.find("Apple Health export file").type(zip_path)
+        user.find("Load").click()
+
+        # 2. Wait for parsing to complete
+        await user.should_see("Finished parsing", retries=100)
+
+        # 3. Verify the activities section is present
+        select = cast(ui.select, user.find("Activity Type").elements.pop())
+        assert select.options == ["All", "Running"]  # type: ignore

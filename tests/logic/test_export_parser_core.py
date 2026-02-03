@@ -10,7 +10,6 @@ import pytest
 import logic.export_parser as ep
 import logic.workout_manager as wm
 
-
 class TestExportParser:
     """Test cases for the ExportParser class."""
 
@@ -27,10 +26,10 @@ class TestExportParser:
             pass
 
 
-class TestLoadRunningWorkouts:
-    """Test the _load_running_workouts method."""
+class TestLoadWorkouts:
+    """Test the _load_workouts method."""
 
-    def test_load_running_workouts_with_valid_zip(self, tmp_path: Path) -> None:
+    def test_load_workouts_with_valid_zip(self, tmp_path: Path) -> None:
         """Test loading running workouts from a valid Apple Health ZIP file."""
         zip_path = tmp_path / "mock_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -47,14 +46,14 @@ class TestLoadRunningWorkouts:
         with parser:
             workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
-        # Should have loaded only running workouts (2, not the cycling one)
-        assert workouts.count() == 2
+        assert workouts.count() == 3
         assert list(workouts.get_workouts()["startDate"]) == [
             pd.Timestamp("2024-01-01 00:00:00"),
+            pd.Timestamp("2024-01-02 00:00:00"),
             pd.Timestamp("2024-01-03 00:00:00"),
         ]
 
-    def test_load_running_workouts_empty(self, tmp_path: Path) -> None:
+    def test_load_workouts_empty(self, tmp_path: Path) -> None:
         """Test loading workouts from ZIP with no running workouts."""
         zip_path = tmp_path / "empty_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>

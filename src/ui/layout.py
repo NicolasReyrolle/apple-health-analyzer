@@ -27,13 +27,35 @@ def handle_csv_export() -> None:
     ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
 
 
+def refresh_data() -> None:
+    """Refresh the displayed data."""
+    state.metrics["count"] = state.workouts.count(state.selected_activity_type)
+    state.metrics["distance"] = state.workouts.get_distance(state.selected_activity_type)
+
+
+def _update_activity_filter(new_value: str) -> None:
+    state.selected_activity_type = new_value
+    refresh_data()
+
+
+@ui.refreshable
+def render_activity_select() -> None:
+    """Render the activity type selection dropdown."""
+
+    ui.select(
+        options=state.activity_options,
+        on_change=lambda e: _update_activity_filter(e.value),
+        value=state.selected_activity_type,
+        label="Activity Type",
+    ).classes("w-40").bind_enabled_from(state, "file_loaded")
+
+
 def generate_left_drawer():
     """Generate the left drawer with filters."""
+
     with ui.left_drawer():
         ui.label("Activities")
-        ui.radio(["All", "Running", "Walking", "Cycling"]).bind_value(
-            app.storage.user, "activity_filter"
-        ).props("disable")
+        render_activity_select()
 
         ui.separator()
 
@@ -147,6 +169,10 @@ async def load_file() -> None:
         state.log.push(state.workouts.get_statistics())
         ui.notify("File parsed successfully.")
         state.file_loaded = True
+        state.activity_options = state.workouts.get_activity_types() + ["All"]
+        state.activity_options.sort()
+        render_activity_select.refresh()
+        refresh_data()
     except Exception as e:  # pylint: disable=broad-except
         ui.notify(f"Error parsing file: {e}")
 
@@ -176,7 +202,7 @@ def generate_body() -> None:
     with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
         with ui.tab_panel(tab_summary):
             with ui.row().classes("w-full justify-center gap-4"):
+                stat_card("Count", state.metrics, "count")
                 stat_card("Distance", state.metrics, "distance", "km")
                 stat_card("Duration", state.metrics, "duration", "h")
-                stat_card("VO2Max", state.metrics, "vo2max")
                 stat_card("Elevation", state.metrics, "elevation", "m")

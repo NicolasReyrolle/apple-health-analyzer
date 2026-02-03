@@ -135,10 +135,10 @@ class ExportParser:
         if self.log:
             self.log.push(message)
 
-    def _load_workouts(self, zipfile: ZipFile, workout_type: str) -> pd.DataFrame:
+    def _load_workouts(self, zipfile: ZipFile) -> pd.DataFrame:
         """Load workouts of a specific type from the export file."""
         if self.log:
-            self._log(f"Loading the {workout_type} workouts...")
+            self._log("Loading the workouts...")
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
             rows: List[WorkoutRecord] = []
@@ -147,10 +147,9 @@ class ExportParser:
                 if event == "end" and elem.tag == "Workout":
                     activity_type = self._extract_activity_type(elem)
 
-                    if activity_type == workout_type:
-                        record = self._create_workout_record(elem, activity_type)
-                        self._process_workout_children(elem, record, zipfile)
-                        rows.append(record)
+                    record = self._create_workout_record(elem, activity_type)
+                    self._process_workout_children(elem, record, zipfile)
+                    rows.append(record)
 
                     elem.clear()
 
@@ -294,7 +293,7 @@ class ExportParser:
             self.log = log
             self._log("Starting to parse the Apple Health export file...")
             with ZipFile(export_file, "r") as zipfile:
-                result = self._load_workouts(zipfile, "Running")
+                result = self._load_workouts(zipfile)
             self._log("Finished parsing the Apple Health export file.")
             return result
         except Exception as e:

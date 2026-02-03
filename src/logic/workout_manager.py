@@ -26,9 +26,28 @@ class WorkoutManager:
         else:
             self.workouts = pd_workouts
 
-    def count(self) -> int:
+    def get_activity_types(self) -> List[str]:
+        """Return the list of unique activity types."""
+        return self.workouts["activityType"].dropna().unique().tolist()
+
+    def count(self, activity_type: str = "All") -> int:
         """Return the number of workouts."""
-        return len(self.workouts)
+        if activity_type != "All":
+            return len(self.workouts[self.workouts["activityType"] == activity_type])
+        else:
+            return len(self.workouts)
+
+    def get_distance(self, activity_type: str = "All") -> int:
+        """Return the total distance of workouts in kilometers."""
+        if activity_type != "All":
+            workouts = self.workouts[self.workouts["activityType"] == activity_type]
+        else:
+            workouts = self.workouts
+
+        if "sumDistanceWalkingRunning" in workouts.columns:
+            return round(workouts["sumDistanceWalkingRunning"].sum())
+        else:
+            return 0
 
     def get_workouts(self) -> pd.DataFrame:
         """Return the DataFrame of workouts."""

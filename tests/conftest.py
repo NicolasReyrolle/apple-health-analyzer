@@ -97,7 +97,7 @@ def mock_file_picker_context() -> Callable[[Optional[str]], ContextManager[None]
         target = "ui.layout.LocalFilePicker"
         result_value: List[str] = [return_path] if return_path else []
 
-        async def _simulated_picker(*args: Any, **kwargs: Any): # pylint: disable=unused-argument
+        async def _simulated_picker(*args: Any, **kwargs: Any):  # pylint: disable=unused-argument
             return result_value
 
         with patch(target) as mock_class:
@@ -231,16 +231,24 @@ def reset_app_state():
 
 Storage = nicegui.storage.Storage
 
+
 def patched_storage_clear(self: Any) -> None:
     """Patched clear method for NiceGUI Storage to avoid WinError 32."""
     self._general.clear()  # pylint: disable=protected-access
     self._users.clear()  # pylint: disable=protected-access
 
     if self.path.exists():
-        for filepath in self.path.glob('storage-*.json'):
+        for filepath in self.path.glob("storage-*.json"):
             try:
                 filepath.unlink()
             except OSError:
                 pass
 
+
 Storage.clear = patched_storage_clear
+
+def pytest_collection_modifyitems(items):
+    """Add xdist_group marker to ui tests."""
+    for item in items:
+        if "ui" in str(item.fspath):
+            item.add_marker(pytest.mark.xdist_group(name="ui_tests"))
