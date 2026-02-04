@@ -29,6 +29,8 @@ class WorkoutManager:
 
     def get_activity_types(self) -> List[str]:
         """Return the list of unique activity types."""
+        if self.workouts.empty or "activityType" not in self.workouts.columns:
+            return []
         return self.workouts["activityType"].dropna().unique().tolist()
 
     def count(self, activity_type: str = "All") -> int:
