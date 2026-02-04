@@ -17,8 +17,6 @@ class AppState:
         """Reset the application state."""
         self.workouts: WorkoutManager = WorkoutManager()
         self.file_loaded: bool = False
-
-
         self.metrics = {
             "count": 0,
             "distance": 0,
