@@ -14,17 +14,17 @@ from nicegui import ui, app
 from app_state import state
 from assets import APP_ICON_BASE64
 
-from ui.layout import generate_left_drawer
-from ui.layout import generate_header
-from ui.layout import generate_body
+from ui.layout import render_left_drawer
+from ui.layout import render_header
+from ui.layout import render_body
 
 
 def main() -> None:
     """Main entry point for the application."""
 
-    generate_header()
-    generate_left_drawer()
-    generate_body()
+    render_header()
+    render_left_drawer()
+    render_body()
 
     with ui.footer():
         state.log = ui.log(max_lines=10).classes("w-full h-20")

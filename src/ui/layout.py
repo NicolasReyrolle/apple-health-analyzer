@@ -52,7 +52,7 @@ def render_activity_select() -> None:
     ).classes("w-40").bind_enabled_from(state, "file_loaded")
 
 
-def generate_left_drawer():
+def render_left_drawer() -> None:
     """Generate the left drawer with filters."""
 
     with ui.left_drawer():
@@ -107,7 +107,7 @@ def generate_left_drawer():
             )
 
 
-def generate_header():
+def render_header() -> None :
     """Generate the application header with a dark mode toggle."""
     dark = ui.dark_mode()
     with ui.header().classes("items-center justify-between border-b"):
@@ -179,7 +179,7 @@ async def load_file() -> None:
         ui.notify(f"Error parsing file: {e}")
 
 
-def generate_body() -> None:
+def render_body() -> None:
     """Generate the main body of the application."""
     with ui.row().classes("w-full items-center"):
         state.input_file = (
