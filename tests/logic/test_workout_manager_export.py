@@ -512,3 +512,117 @@ class TestStartDateTimezoneHandling:
         assert "schema" in data
         assert "data" in data
         assert len(data["data"]) == 2
+
+
+class TestExportToCsvActivityFilter:
+    """Test the export_to_csv method with activity type filtering."""
+
+    def test_export_to_csv_all_activities(self) -> None:
+        """Test export_to_csv with activity_type='All' exports all workouts."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking", "Cycling", "Running"],
+                    "duration": [30, 20, 45, 25],
+                    "startDate": ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04"],
+                }
+            )
+        )
+
+        csv_output = workouts.export_to_csv(activity_type="All")
+
+        lines = csv_output.strip().split("\n")
+        # Header + 4 data rows
+        assert len(lines) == 5
+        # Verify all activity types are present
+        assert "Running" in csv_output
+        assert "Walking" in csv_output
+        assert "Cycling" in csv_output
+
+    def test_export_to_csv_filter_running(self) -> None:
+        """Test export_to_csv filters to only Running activities."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking", "Cycling", "Running"],
+                    "duration": [30, 20, 45, 25],
+                    "startDate": ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04"],
+                }
+            )
+        )
+
+        csv_output = workouts.export_to_csv(activity_type="Running")
+
+        lines = csv_output.strip().split("\n")
+        # Header + 2 Running rows
+        assert len(lines) == 3
+        # Verify only Running activities are present
+        assert "Running" in csv_output
+        assert "Walking" not in csv_output
+        assert "Cycling" not in csv_output
+
+    def test_export_to_csv_filter_walking(self) -> None:
+        """Test export_to_csv filters to only Walking activities."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking", "Cycling", "Running"],
+                    "duration": [30, 20, 45, 25],
+                    "startDate": ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04"],
+                }
+            )
+        )
+
+        csv_output = workouts.export_to_csv(activity_type="Walking")
+
+        lines = csv_output.strip().split("\n")
+        # Header + 1 Walking row
+        assert len(lines) == 2
+        # Verify only Walking is present
+        assert "Walking" in csv_output
+        assert "Running" not in csv_output
+        assert "Cycling" not in csv_output
+
+    def test_export_to_csv_filter_no_match(self) -> None:
+        """Test export_to_csv when activity type doesn't exist."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking"],
+                    "duration": [30, 20],
+                    "startDate": ["2024-01-01", "2024-01-02"],
+                }
+            )
+        )
+
+        csv_output = workouts.export_to_csv(activity_type="Swimming")
+
+        lines = csv_output.strip().split("\n")
+        # Only header row (empty result)
+        assert len(lines) == 1
+
+    def test_export_to_csv_filter_with_excluded_columns(self) -> None:
+        """Test export_to_csv filters both by activity type and excluded columns."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking", "Running"],
+                    "duration": [30, 20, 25],
+                    "routeFile": ["route1", "route2", "route3"],
+                    "startDate": ["2024-01-01", "2024-01-02", "2024-01-03"],
+                }
+            )
+        )
+
+        csv_output = workouts.export_to_csv(
+            activity_type="Running",
+            exclude_columns={"routeFile"}
+        )
+
+        lines = csv_output.strip().split("\n")
+        # Header + 2 Running rows
+        assert len(lines) == 3
+        # Verify routeFile is not in output
+        assert "routeFile" not in csv_output
+        # Verify Running activities are present
+        assert csv_output.count("Running") == 2

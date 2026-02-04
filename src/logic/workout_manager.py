@@ -40,7 +40,7 @@ class WorkoutManager:
         return len(self.workouts)
 
     def get_distance(self, activity_type: str = "All") -> int:
-        """Return the total distance of workouts in kilometers."""
+        """Return the total distance of workouts in kilometers rounded to the nearest integer."""
         if activity_type != "All":
             workouts = self.workouts[self.workouts["activityType"] == activity_type]
         else:
@@ -48,8 +48,8 @@ class WorkoutManager:
 
         if "sumDistanceWalkingRunning" in workouts.columns:
             return int(round(workouts["sumDistanceWalkingRunning"].sum()))
-        else:
-            return 0
+
+        return 0
 
     def get_workouts(self) -> pd.DataFrame:
         """Return the DataFrame of workouts."""
@@ -125,10 +125,11 @@ class WorkoutManager:
         # 5. Return the JSON string
         return json.dumps(final_obj, indent=2)
 
-    def export_to_csv(self, exclude_columns: Optional[set[str]] = None) -> str:
-        """Export running workouts to a CSV format, returns the CSV string.
+    def export_to_csv(self, activity_type: str = "All", exclude_columns: Optional[set[str]] = None) -> str:
+        """Export workouts to a CSV format, returns the CSV string.
 
         Args:
+            activity_type: Filter by activity type. "All" returns all activities.
             exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
         """
         # Filter columns to exclude (default: routeFile and route)
@@ -138,10 +139,16 @@ class WorkoutManager:
             else self.DEFAULT_EXCLUDED_COLUMNS
         )
 
+        # Filter workouts by activity type
+        if activity_type != "All":
+            filtered_workouts = self.workouts[self.workouts["activityType"] == activity_type]
+        else:
+            filtered_workouts = self.workouts
+
         result: str = ""
 
         # If DataFrame is empty, create one with expected columns
-        if self.workouts.empty:
+        if filtered_workouts.empty:
             expected_columns = [
                 "activityType",
                 "duration",
@@ -154,7 +161,7 @@ class WorkoutManager:
             empty_df = pd.DataFrame(columns=cols_to_keep)
             result = empty_df.to_csv(index=False)
         else:
-            cols_to_keep = [col for col in self.workouts.columns if col not in excluded]
-            result = self.workouts[cols_to_keep].to_csv(index=False)
+            cols_to_keep = [col for col in filtered_workouts.columns if col not in excluded]
+            result = filtered_workouts[cols_to_keep].to_csv(index=False)
 
         return result
