@@ -37,8 +37,7 @@ class WorkoutManager:
         """Return the number of workouts."""
         if activity_type != "All":
             return len(self.workouts[self.workouts["activityType"] == activity_type])
-        else:
-            return len(self.workouts)
+        return len(self.workouts)
 
     def get_distance(self, activity_type: str = "All") -> int:
         """Return the total distance of workouts in kilometers."""
