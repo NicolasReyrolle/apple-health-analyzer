@@ -34,9 +34,7 @@ def is_valid_csv(data_string: str, expected_column: str = "") -> bool:
     return False
 
 
-async def load_health_export(
-    user: User, create_health_zip: Callable[..., str]
-) -> str:
+async def load_health_export(user: User, create_health_zip: Callable[..., str]) -> str:
     """Helper function to load a health export file and wait for parsing to complete.
 
     Args:
@@ -338,7 +336,7 @@ class TestMainWindow:
         # - 0 elevation (not in test data)
         assert state.metrics["count"] == 1
         assert state.metrics["distance"] == 16
-        
+
         # Verify the values are displayed in the UI
         await user.should_see("1")  # Count
         await user.should_see("16")  # Distance
