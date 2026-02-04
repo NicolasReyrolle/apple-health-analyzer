@@ -82,9 +82,7 @@ class WorkoutManager:
         """
         # Filter columns to exclude (default: routeFile and route)
         excluded: set[str] = (
-            exclude_columns
-            if exclude_columns is not None
-            else self.DEFAULT_EXCLUDED_COLUMNS
+            exclude_columns if exclude_columns is not None else self.DEFAULT_EXCLUDED_COLUMNS
         )
         cols_to_keep = [col for col in self.workouts.columns if col not in excluded]
         df_filtered = self.workouts[cols_to_keep]
@@ -125,7 +123,9 @@ class WorkoutManager:
         # 5. Return the JSON string
         return json.dumps(final_obj, indent=2)
 
-    def export_to_csv(self, activity_type: str = "All", exclude_columns: Optional[set[str]] = None) -> str:
+    def export_to_csv(
+        self, activity_type: str = "All", exclude_columns: Optional[set[str]] = None
+    ) -> str:
         """Export workouts to a CSV format, returns the CSV string.
 
         Args:
@@ -134,9 +134,7 @@ class WorkoutManager:
         """
         # Filter columns to exclude (default: routeFile and route)
         excluded: set[str] = (
-            exclude_columns
-            if exclude_columns is not None
-            else self.DEFAULT_EXCLUDED_COLUMNS
+            exclude_columns if exclude_columns is not None else self.DEFAULT_EXCLUDED_COLUMNS
         )
 
         # Filter workouts by activity type
