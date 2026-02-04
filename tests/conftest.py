@@ -13,7 +13,6 @@ from typing import (
     Generator,
     Any,
     Optional,
-    Protocol,
     ContextManager,
     List,
     Iterator,
@@ -25,6 +24,7 @@ from nicegui.testing import UserInteraction
 import pytest
 
 from app_state import state as app_state
+from tests.types_helper import StateAssertion
 
 # Centralized default XML structure
 DEFAULT_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -125,18 +125,6 @@ def setup_test_environment():
     yield
 
     shutil.rmtree(test_dir, ignore_errors=True)
-
-
-# Define a Protocol to describe the helper signature precisely
-class StateAssertion(Protocol):
-    """Protocol for UI state assertion functions."""
-
-    def __call__(
-        self,
-        interaction: UserInteraction[Any],
-        enabled: Optional[bool] = None,
-        visible: Optional[bool] = None,
-    ) -> None: ...
 
 
 @pytest.fixture
