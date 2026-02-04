@@ -195,4 +195,4 @@ def render_body() -> None:
                 stat_card("Count", state.metrics, "count")
                 stat_card("Distance", state.metrics, "distance", "km")
                 stat_card("Duration", state.metrics, "duration", "h")
-                stat_card("Elevation", state.metrics, "elevation", "m")
+                stat_card("Elevation", state.metrics, "elevation", "km")

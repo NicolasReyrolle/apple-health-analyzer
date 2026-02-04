@@ -311,7 +311,7 @@ class TestMainWindow:
         await user.should_see("Duration")
         await user.should_see("h")
         await user.should_see("Elevation")
-        await user.should_see("m")
+        await user.should_see("km")
 
     async def test_stat_cards_update_after_load(
         self, user: User, create_health_zip: Callable[..., str]
@@ -333,14 +333,16 @@ class TestMainWindow:
         # - 1 workout
         # - 16.1244 km distance (rounded to 16)
         # - 119.27 minutes duration (approximately 2 hours)
-        # - 0 elevation (parser doesn't extract ElevationAscended from metadata)
+        # - 154430 cm elevation (approximately 2 km)
         assert state.metrics["count"] == 1
         assert state.metrics["distance"] == 16
         assert state.metrics["duration"] == 2  # 119.27 minutes ≈ 2 hours
-        assert state.metrics["elevation"] == 0  # Not extracted by parser
+        assert state.metrics["elevation"] == 2  # 154430 cm = 1544.3 m → 2
 
         # Verify the values are displayed in the UI
         await user.should_see("1")  # Count
         await user.should_see("16")  # Distance
         # Duration display calculation is in get_statistics(), verify it's rendered
         await user.should_see("2h")  # Duration display format
+        await user.should_see("2")  # Elevation value displayed
+        await user.should_see("km")  # Elevation unit
