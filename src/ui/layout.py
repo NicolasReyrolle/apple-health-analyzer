@@ -32,6 +32,11 @@ def refresh_data() -> None:
 
 
 def _update_activity_filter(new_value: str) -> None:
+    """Update the selected activity type filter and refresh derived metrics.  
+
+    Args:  
+        new_value: The activity type selected from the UI dropdown.  
+    """  
     state.selected_activity_type = new_value
     refresh_data()
 
