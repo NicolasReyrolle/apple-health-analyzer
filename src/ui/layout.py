@@ -5,12 +5,11 @@ from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-
 
 from nicegui import app, ui
 
-from assets import APP_ICON_BASE64
-from ui.local_file_picker import LocalFilePicker
-
 from app_state import state
+from assets import APP_ICON_BASE64
 from logic.export_parser import ExportParser
 from logic.workout_manager import WorkoutManager
+from ui.local_file_picker import LocalFilePicker
 
 
 def handle_json_export() -> None:
@@ -30,9 +29,7 @@ def handle_csv_export() -> None:
 def refresh_data() -> None:
     """Refresh the displayed data."""
     state.metrics["count"] = state.workouts.count(state.selected_activity_type)
-    state.metrics["distance"] = state.workouts.get_distance(
-        state.selected_activity_type
-    )
+    state.metrics["distance"] = state.workouts.get_distance(state.selected_activity_type)
 
 
 def _update_activity_filter(new_value: str) -> None:
@@ -80,34 +77,22 @@ def render_left_drawer() -> None:
         years = [2024, 2025, 2026]
         with ui.row().classes("items-center gap-2"):
             ui.label("From").classes("text-sm text-muted")
-            ui.select(months, value="Jan").classes("w-20").props("dense flat").props(
-                "disable"
-            )
-            ui.select(years, value=2025).classes("w-24").props("dense flat").props(
-                "disable"
-            )
+            ui.select(months, value="Jan").classes("w-20").props("dense flat").props("disable")
+            ui.select(years, value=2025).classes("w-24").props("dense flat").props("disable")
 
             ui.label("to").classes("text-sm text-muted")
-            ui.select(months, value="Dec").classes("w-20").props("dense flat").props(
-                "disable"
-            )
-            ui.select(years, value=2025).classes("w-24").props("dense flat").props(
-                "disable"
-            )
+            ui.select(months, value="Dec").classes("w-20").props("dense flat").props("disable")
+            ui.select(years, value=2025).classes("w-24").props("dense flat").props("disable")
 
         ui.separator()
         with ui.dropdown_button("Export data", icon="download").bind_enabled_from(
             state, "file_loaded"
         ):
-            ui.button("to JSON", on_click=handle_json_export).props("flat").classes(
-                "w-full"
-            )
-            ui.button("to CSV", on_click=handle_csv_export).props("flat").classes(
-                "w-full"
-            )
+            ui.button("to JSON", on_click=handle_json_export).props("flat").classes("w-full")
+            ui.button("to CSV", on_click=handle_csv_export).props("flat").classes("w-full")
 
 
-def render_header() -> None :
+def render_header() -> None:
     """Generate the application header with a dark mode toggle."""
     dark = ui.dark_mode()
     with ui.header().classes("items-center justify-between border-b"):
@@ -151,8 +136,8 @@ async def pick_file() -> None:
 
 def load_workouts_from_file(file_path: str) -> None:
     """Load and parse the Apple Health export file."""
-    ep = ExportParser()
-    state.workouts = WorkoutManager(ep.parse(file_path, log=state.log))
+    with ExportParser() as ep:
+        state.workouts = WorkoutManager(ep.parse(file_path, log=state.log))
 
 
 async def load_file() -> None:
