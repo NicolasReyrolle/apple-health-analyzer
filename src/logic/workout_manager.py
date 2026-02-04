@@ -56,7 +56,7 @@ class WorkoutManager:
         return self.workouts
 
     def get_statistics(self) -> str:
-        """Print global statistics of the loaded data."""
+        """Return global statistics of the loaded data as a formatted string."""
         if not self.workouts.empty:
             result = f"Total workouts: {len(self.workouts)}\n"
             if "sumDistanceWalkingRunning" in self.workouts.columns:
