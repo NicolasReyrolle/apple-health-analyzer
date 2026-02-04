@@ -156,8 +156,9 @@ async def load_file() -> None:
         state.log.push(state.workouts.get_statistics())
         ui.notify("File parsed successfully.")
         state.file_loaded = True
-        state.activity_options = state.workouts.get_activity_types() + ["All"]
-        state.activity_options.sort()
+        activity_types = state.workouts.get_activity_types()
+        activity_types.sort()
+        state.activity_options = ["All"] + activity_types
         render_activity_select.refresh()
         refresh_data()
     except Exception as e:  # pylint: disable=broad-except
