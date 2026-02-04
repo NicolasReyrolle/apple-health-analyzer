@@ -14,18 +14,15 @@ from ui.local_file_picker import LocalFilePicker
 
 def handle_json_export() -> None:
     """Handle exporting data to JSON format."""
-    print("Export to JSON")
     json_data = state.workouts.export_to_json()
     ui.download(json_data.encode("utf-8"), "apple_health_export.json")
 
 
+
 def handle_csv_export() -> None:
     """Handle exporting data to CSV format."""
-    print("Export to CSV")
     csv_data = state.workouts.export_to_csv()
     ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
-
-
 def refresh_data() -> None:
     """Refresh the displayed data."""
     state.metrics["count"] = state.workouts.count(state.selected_activity_type)
