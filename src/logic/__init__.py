@@ -1,1 +1,1 @@
-""" Calculations package """
+"""Calculations package"""
