@@ -9,19 +9,19 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import (
-    Callable,
-    Generator,
     Any,
-    Optional,
+    Callable,
     ContextManager,
-    List,
+    Generator,
     Iterator,
+    List,
+    Optional,
 )
+from unittest.mock import MagicMock, patch
 
-from unittest.mock import patch, MagicMock
 import nicegui.storage
-from nicegui.testing import UserInteraction
 import pytest
+from nicegui.testing import UserInteraction
 
 from app_state import state as app_state
 from tests.types_helper import StateAssertion
@@ -116,6 +116,7 @@ def mock_file_picker_context() -> Callable[[Optional[str]], ContextManager[None]
 
     return _mocker
 
+
 @pytest.fixture(autouse=True, scope="session")
 def setup_test_environment():
     """Fixture to set up a temporary NiceGUI storage path for tests."""
@@ -156,7 +157,9 @@ def assert_ui_state() -> StateAssertion:
         if enabled is not None:
             # Cast to Any to access protected member _props
             element_any: Any = element
-            is_disabled = element_any._props.get("disable", False)  # pylint: disable=protected-access
+            is_disabled = element_any._props.get(
+                "disable", False
+            )  # pylint: disable=protected-access
             actual_enabled = not is_disabled
             state_str = "enabled" if enabled else "disabled"
             assert actual_enabled == enabled, f"Element should be {state_str}."
@@ -187,7 +190,9 @@ def patched_clear(self: Any) -> None:
                         os.remove(str(filepath))
                     except (PermissionError, OSError) as exc:
                         # Ignore file removal errors, which can happen due to Windows file locks.
-                        logging.debug("Ignoring storage file removal error for %s: %s", filepath, exc)
+                        logging.debug(
+                            "Ignoring storage file removal error for %s: %s", filepath, exc
+                        )
             elif os.path.isfile(path_str):
                 try:
                     os.remove(path_str)
@@ -222,12 +227,7 @@ class NiceGUIErrorFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         # Convert message and exception info to string for searching
         # record.getMessage() gets the main message
-        # record.exc_text or record.exc_info contains the traceback if any
         log_message = record.getMessage()
-        if record.exc_info:
-            # Check if exception info exists, convert to string roughly if needed,
-            # but usually checking the message is enough or checking str(record.msg)
-            pass
 
         # 1. Block the "Client deleted" error (Race condition on refresh)
         if "The client this element belongs to has been deleted" in log_message:
