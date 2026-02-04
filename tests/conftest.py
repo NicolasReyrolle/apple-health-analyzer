@@ -185,13 +185,15 @@ def patched_clear(self: Any) -> None:
                 for filepath in list(path.glob("storage-*.json")):
                     try:
                         os.remove(str(filepath))
-                    except (PermissionError, OSError):
-                        pass
+                    except (PermissionError, OSError) as exc:
+                        # Ignore file removal errors, which can happen due to Windows file locks.
+                        logging.debug("Ignoring storage file removal error for %s: %s", filepath, exc)
             elif os.path.isfile(path_str):
                 try:
                     os.remove(path_str)
-                except (PermissionError, OSError):
-                    pass
+                except (PermissionError, OSError) as exc:
+                    # Ignore file removal errors, which can happen due to Windows file locks.
+                    logging.debug("Ignoring storage file removal error for %s: %s", path_str, exc)
 
     # 2. Instead of calling self.clear(), we call the original dict method
     # This satisfies the linter AND prevents the RecursionError
