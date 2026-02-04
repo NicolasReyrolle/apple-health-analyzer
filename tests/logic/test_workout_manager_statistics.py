@@ -120,7 +120,7 @@ class TestGetStatistics:
             }
         ))
 
-        assert workouts.get_distance() == 30.0
-        assert workouts.get_distance("All") == 30.0
-        assert workouts.get_distance("Running") == 15.0
-        assert workouts.get_distance("Swimming") == 15.0
+        assert workouts.get_distance() == 30
+        assert workouts.get_distance("All") == 30
+        assert workouts.get_distance("Running") == 15
+        assert workouts.get_distance("Swimming") == 15
