@@ -16,6 +16,7 @@ class WorkoutManager:
         if pd_workouts is None:
             self.workouts: pd.DataFrame = pd.DataFrame(
                 columns=[
+                    "activityType",
                     "startDate",
                     "endDate",
                     "duration",
