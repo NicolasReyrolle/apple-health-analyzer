@@ -116,16 +116,6 @@ def mock_file_picker_context() -> Callable[[Optional[str]], ContextManager[None]
 
     return _mocker
 
-
-@pytest.fixture(autouse=True, scope="session")
-def cleanup_windows_storage():
-    """Fixture to clean up NiceGUI storage on Windows after tests."""
-    yield
-    temp_storage = Path(".nicegui")
-    if temp_storage.exists():
-        shutil.rmtree(temp_storage, ignore_errors=True)
-
-
 @pytest.fixture(autouse=True, scope="session")
 def setup_test_environment():
     """Fixture to set up a temporary NiceGUI storage path for tests."""
@@ -231,22 +221,6 @@ def reset_app_state():
 
 
 Storage = nicegui.storage.Storage
-
-
-def patched_storage_clear(self: Any) -> None:
-    """Patched clear method for NiceGUI Storage to avoid WinError 32."""
-    self._general.clear()  # pylint: disable=protected-access
-    self._users.clear()  # pylint: disable=protected-access
-
-    if self.path.exists():
-        for filepath in self.path.glob("storage-*.json"):
-            try:
-                filepath.unlink()
-            except OSError:
-                pass
-
-
-Storage.clear = patched_storage_clear
 
 
 class NiceGUIErrorFilter(logging.Filter):
