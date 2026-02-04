@@ -39,7 +39,7 @@ class WorkoutManager:
             return len(self.workouts[self.workouts["activityType"] == activity_type])
         return len(self.workouts)
 
-    def get_distance(self, activity_type: str = "All") -> int:
+    def get_distance(self, activity_type: str = "All") -> float:
         """Return the total distance of workouts in kilometers."""
         if activity_type != "All":
             workouts = self.workouts[self.workouts["activityType"] == activity_type]
@@ -47,9 +47,9 @@ class WorkoutManager:
             workouts = self.workouts
 
         if "sumDistanceWalkingRunning" in workouts.columns:
-            return int(round(workouts["sumDistanceWalkingRunning"].sum()))
+            return round(workouts["sumDistanceWalkingRunning"].sum(), 2)
         else:
-            return 0
+            return 0.0
 
     def get_workouts(self) -> pd.DataFrame:
         """Return the DataFrame of workouts."""

@@ -108,7 +108,7 @@ def render_header() -> None:
         ).props("flat round").classes("text-main")
 
 
-def stat_card(label: str, value_ref: dict[str, int], key: str, unit: str = ""):
+def stat_card(label: str, value_ref: dict[str, int | float], key: str, unit: str = "") -> None:
     """
     Create a reactive KPI card.
     'value_ref' is a dictionary containing the totals,
