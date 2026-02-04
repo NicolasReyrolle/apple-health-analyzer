@@ -107,7 +107,7 @@ def mock_file_picker_context() -> Callable[[Optional[str]], ContextManager[None]
             future: asyncio.Future[List[str]] = asyncio.Future()
             future.set_result(result_value)
 
-            mock_instance.__await__ = future.__await__()
+            mock_instance.__await__ = future.__await__
 
             mock_class.return_value = mock_instance
             mock_class.side_effect = _simulated_picker
