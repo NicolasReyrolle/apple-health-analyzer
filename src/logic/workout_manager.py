@@ -39,7 +39,7 @@ class WorkoutManager:
             return len(self.workouts[self.workouts["activityType"] == activity_type])
         return len(self.workouts)
 
-    def get_distance(self, activity_type: str = "All") -> int:
+    def get_total_distance(self, activity_type: str = "All") -> int:
         """Return the total distance of workouts in kilometers rounded to the nearest integer."""
         if activity_type != "All":
             workouts = self.workouts[self.workouts["activityType"] == activity_type]
@@ -48,6 +48,31 @@ class WorkoutManager:
 
         if "sumDistanceWalkingRunning" in workouts.columns:
             return int(round(workouts["sumDistanceWalkingRunning"].sum()))
+
+        return 0
+
+    def get_total_duration(self, activity_type: str = "All") -> int:
+        """Return the total duration of workouts in hours rounded to the nearest integer"""
+        if activity_type != "All":
+            workouts = self.workouts[self.workouts["activityType"] == activity_type]
+        else:
+            workouts = self.workouts
+
+        if "duration" in workouts.columns:
+            return int(round(workouts["duration"].sum() / 3600))
+
+        return 0
+
+    def get_total_elevation(self, activity_type: str = "All") -> int:
+        """Return the total elevation gain of workouts in kilometers 
+        rounded to the nearest integer."""
+        if activity_type != "All":
+            workouts = self.workouts[self.workouts["activityType"] == activity_type]
+        else:
+            workouts = self.workouts
+
+        if "ElevationAscended" in workouts.columns:
+            return int(round(workouts["ElevationAscended"].sum() / 1000))
 
         return 0
 

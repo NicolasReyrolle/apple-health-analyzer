@@ -331,14 +331,16 @@ class TestMainWindow:
         # 3. Verify stat card values are updated correctly
         # The create_health_zip fixture provides:
         # - 1 workout
-        # - 16 km distance
-        # - 1 hour duration
-        # - 0 elevation (not in test data)
+        # - 16.1244 km distance (rounded to 16)
+        # - 119.27 minutes duration (approximately 2 hours)
+        # - 0 elevation (parser doesn't extract ElevationAscended from metadata)
         assert state.metrics["count"] == 1
         assert state.metrics["distance"] == 16
+        assert state.metrics["duration"] == 2  # 119.27 minutes ≈ 2 hours
+        assert state.metrics["elevation"] == 0  # Not extracted by parser
 
         # Verify the values are displayed in the UI
         await user.should_see("1")  # Count
         await user.should_see("16")  # Distance
         # Duration display calculation is in get_statistics(), verify it's rendered
-        await user.should_see("1h")  # Duration display format
+        await user.should_see("2h")  # Duration display format

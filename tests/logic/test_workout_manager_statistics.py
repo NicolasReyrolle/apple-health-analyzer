@@ -120,7 +120,197 @@ class TestGetStatistics:
             }
         ))
 
-        assert workouts.get_distance() == 30
-        assert workouts.get_distance("All") == 30
-        assert workouts.get_distance("Running") == 15
-        assert workouts.get_distance("Swimming") == 15
+        assert workouts.get_total_distance() == 30
+        assert workouts.get_total_distance("All") == 30
+        assert workouts.get_total_distance("Running") == 15
+        assert workouts.get_total_distance("Swimming") == 15
+
+
+class TestGetTotalDuration:
+    """Test suite for WorkoutManager.get_total_duration method."""
+
+    def test_get_total_duration_empty(self) -> None:
+        """Test get_total_duration with empty DataFrame."""
+        workouts = wm.WorkoutManager()
+
+        assert workouts.get_total_duration() == 0
+
+    def test_get_total_duration_single_hour(self) -> None:
+        """Test get_total_duration with a single 1-hour workout."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running"],
+                "duration": [3600],  # 1 hour in seconds
+            }
+        ))
+
+        assert workouts.get_total_duration() == 1
+
+    def test_get_total_duration_multiple_workouts(self) -> None:
+        """Test get_total_duration with multiple workouts."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Walking", "Cycling"],
+                "duration": [3600, 1800, 7200],  # 1h + 30m + 2h = 3.5h → 4
+            }
+        ))
+
+        assert workouts.get_total_duration() == 4
+
+    def test_get_total_duration_filter_activity(self) -> None:
+        """Test get_total_duration filters by activity type."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Running", "Walking"],
+                "duration": [3600, 3600, 3600],  # 1h each
+            }
+        ))
+
+        assert workouts.get_total_duration() == 3
+        assert workouts.get_total_duration("All") == 3
+        assert workouts.get_total_duration("Running") == 2
+        assert workouts.get_total_duration("Walking") == 1
+
+    def test_get_total_duration_no_match(self) -> None:
+        """Test get_total_duration with non-existent activity type."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Walking"],
+                "duration": [3600, 3600],
+            }
+        ))
+
+        assert workouts.get_total_duration("Swimming") == 0
+
+    def test_get_total_duration_partial_hour(self) -> None:
+        """Test get_total_duration rounds to nearest hour."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running"],
+                "duration": [5400],  # 1.5 hours → 2 hours
+            }
+        ))
+
+        assert workouts.get_total_duration() == 2
+
+    def test_get_total_duration_no_duration_column(self) -> None:
+        """Test get_total_duration when duration column doesn't exist."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running"],
+            }
+        ))
+
+        assert workouts.get_total_duration() == 0
+
+    def test_get_total_duration_large_values(self) -> None:
+        """Test get_total_duration with large duration values."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running"],
+                "duration": [36000],  # 10 hours
+            }
+        ))
+
+        assert workouts.get_total_duration() == 10
+
+
+class TestGetTotalElevation:
+    """Test suite for WorkoutManager.get_total_elevation method."""
+
+    def test_get_total_elevation_empty(self) -> None:
+        """Test get_total_elevation with empty DataFrame."""
+        workouts = wm.WorkoutManager()
+
+        assert workouts.get_total_elevation() == 0
+
+    def test_get_total_elevation_single_workout(self) -> None:
+        """Test get_total_elevation with a single workout."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running"],
+                "ElevationAscended": [150.0],
+            }
+        ))
+
+        assert workouts.get_total_elevation() == 0
+
+    def test_get_total_elevation_multiple_workouts(self) -> None:
+        """Test get_total_elevation with multiple workouts."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Hiking", "Cycling"],
+                "ElevationAscended": [800.0, 250.0, 50.0],  # Total 1.1 km
+            }
+        ))
+
+        assert workouts.get_total_elevation() == 1
+
+    def test_get_total_elevation_filter_activity(self) -> None:
+        """Test get_total_elevation filters by activity type."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Hiking", "Hiking", "Cycling"],
+                "ElevationAscended": [150.0, 250.0, 800.0],
+            }
+        ))
+
+        assert workouts.get_total_elevation() == 1
+        assert workouts.get_total_elevation("All") == 1
+        assert workouts.get_total_elevation("Hiking") == 0
+        assert workouts.get_total_elevation("Cycling") == 1
+
+    def test_get_total_elevation_no_match(self) -> None:
+        """Test get_total_elevation with non-existent activity type."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Hiking"],
+                "ElevationAscended": [150.0],
+            }
+        ))
+
+        assert workouts.get_total_elevation("Swimming") == 0
+
+    def test_get_total_elevation_zero(self) -> None:
+        """Test get_total_elevation with zero elevation."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running"],
+                "ElevationAscended": [0.0],
+            }
+        ))
+
+        assert workouts.get_total_elevation() == 0
+
+    def test_get_total_elevation_rounding(self) -> None:
+        """Test get_total_elevation rounds to nearest integer."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Hiking"],
+                "ElevationAscended": [1557],  # Should round to 2
+            }
+        ))
+
+        assert workouts.get_total_elevation() == 2
+
+    def test_get_total_elevation_no_column(self) -> None:
+        """Test get_total_elevation when ElevationAscended column doesn't exist."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Hiking"],
+                "duration": [3600],
+            }
+        ))
+
+        assert workouts.get_total_elevation() == 0
+
+    def test_get_total_elevation_large_values(self) -> None:
+        """Test get_total_elevation with large elevation values."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Hiking"],
+                "ElevationAscended": [2500.6],  # Mountain climb (rounds to 3)
+            }
+        ))
+
+        assert workouts.get_total_elevation() == 3

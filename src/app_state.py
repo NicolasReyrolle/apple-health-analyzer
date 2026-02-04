@@ -1,7 +1,5 @@
 """Application state management for Apple Health Analyzer."""
 
-from typing import Optional
-
 from nicegui import ui
 
 from logic.workout_manager import WorkoutManager
@@ -12,8 +10,8 @@ class AppState:
 
     def __init__(self) -> None:
         self.reset()
-        self.input_file: Optional[ui.input] = None
-        self.log: Optional[ui.log] = None
+        self.input_file: ui.input  # Assigned in layout.py
+        self.log: ui.log  # Assigned in layout.py
 
     def reset(self) -> None:
         """Reset the application state."""

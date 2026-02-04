@@ -29,7 +29,9 @@ def handle_csv_export() -> None:
 def refresh_data() -> None:
     """Refresh the displayed data."""
     state.metrics["count"] = state.workouts.count(state.selected_activity_type)
-    state.metrics["distance"] = state.workouts.get_distance(state.selected_activity_type)
+    state.metrics["distance"] = state.workouts.get_total_distance(state.selected_activity_type)
+    state.metrics["duration"] = state.workouts.get_total_duration(state.selected_activity_type)
+    state.metrics["elevation"] = state.workouts.get_total_elevation(state.selected_activity_type)
 
 
 def _update_activity_filter(new_value: str) -> None:
