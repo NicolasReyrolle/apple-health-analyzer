@@ -7,23 +7,12 @@ from zipfile import ZipFile
 import pandas as pd
 import pytest
 
-import export_parser as ep
-
+import logic.export_parser as ep
+import logic.workout_manager as wm
 
 class TestExportParser:
     """Test cases for the ExportParser class."""
 
-    def test_init(self):
-        """Test that the ExportParser instance is correctly initialized."""
-        parser = ep.ExportParser()
-        assert len(parser.running_workouts) == 0
-        assert list(parser.running_workouts.columns) == [
-            "startDate",
-            "endDate",
-            "duration",
-            "durationUnit",
-            "sumDistanceWalkingRunning",
-        ]
 
     def test_parse_with_sample_file(self, create_health_zip: Callable[..., str]) -> None:
         """Test that parse() method can be called without error."""
@@ -37,10 +26,10 @@ class TestExportParser:
             pass
 
 
-class TestLoadRunningWorkouts:
-    """Test the _load_running_workouts method."""
+class TestLoadWorkouts:
+    """Test the _load_workouts method."""
 
-    def test_load_running_workouts_with_valid_zip(self, tmp_path: Path) -> None:
+    def test_load_workouts_with_valid_zip(self, tmp_path: Path) -> None:
         """Test loading running workouts from a valid Apple Health ZIP file."""
         zip_path = tmp_path / "mock_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -55,16 +44,16 @@ class TestLoadRunningWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            parser.parse(str(zip_path))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
-        # Should have loaded only running workouts (2, not the cycling one)
-        assert len(parser.running_workouts) == 2
-        assert list(parser.running_workouts["startDate"]) == [
+        assert workouts.count() == 3
+        assert list(workouts.get_workouts()["startDate"]) == [
             pd.Timestamp("2024-01-01 00:00:00"),
+            pd.Timestamp("2024-01-02 00:00:00"),
             pd.Timestamp("2024-01-03 00:00:00"),
         ]
 
-    def test_load_running_workouts_empty(self, tmp_path: Path) -> None:
+    def test_load_workouts_empty(self, tmp_path: Path) -> None:
         """Test loading workouts from ZIP with no running workouts."""
         zip_path = tmp_path / "empty_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -76,9 +65,9 @@ class TestLoadRunningWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            parser.parse(str(zip_path))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
-        assert len(parser.running_workouts) == 0
+        assert workouts.count() == 0
 
     def test_load_multiple_workouts_accumulate(self, tmp_path: Path) -> None:
         """Test that multiple workouts are loaded into DataFrame."""
@@ -94,12 +83,12 @@ class TestLoadRunningWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            parser.parse(str(zip_path))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
         # First parse should have 2 workouts
-        assert len(parser.running_workouts) == 2
+        assert workouts.count() == 2
         # Check duration values are captured in seconds
-        assert list(parser.running_workouts["duration"]) == [1800, 1500]
+        assert list(workouts.get_workouts()["duration"]) == [1800, 1500]
 
 
 class TestDurationToSeconds:

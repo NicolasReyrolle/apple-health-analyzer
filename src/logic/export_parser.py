@@ -1,9 +1,8 @@
 """Export processor for Apple Health data."""
 
 from datetime import datetime
-import json
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Tuple, Type, TypedDict
+from typing import Any, List, Optional, Tuple, Type, TypedDict
 from xml.etree.ElementTree import Element, iterparse
 from zipfile import ZipFile
 
@@ -42,20 +41,8 @@ class WorkoutRoute(TypedDict):
 class ExportParser:
     """Reads and parses Apple Health export files."""
 
-    # Columns to exclude from exports by default
-    DEFAULT_EXCLUDED_COLUMNS = {"routeFile", "route"}
-
     def __init__(self) -> None:
         self.log = None
-        self.running_workouts: pd.DataFrame = pd.DataFrame(
-            columns=[
-                "startDate",
-                "endDate",
-                "duration",
-                "durationUnit",
-                "sumDistanceWalkingRunning",
-            ]
-        )
 
     def __enter__(self) -> "ExportParser":
         return self
@@ -148,10 +135,10 @@ class ExportParser:
         if self.log:
             self.log.push(message)
 
-    def _load_workouts(self, zipfile: ZipFile, workout_type: str) -> None:
+    def _load_workouts(self, zipfile: ZipFile) -> pd.DataFrame:
         """Load workouts of a specific type from the export file."""
         if self.log:
-            self._log(f"Loading the {workout_type} workouts...")
+            self._log("Loading the workouts...")
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
             rows: List[WorkoutRecord] = []
@@ -160,37 +147,19 @@ class ExportParser:
                 if event == "end" and elem.tag == "Workout":
                     activity_type = self._extract_activity_type(elem)
 
-                    if activity_type == workout_type:
-                        record = self._create_workout_record(elem, activity_type)
-                        self._process_workout_children(elem, record, zipfile)
-                        rows.append(record)
+                    record = self._create_workout_record(elem, activity_type)
+                    self._process_workout_children(elem, record, zipfile)
+                    rows.append(record)
 
                     elem.clear()
 
-            self.running_workouts = pd.DataFrame(rows)
-            if len(self.running_workouts) > 0:
-                self.running_workouts["startDate"] = pd.to_datetime(
-                    self.running_workouts["startDate"]
+            result = pd.DataFrame(rows)
+            if len(result) > 0:
+                result["startDate"] = pd.to_datetime(
+                    result["startDate"]
                 ).dt.tz_localize(None)
 
-    def get_statistics(self) -> str:
-        """Print global statistics of the loaded data."""
-        if not self.running_workouts.empty:
-            result = f"Total running workouts: {len(self.running_workouts)}\n"
-            if "sumDistanceWalkingRunning" in self.running_workouts.columns:
-                result += (
-                    f"Total distance of "
-                    f"{self.running_workouts['sumDistanceWalkingRunning'].sum():.2f} km.\n"
-                )
-            if "duration" in self.running_workouts.columns:
-                total_duration_sec = self.running_workouts["duration"].sum()
-                hours, remainder = divmod(total_duration_sec, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                result += f"Total duration of {int(hours)}h {int(minutes)}m {int(seconds)}s.\n"
-        else:
-            result = "No running workouts loaded."
-
-        return result
+            return result
 
     def _extract_activity_type(self, elem: Element) -> str:
         """Extract and clean activity type from workout element."""
@@ -317,104 +286,16 @@ class ExportParser:
             if unit:
                 record[f"{key}Unit"] = unit
 
-    def parse(self, export_file: str, log: Optional[ui.log] = None) -> None:
+    def parse(self, export_file: str, log: Optional[ui.log] = None) -> pd.DataFrame:
         """Parse the export file."""
 
         try:
             self.log = log
             self._log("Starting to parse the Apple Health export file...")
             with ZipFile(export_file, "r") as zipfile:
-                self._load_workouts(zipfile, "Running")
+                result = self._load_workouts(zipfile)
             self._log("Finished parsing the Apple Health export file.")
+            return result
         except Exception as e:
             self._log(f"Error during parsing: {e}")
             raise
-
-    def export_to_json(self, exclude_columns: Optional[set[str]] = None) -> str:
-        """Export to JSON: Schema first, specific column order, no nulls. Return JSON string.
-
-        Args:
-            exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
-        """
-        # Filter columns to exclude (default: routeFile and route)
-        excluded: set[str] = (
-            exclude_columns
-            if exclude_columns is not None
-            else self.DEFAULT_EXCLUDED_COLUMNS
-        )
-        cols_to_keep = [
-            col for col in self.running_workouts.columns if col not in excluded
-        ]
-        df_filtered = self.running_workouts[cols_to_keep]
-
-        # 1. Get the raw JSON string
-        json_str = df_filtered.to_json(orient="table")  # type: ignore[misc]
-        raw_obj = json.loads(json_str)
-
-        # Define the fixed order for specific columns
-        # index=0, startDate=1, endDate=2, everything else=3
-        column_priority = {"index": 0, "startDate": 1, "endDate": 2}
-
-        # 2. Process 'data'
-        cleaned_data: List[Dict[str, Any]] = []
-        for row in raw_obj.get("data", []):
-            # A. Filter nulls
-            valid_items = {k: v for k, v in row.items() if v is not None}
-
-            # B. Sort keys using the priority map
-            # If 'k' is not in the map, it gets priority 3.
-            # Secondary sort key is k.lower() (alphabetical)
-            sorted_keys = sorted(
-                valid_items.keys(), key=lambda k: (column_priority.get(k, 3), k.lower())
-            )
-
-            # C. Rebuild dict with sorted keys
-            cleaned_data.append({k: valid_items[k] for k in sorted_keys})
-
-        # 3. Sort the records (rows) by 'startDate'
-        cleaned_data.sort(key=lambda x: x.get("startDate", ""))
-
-        # 4. Construct final dict ensuring 'schema' is added first
-        final_obj: Dict[str, Any] = {
-            "schema": raw_obj.get("schema"),
-            "data": cleaned_data,
-        }
-
-        # 5. Return the JSON string
-        return json.dumps(final_obj, indent=2)
-
-    def export_to_csv(self, exclude_columns: Optional[set[str]] = None) -> str:
-        """Export running workouts to a CSV format, returns the CSV string.
-
-        Args:
-            exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
-        """
-        # Filter columns to exclude (default: routeFile and route)
-        excluded: set[str] = (
-            exclude_columns
-            if exclude_columns is not None
-            else self.DEFAULT_EXCLUDED_COLUMNS
-        )
-
-        result: str = ""
-
-        # If DataFrame is empty, create one with expected columns
-        if self.running_workouts.empty:
-            expected_columns = [
-                "activityType",
-                "duration",
-                "durationUnit",
-                "startDate",
-                "endDate",
-                "source",
-            ]
-            cols_to_keep = [col for col in expected_columns if col not in excluded]
-            empty_df = pd.DataFrame(columns=cols_to_keep)
-            result = empty_df.to_csv(index=False)
-        else:
-            cols_to_keep = [
-                col for col in self.running_workouts.columns if col not in excluded
-            ]
-            result = self.running_workouts[cols_to_keep].to_csv(index=False)
-
-        return result

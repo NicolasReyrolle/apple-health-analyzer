@@ -7,7 +7,7 @@ from zipfile import ZipFile
 import pandas as pd
 import pytest
 
-from export_parser import ExportParser, WorkoutRecord
+from logic.export_parser import ExportParser, WorkoutRecord
 
 class TestComplexRealWorldWorkout:
     """Test parsing of a complex real-world Apple Health workout with multiple elements."""
@@ -55,13 +55,13 @@ class TestComplexRealWorldWorkout:
 
         parser = ExportParser()
         with parser:
-            parser.parse(str(zip_path))
+            workouts = parser.parse(str(zip_path))
 
         # Verify the workout was parsed
-        assert len(parser.running_workouts) == 1
+        assert len(workouts) == 1
 
         # Get the parsed workout record
-        workout = parser.running_workouts.iloc[0]
+        workout = workouts.iloc[0]
 
         # Verify basic attributes
         assert workout["activityType"] == "Running"
