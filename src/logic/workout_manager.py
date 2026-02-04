@@ -46,7 +46,7 @@ class WorkoutManager:
             workouts = self.workouts
 
         if "sumDistanceWalkingRunning" in workouts.columns:
-            return round(workouts["sumDistanceWalkingRunning"].sum())
+            return int(round(workouts["sumDistanceWalkingRunning"].sum()))
         else:
             return 0
 
