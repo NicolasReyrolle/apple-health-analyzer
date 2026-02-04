@@ -34,6 +34,25 @@ def is_valid_csv(data_string: str, expected_column: str = "") -> bool:
     return False
 
 
+async def load_health_export(
+    user: User, create_health_zip: Callable[..., str]
+) -> str:
+    """Helper function to load a health export file and wait for parsing to complete.
+
+    Args:
+        user: NiceGUI test user object
+        create_health_zip: Fixture function to create test health ZIP file
+
+    Returns:
+        str: Path to the loaded ZIP file
+    """
+    zip_path = create_health_zip()
+    user.find("Apple Health export file").type(zip_path)
+    user.find("Load").click()
+    await user.should_see("Finished parsing", retries=100)
+    return zip_path
+
+
 class TestMainWindow:
     """Integration tests for the main CLI."""
 
@@ -65,22 +84,10 @@ class TestMainWindow:
     ) -> None:
         """Test that loading a valid export file shows statistics."""
         await user.open("/")
-        # 1. Prepare the input
-        zip_path = create_health_zip()
-        user.find("Apple Health export file").type(zip_path)
+        # 1. Load the file and wait for parsing
+        await load_health_export(user, create_health_zip)
 
-        # 2. Trigger the processing
-        user.find("Load").click()
-
-        # 3. Robust check: Wait for the log to confirm start
-        # This confirms the click was registered and the function is running
-        await user.should_see("Starting to parse", retries=20)
-
-        # 4. Critical step: Wait for the processing to finish
-        # We use a higher retry count (100 * 0.1s = 10s) to handle slow CI runners.
-        await user.should_see("Finished parsing", retries=100)
-
-        # 5.Check if the UI correctly displays data from our XML
+        # 2. Check if the UI correctly displays data from our XML
         await user.should_see("Total distance of 16", retries=50)
         await user.should_see("Total duration of 1h")
 
@@ -191,12 +198,7 @@ class TestMainWindow:
         await user.open("/")
 
         # Load a valid health data file
-        zip_path = create_health_zip()
-        user.find("Apple Health export file").type(zip_path)
-        user.find("Load").click()
-
-        # Wait for parsing to complete
-        await user.should_see("Finished parsing", retries=100)
+        await load_health_export(user, create_health_zip)
 
         # Verify the export dropdown is present
         export_interaction = user.find("Export data")
@@ -239,12 +241,7 @@ class TestMainWindow:
         await user.open("/")
 
         # Load a valid health data file
-        zip_path = create_health_zip()
-        user.find("Apple Health export file").type(zip_path)
-        user.find("Load").click()
-
-        # Wait for parsing to complete
-        await user.should_see("Finished parsing", retries=100)
+        await load_health_export(user, create_health_zip)
 
         # Verify the export dropdown is present
         export_interaction = user.find("Export data")
@@ -288,23 +285,62 @@ class TestMainWindow:
         await user.open("/")
 
         # 1. Load a valid health data file
-        zip_path = create_health_zip()
-        user.find("Apple Health export file").type(zip_path)
-        user.find("Load").click()
+        await load_health_export(user, create_health_zip)
 
-        # 2. Wait for parsing to complete
-        await user.should_see("Finished parsing", retries=100)
-
-        # 3. Verify the activity options were populated correctly in the state
+        # 2. Verify the activity options were populated correctly in the state
         assert state.activity_options == ["All", "Running"]
 
-        # 4. Verify the select element exists and has the correct value
+        # 3. Verify the select element exists and has the correct value
         select_elements = list(user.find("Activity Type").elements)
         assert len(select_elements) > 0
         select = cast(ui.select, select_elements[0])
         assert select.value == "All"
 
-        # 5. Change the filter programmatically and verify state updates
+        # 4. Change the filter programmatically and verify state updates
         select.set_value("Running")
         await asyncio.sleep(0.2)
         assert state.selected_activity_type == "Running"
+
+    async def test_stat_cards_initial_zero_values(self, user: User) -> None:
+        """Test that stat cards display zero values by default."""
+        await user.open("/")
+
+        # Verify all stat cards show zero initially
+        await user.should_see("Count")
+        await user.should_see("0")
+        await user.should_see("Distance")
+        await user.should_see("km")
+        await user.should_see("Duration")
+        await user.should_see("h")
+        await user.should_see("Elevation")
+        await user.should_see("m")
+
+    async def test_stat_cards_update_after_load(
+        self, user: User, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Test that stat cards display correct values after loading health data."""
+        await user.open("/")
+
+        # 1. Verify initial zero state for metrics
+        assert state.metrics["count"] == 0
+        assert state.metrics["distance"] == 0
+        assert state.metrics["duration"] == 0
+        assert state.metrics["elevation"] == 0
+
+        # 2. Load a valid health data file
+        await load_health_export(user, create_health_zip)
+
+        # 3. Verify stat card values are updated correctly
+        # The create_health_zip fixture provides:
+        # - 1 workout
+        # - 16 km distance
+        # - 1 hour duration
+        # - 0 elevation (not in test data)
+        assert state.metrics["count"] == 1
+        assert state.metrics["distance"] == 16
+        
+        # Verify the values are displayed in the UI
+        await user.should_see("1")  # Count
+        await user.should_see("16")  # Distance
+        # Duration display calculation is in get_statistics(), verify it's rendered
+        await user.should_see("1h")  # Duration display format
