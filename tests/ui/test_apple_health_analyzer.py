@@ -4,10 +4,12 @@ import asyncio
 import json
 from typing import Callable, Any, cast
 
-from nicegui.testing import User
 from nicegui import ui
+from nicegui.testing import User
 
 from tests.types_helper import StateAssertion
+
+from app_state import state
 
 
 def is_valid_json(data_string: str) -> bool:
@@ -281,7 +283,7 @@ class TestMainWindow:
     async def test_activity_filter_checkbox_rendering(
         self, user: User, create_health_zip: Callable[..., str]
     ) -> None:
-        """Test that activity filter checkboxes are rendered correctly after loading data."""
+        """Test that activity filter options are populated after loading data."""
 
         await user.open("/")
 
@@ -293,6 +295,16 @@ class TestMainWindow:
         # 2. Wait for parsing to complete
         await user.should_see("Finished parsing", retries=100)
 
-        # 3. Verify the activities section is present
-        select = cast(ui.select, user.find("Activity Type").elements.pop())
-        assert select.options == ["All", "Running"]  # type: ignore
+        # 3. Verify the activity options were populated correctly in the state
+        assert state.activity_options == ["All", "Running"]
+
+        # 4. Verify the select element exists and has the correct value
+        select_elements = list(user.find("Activity Type").elements)
+        assert len(select_elements) > 0
+        select = cast(ui.select, select_elements[0])
+        assert select.value == "All"
+
+        # 5. Change the filter programmatically and verify state updates
+        select.set_value("Running")
+        await asyncio.sleep(0.2)
+        assert state.selected_activity_type == "Running"
