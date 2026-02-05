@@ -22,7 +22,6 @@ class WorkoutManager:
                     "duration",
                     "durationUnit",
                     "distance",
-                    "distanceUnit",
                 ]
             )
         else:
