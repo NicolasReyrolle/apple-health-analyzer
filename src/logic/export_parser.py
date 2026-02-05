@@ -197,6 +197,8 @@ class ExportParser:
 
     def _str_distance_to_meters(self, value: str, unit: Optional[str]) -> int:
         """Convert distance to meters."""
+        if unit is None:
+            raise ValueError("Distance unit is missing (None). Cannot convert to meters.")
         if unit == "km":
             return int(float(value) * 1000)
         if unit == "m":
