@@ -78,7 +78,7 @@ class TestComplexRealWorldWorkout:
         assert workout["maximumRunningGroundContactTime"] == 369
         assert workout["averageRunningPower"] == pytest.approx(222.789)  # type: ignore[misc]
         assert workout["sumActiveEnergyBurned"] == pytest.approx(1389.98)  # type: ignore[misc]
-        assert workout["distance"] == pytest.approx(16.1244)  # type: ignore[misc]
+        assert workout["distance"] == 16124
         assert workout["averageHeartRate"] == pytest.approx(140.139)  # type: ignore[misc]
 
         # Verify metadata entries for elevation (from WorkoutActivity)
@@ -118,15 +118,13 @@ class TestComplexRealWorldWorkout:
         # First workout: Swimming
         swimming = workouts.iloc[0]
         assert swimming["activityType"] == "Swimming"
-        assert swimming["distance"] == pytest.approx(750.0)  # type: ignore[misc]
-        assert swimming["distanceUnit"] == "m"
+        assert swimming["distance"] == 750
         assert swimming["averageHeartRate"] == pytest.approx(102.834)  # type: ignore[misc]
 
         # Second workout: Running
         running = workouts.iloc[1]
         assert running["activityType"] == "Running"
-        assert running["distance"] == pytest.approx(3.06833)  # type: ignore[misc]
-        assert running["distanceUnit"] == "km"
+        assert running["distance"] == 3068
         assert running["averageHeartRate"] == pytest.approx(129.194)  # type: ignore[misc]
         assert running["ElevationAscended"] == pytest.approx(73.3, abs=0.01)  # type: ignore[misc]
 

@@ -10,9 +10,9 @@ import pytest
 import logic.export_parser as ep
 import logic.workout_manager as wm
 
+
 class TestExportParser:
     """Test cases for the ExportParser class."""
-
 
     def test_parse_with_sample_file(self, create_health_zip: Callable[..., str]) -> None:
         """Test that parse() method can be called without error."""
@@ -158,3 +158,34 @@ class TestDurationToSeconds:
         # Truncates to integer
         assert ep.ExportParser._duration_to_seconds(0.1, "min") == 6  # type: ignore
         assert ep.ExportParser._duration_to_seconds(0.01, "h") == 36  # type: ignore
+
+
+class TestStrDistanceToMeters:
+    """Test the _str_distance_to_meters method."""
+
+    # pylint: disable=protected-access
+    def test_distance_kilometers_to_meters(self) -> None:
+        """Convert kilometers to meters."""
+        parser = ep.ExportParser()
+        assert parser._str_distance_to_meters("1", "km") == 1000
+        assert parser._str_distance_to_meters("2.5", "km") == 2500
+        assert parser._str_distance_to_meters("0", "km") == 0
+
+    def test_distance_meters_to_meters(self) -> None:
+        """Convert meters to meters (identity)."""
+        parser = ep.ExportParser()
+        assert parser._str_distance_to_meters("1", "m") == 1
+        assert parser._str_distance_to_meters("250.7", "m") == 250
+        assert parser._str_distance_to_meters("0", "m") == 0
+
+    def test_distance_miles_to_meters(self) -> None:
+        """Convert miles to meters."""
+        parser = ep.ExportParser()
+        assert parser._str_distance_to_meters("1", "mi") == 1609
+        assert parser._str_distance_to_meters("0.5", "mi") == 804
+
+    def test_distance_invalid_unit_raises(self) -> None:
+        """Invalid units raise ValueError."""
+        parser = ep.ExportParser()
+        with pytest.raises(ValueError, match="Unknown distance unit"):
+            parser._str_distance_to_meters("1", "yd")

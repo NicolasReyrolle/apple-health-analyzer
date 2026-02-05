@@ -40,17 +40,35 @@ class WorkoutManager:
             return len(self.workouts[self.workouts["activityType"] == activity_type])
         return len(self.workouts)
 
-    def get_total_distance(self, activity_type: str = "All") -> int:
-        """Return the total distance of workouts in kilometers rounded to the nearest integer."""
+    def get_total_distance(self, activity_type: str = "All", unit: str = "km") -> int:
+        """Return the total distance optionally per activity_type, and in the given unit
+
+        Args:
+            activity_type (str, optional): type of activity. Defaults to "All".
+            unit (str, optional): unit in which to return the distance. Defaults to "km". Allowed: "km", "m", "mi".
+
+        Returns:
+            int: Total distance in the specified unit.
+        """
         if activity_type != "All":
             workouts = self.workouts[self.workouts["activityType"] == activity_type]
         else:
             workouts = self.workouts
 
         if "distance" in workouts.columns:
-            return int(round(workouts["distance"].sum()))
+            total_distance_meters = workouts["distance"].sum()
+            if unit == "km":
+                result = int(round(total_distance_meters / 1000))
+            elif unit == "m":
+                return total_distance_meters
+            elif unit == "mi":
+                return int(round(total_distance_meters / 1609.34))
+            else:
+                raise ValueError(f"Unsupported unit: {unit}")
+        else:
+            result = 0
 
-        return 0
+        return result
 
     def get_total_duration(self, activity_type: str = "All") -> int:
         """Return the total duration of workouts in hours rounded to the nearest integer"""
@@ -65,7 +83,7 @@ class WorkoutManager:
         return 0
 
     def get_total_elevation(self, activity_type: str = "All") -> int:
-        """Return the total elevation gain of workouts in kilometers 
+        """Return the total elevation gain of workouts in kilometers
         rounded to the nearest integer."""
         if activity_type != "All":
             workouts = self.workouts[self.workouts["activityType"] == activity_type]
@@ -86,10 +104,7 @@ class WorkoutManager:
         if not self.workouts.empty:
             result = f"Total workouts: {len(self.workouts)}\n"
             if "distance" in self.workouts.columns:
-                result += (
-                    f"Total distance of "
-                    f"{self.workouts['distance'].sum():.2f} km.\n"
-                )
+                result += f"Total distance of " f"{self.get_total_distance()} km.\n"
             if "duration" in self.workouts.columns:
                 total_duration_sec = self.workouts["duration"].sum()
                 hours, remainder = divmod(total_duration_sec, 3600)
