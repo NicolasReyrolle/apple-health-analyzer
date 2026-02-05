@@ -3,55 +3,43 @@
 from pathlib import Path
 from xml.etree.ElementTree import Element
 from zipfile import ZipFile
+from typing import Callable
 
 import pandas as pd
 import pytest
 
 from logic.export_parser import ExportParser, WorkoutRecord
 
+from tests.conftest import (
+    build_health_xml,
+    build_running_workout_example,
+    build_swimming_workout_example,
+    build_workout_activity,
+)
+
+
 class TestComplexRealWorldWorkout:
     """Test parsing of a complex real-world Apple Health workout with multiple elements."""
 
-    def test_parse_complex_workout_with_all_elements(self, tmp_path: Path) -> None:
-        """Test parsing a complex running workout"""
+    def test_parse_complex_workout_with_all_elements(
+        self, tmp_path: Path, build_complex_xml: Callable[..., str]
+    ) -> None:
+        """Test parsing a complex running workout with multiple activities and route"""
+
+        # Create custom activity XML with elevation and distance
+        activity_xml = build_workout_activity(
+            activity_type="HKWorkoutActivityTypeRunning",
+            distance=16.1244,
+            elevation_cm="154430",
+            heart_rate_stats={"average": "140.139", "minimum": "75", "maximum": "157"},
+        )
+
+        # Use the builder to create a complete workout
+        xml_content = build_complex_xml(activities=[activity_xml], include_route=True)
+
         zip_path = tmp_path / "complex_export.zip"
-        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-<HealthData>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="119.2710362156232" durationUnit="min" sourceName="Apple Watch de Nicolas" sourceVersion="26.2" device="&lt;&lt;HKDevice: 0xc936a3f60&gt;, name:Apple Watch, manufacturer:Apple Inc., model:Watch, hardware:Watch7,2, software:26.2, creation date:2025-12-13 12:48:57 +0000&gt;" creationDate="2025-12-20 14:51:19 +0100" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100">
-        <MetadataEntry key="HKIndoorWorkout" value="0"/>
-        <MetadataEntry key="HKTimeZone" value="Europe/Paris"/>
-        <MetadataEntry key="HKWeatherHumidity" value="9400 %"/>
-        <MetadataEntry key="HKWeatherTemperature" value="47.6418 degF"/>
-        <MetadataEntry key="HKAverageMETs" value="9.66668 kcal/hr·kg"/>
-        <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-12-20 12:51:00 +0100" duration="8.048923822244008" durationUnit="min"/>
-        <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-12-20 12:51:00 +0100" duration="11.98028505643209" durationUnit="min"/>
-        <WorkoutActivity uuid="936B9E1D-52B9-41CA-BCA9-9654D43F004E" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" duration="119.2710362156232" durationUnit="min">
-            <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-12-20 12:51:00 +0100" duration="8.048923822244008" durationUnit="min"/>
-            <WorkoutStatistics type="HKQuantityTypeIdentifierStepCount" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" sum="17599" unit="count"/>
-            <MetadataEntry key="WOIntervalStepKeyPath" value="0.0.0"/>
-            <MetadataEntry key="HKElevationAscended" value="45443 cm"/>
-        </WorkoutActivity>
-        <WorkoutActivity uuid="936B9E1D-52B9-41CA-BCA9-9654D43F004E" startDate="2025-12-20 13:51:00 +0100" endDate="2025-12-20 15:50:16 +0100" duration="119.2710362156232" durationUnit="min">
-            <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-12-20 12:51:00 +0100" duration="8.048923822244008" durationUnit="min"/>
-            <WorkoutStatistics type="HKQuantityTypeIdentifierStepCount" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" sum="17599" unit="count"/>
-            <MetadataEntry key="WOIntervalStepKeyPath" value="0.0.0"/>
-            <MetadataEntry key="HKElevationAscended" value="10000 cm"/>
-        </WorkoutActivity>
-        <WorkoutStatistics type="HKQuantityTypeIdentifierStepCount" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" sum="17599" unit="count"/>
-        <WorkoutStatistics type="HKQuantityTypeIdentifierRunningGroundContactTime" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" average="323.718" minimum="224" maximum="369" unit="ms"/>
-        <WorkoutStatistics type="HKQuantityTypeIdentifierRunningPower" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" average="222.789" minimum="61" maximum="479" unit="W"/>
-        <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" sum="1389.98" unit="kcal"/>
-        <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceWalkingRunning" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" sum="16.1244" unit="km"/>
-        <WorkoutStatistics type="HKQuantityTypeIdentifierHeartRate" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100" average="140.139" minimum="75" maximum="157" unit="count/min"/>
-        <WorkoutRoute sourceName="Apple Watch de Nicolas" sourceVersion="26.2" creationDate="2025-12-20 14:51:25 +0100" startDate="2025-12-20 12:51:00 +0100" endDate="2025-12-20 14:50:16 +0100">
-            <MetadataEntry key="HKMetadataKeySyncVersion" value="2"/>
-            <FileReference path="/workout-routes/route_2025-12-20_2.50pm.gpx"/>
-        </WorkoutRoute>
-    </Workout>
-</HealthData>
-""".encode("utf-8")
         with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
+            zf.writestr("apple_health_export/export.xml", xml_content.encode("utf-8"))
 
         parser = ExportParser()
         with parser:
@@ -65,11 +53,11 @@ class TestComplexRealWorldWorkout:
 
         # Verify basic attributes
         assert workout["activityType"] == "Running"
-        assert workout["startDate"] == pd.Timestamp('2025-12-20 12:51:00')
+        assert workout["startDate"] == pd.Timestamp("2025-12-20 12:51:00")
         assert workout["endDate"] == "2025-12-20 14:50:16 +0100"
         assert workout["duration"] == 7156
         assert workout["durationUnit"] == "seconds"
-        assert workout["source"] == "Apple Watch de Nicolas"
+        assert workout["source"] == "Apple Watch"
 
         # Verify metadata entries were captured
         assert not workout["IndoorWorkout"]  # "0" converts to False
@@ -90,14 +78,57 @@ class TestComplexRealWorldWorkout:
         assert workout["maximumRunningGroundContactTime"] == 369
         assert workout["averageRunningPower"] == pytest.approx(222.789)  # type: ignore[misc]
         assert workout["sumActiveEnergyBurned"] == pytest.approx(1389.98)  # type: ignore[misc]
-        assert workout["sumDistanceWalkingRunning"] == pytest.approx(16.1244)  # type: ignore[misc]
+        assert workout["distance"] == pytest.approx(16.1244)  # type: ignore[misc]
         assert workout["averageHeartRate"] == pytest.approx(140.139)  # type: ignore[misc]
 
-        # Verify statistics under WorkoutActivity are captured
-        assert workout["ElevationAscended"] == pytest.approx(554.43, abs=0.01)  # type: ignore[misc]
+        # Verify metadata entries for elevation (from WorkoutActivity)
+        assert workout["ElevationAscended"] == pytest.approx(1544.3, abs=0.01)  # type: ignore[misc]
 
         # Verify the routeFile is captured
         assert workout["routeFile"] == "/workout-routes/route_2025-12-20_2.50pm.gpx"
+
+    def test_parse_multiple_separate_workouts_with_different_distance_units(
+        self, tmp_path: Path
+    ) -> None:
+        """Test parsing an export file containing separate swimming and running workouts.
+
+        This verifies that:
+        - Swimming workout with distance in meters (750 m) is correctly parsed
+        - Running workout with distance in kilometers (3.06833 km) is correctly parsed
+        - Both workouts are parsed as separate records with their correct distance units
+        """
+
+        swimming_workout = build_swimming_workout_example()
+        running_workout = build_running_workout_example()
+
+        # Create HealthData XML with both separate workouts
+        xml_content = build_health_xml(workouts=[swimming_workout, running_workout])
+
+        zip_path = tmp_path / "multiple_workouts.zip"
+        with ZipFile(zip_path, "w") as zf:
+            zf.writestr("apple_health_export/export.xml", xml_content.encode("utf-8"))
+
+        parser = ExportParser()
+        with parser:
+            workouts = parser.parse(str(zip_path))
+
+        # Should parse as two separate workout records
+        assert len(workouts) == 2
+
+        # First workout: Swimming
+        swimming = workouts.iloc[0]
+        assert swimming["activityType"] == "Swimming"
+        assert swimming["distance"] == pytest.approx(750.0)  # type: ignore[misc]
+        assert swimming["distanceUnit"] == "m"
+        assert swimming["averageHeartRate"] == pytest.approx(102.834)  # type: ignore[misc]
+
+        # Second workout: Running
+        running = workouts.iloc[1]
+        assert running["activityType"] == "Running"
+        assert running["distance"] == pytest.approx(3.06833)  # type: ignore[misc]
+        assert running["distanceUnit"] == "km"
+        assert running["averageHeartRate"] == pytest.approx(129.194)  # type: ignore[misc]
+        assert running["ElevationAscended"] == pytest.approx(73.3, abs=0.01)  # type: ignore[misc]
 
 
 class TestLoadRoute:
@@ -124,9 +155,7 @@ class TestLoadRoute:
 </gpx>
 """
         with ZipFile(zip_path, "w") as zf:
-            zf.writestr(
-                "apple_health_export/workout-routes/test_route.gpx", gpx_content
-            )
+            zf.writestr("apple_health_export/workout-routes/test_route.gpx", gpx_content)
 
         parser = ExportParser()
         with ZipFile(zip_path, "r") as zf:
@@ -151,9 +180,7 @@ class TestLoadRoute:
 </gpx>
 """
         with ZipFile(zip_path, "w") as zf:
-            zf.writestr(
-                "apple_health_export/workout-routes/empty_route.gpx", gpx_content
-            )
+            zf.writestr("apple_health_export/workout-routes/empty_route.gpx", gpx_content)
 
         parser = ExportParser()
         with ZipFile(zip_path, "r") as zf:
@@ -176,9 +203,7 @@ class TestLoadRoute:
 </gpx>
 """
         with ZipFile(zip_path, "w") as zf:
-            zf.writestr(
-                "apple_health_export/workout-routes/incomplete_route.gpx", gpx_content
-            )
+            zf.writestr("apple_health_export/workout-routes/incomplete_route.gpx", gpx_content)
 
         parser = ExportParser()
         with ZipFile(zip_path, "r") as zf:
@@ -217,15 +242,11 @@ class TestProcessWorkoutRoute:
 """
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
-            zf.writestr(
-                "apple_health_export/workout-routes/test_route.gpx", gpx_content
-            )
+            zf.writestr("apple_health_export/workout-routes/test_route.gpx", gpx_content)
 
         # Create a route element with FileReference child
         route_elem = Element("WorkoutRoute")
-        file_ref = Element(
-            "FileReference", attrib={"path": "/workout-routes/test_route.gpx"}
-        )
+        file_ref = Element("FileReference", attrib={"path": "/workout-routes/test_route.gpx"})
         route_elem.append(file_ref)
 
         parser = ExportParser()

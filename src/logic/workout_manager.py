@@ -21,7 +21,8 @@ class WorkoutManager:
                     "endDate",
                     "duration",
                     "durationUnit",
-                    "sumDistanceWalkingRunning",
+                    "distance",
+                    "distanceUnit",
                 ]
             )
         else:
@@ -46,8 +47,8 @@ class WorkoutManager:
         else:
             workouts = self.workouts
 
-        if "sumDistanceWalkingRunning" in workouts.columns:
-            return int(round(workouts["sumDistanceWalkingRunning"].sum()))
+        if "distance" in workouts.columns:
+            return int(round(workouts["distance"].sum()))
 
         return 0
 
@@ -84,10 +85,10 @@ class WorkoutManager:
         """Return global statistics of the loaded data as a formatted string."""
         if not self.workouts.empty:
             result = f"Total workouts: {len(self.workouts)}\n"
-            if "sumDistanceWalkingRunning" in self.workouts.columns:
+            if "distance" in self.workouts.columns:
                 result += (
                     f"Total distance of "
-                    f"{self.workouts['sumDistanceWalkingRunning'].sum():.2f} km.\n"
+                    f"{self.workouts['distance'].sum():.2f} km.\n"
                 )
             if "duration" in self.workouts.columns:
                 total_duration_sec = self.workouts["duration"].sum()

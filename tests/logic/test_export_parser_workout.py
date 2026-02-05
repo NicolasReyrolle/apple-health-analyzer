@@ -70,9 +70,9 @@ class TestProcessWorkoutStatistics:
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
 
-        assert isinstance(record.get("sumDistanceWalkingRunning"), float)
-        assert record.get("sumDistanceWalkingRunning") == pytest.approx(5.2)  # type: ignore[misc]
-        assert record.get("sumDistanceWalkingRunningUnit") == "km"
+        assert isinstance(record.get("distance"), float)
+        assert record.get("distance") == pytest.approx(5.2)  # type: ignore[misc]
+        assert record.get("distanceUnit") == "km"
 
     def test_process_workout_statistics_with_average(self):
         """Test processing workout statistics with average value."""
@@ -131,6 +131,44 @@ class TestProcessWorkoutStatistics:
 
         # Should not add any statistics since no values are present
         assert len(record) == 1  # Only activityType
+
+    def test_process_workout_statistics_with_distance_swimming(self):
+        """Test processing workout statistics for swimming distance."""
+        elem = Element(
+            "WorkoutStatistics",
+            attrib={
+                "type": "HKQuantityTypeIdentifierDistanceSwimming",
+                "sum": "2.5",
+                "unit": "km",
+            },
+        )
+        parser = ep.ExportParser()
+        record: ep.WorkoutRecord = {"activityType": "Swimming"}
+
+        parser._process_workout_statistics(elem, record)  # type: ignore[misc]
+
+        assert isinstance(record.get("distance"), float)
+        assert record.get("distance") == pytest.approx(2.5)  # type: ignore[misc]
+        assert record.get("distanceUnit") == "km"
+
+    def test_process_workout_statistics_with_distance_cycling(self):
+        """Test processing workout statistics for cycling distance."""
+        elem = Element(
+            "WorkoutStatistics",
+            attrib={
+                "type": "HKQuantityTypeIdentifierDistanceCycling",
+                "sum": "15.8",
+                "unit": "km",
+            },
+        )
+        parser = ep.ExportParser()
+        record: ep.WorkoutRecord = {"activityType": "Cycling"}
+
+        parser._process_workout_statistics(elem, record)  # type: ignore[misc]
+
+        assert isinstance(record.get("distance"), float)
+        assert record.get("distance") == pytest.approx(15.8)  # type: ignore[misc]
+        assert record.get("distanceUnit") == "km"
 
 
 class TestProcessMetadataEntry:
@@ -271,9 +309,9 @@ class TestProcessWorkoutChildren:
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_children(parent, record, zf)  # type: ignore[misc]
 
-        assert isinstance(record.get("sumDistance"), float)
-        assert record.get("sumDistance") == pytest.approx(10.0)  # type: ignore[misc]
-        assert record.get("sumDistanceUnit") == "km"
+        assert isinstance(record.get("distance"), float)
+        assert record.get("distance") == pytest.approx(10.0)  # type: ignore[misc]
+        assert record.get("distanceUnit") == "km"
 
     def test_process_workout_children_with_metadata(self, tmp_path: Path) -> None:
         """Test processing workout with child metadata entries."""
@@ -331,8 +369,8 @@ class TestProcessWorkoutChildren:
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_children(parent, record, zf)  # type: ignore[misc]
 
-        assert isinstance(record.get("sumDistance"), float)
-        assert record.get("sumDistance") == pytest.approx(5.0)  # type: ignore[misc]
+        assert isinstance(record.get("distance"), float)
+        assert record.get("distance") == pytest.approx(5.0)  # type: ignore[misc]
         assert record.get("MetadataKeyTimeZone") == "UTC"
 
     def test_process_workout_children_with_unknown_element(
@@ -385,8 +423,8 @@ class TestLoadWorkouts:
 
         assert workouts.count() == 1
         # Verify statistics from nested element were captured
-        assert isinstance(workouts.get_workouts().iloc[0].get("sumDistance"), float)
+        assert isinstance(workouts.get_workouts().iloc[0].get("distance"), float)
         assert workouts.get_workouts().iloc[0].get(
-            "sumDistance") == pytest.approx( # type: ignore[misc]
+            "distance") == pytest.approx( # type: ignore[misc]
             5.0
         )

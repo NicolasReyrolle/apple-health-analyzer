@@ -26,7 +26,8 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     source: Optional[str]
     routeFile: Optional[str]
     route: Optional[pd.DataFrame]
-    sumDistanceWalkingRunning: Optional[float]
+    distance: Optional[float]
+    distanceUnit: Optional[str]
 
 
 class WorkoutRoute(TypedDict):
@@ -208,8 +209,13 @@ class ExportParser:
         for stat_attr in ["sum", "average", "minimum", "maximum"]:
             if child.get(stat_attr):
                 stat_attr_str = child.get(stat_attr) or "0"
-                record[f"{stat_attr}{stat_type}"] = float(stat_attr_str)
-                record[f"{stat_attr}{stat_type}Unit"] = child.get("unit")
+                # Consolidate all distance types into a single Distance field
+                if stat_attr == "sum" and "Distance" in stat_type:
+                    record["distance"] = float(stat_attr_str)
+                    record["distanceUnit"] = child.get("unit")
+                else:
+                    record[f"{stat_attr}{stat_type}"] = float(stat_attr_str)
+                    record[f"{stat_attr}{stat_type}Unit"] = child.get("unit")
 
     def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[pd.DataFrame]:
         """Load GPX route file from the export zip."""

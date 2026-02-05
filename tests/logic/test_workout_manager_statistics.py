@@ -33,7 +33,7 @@ class TestGetStatistics:
             {
                 "activityType": ["Running", "Running"],
                 "duration": [3600, 3600],
-                "sumDistanceWalkingRunning": [5.0, 10.0],
+                "distance": [5.0, 10.0],
             }
         ))
 
@@ -62,7 +62,7 @@ class TestGetStatistics:
             {
                 "activityType": ["Running"],
                 "duration": [1800],
-                "sumDistanceWalkingRunning": [5.5],
+                "distance": [5.5],
             }
         ))
 
@@ -78,7 +78,7 @@ class TestGetStatistics:
             {
                 "activityType": ["Running"],
                 "duration": [1800],
-                "sumDistanceWalkingRunning": [0.0],
+                "distance": [0.0],
             }
         ))
 
@@ -116,7 +116,7 @@ class TestGetStatistics:
         workouts = wm.WorkoutManager(pd.DataFrame(
             {
                 "activityType": [ "Running", "Running", "Swimming"],
-                "sumDistanceWalkingRunning": [5.0, 10.0, 15.0],
+                "distance": [5.0, 10.0, 15.0],
             }
         ))
 
@@ -124,6 +124,127 @@ class TestGetStatistics:
         assert workouts.get_total_distance("All") == 30
         assert workouts.get_total_distance("Running") == 15
         assert workouts.get_total_distance("Swimming") == 15
+
+
+class TestGetTotalDistance:
+    """Test suite for WorkoutManager.get_total_distance method."""
+
+    def test_get_total_distance_empty(self) -> None:
+        """Test get_total_distance with empty DataFrame."""
+        workouts = wm.WorkoutManager()
+
+        assert workouts.get_total_distance() == 0
+
+    def test_get_total_distance_single_workout(self) -> None:
+        """Test get_total_distance with a single workout."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running"],
+                "distance": [5.5],
+            }
+        ))
+
+        assert workouts.get_total_distance() == 6  # 5.5 rounded to 6
+
+    def test_get_total_distance_multiple_workouts(self) -> None:
+        """Test get_total_distance with multiple workouts."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Cycling", "Swimming"],
+                "distance": [5.0, 10.0, 3.5],
+            }
+        ))
+
+        assert workouts.get_total_distance() == 18  # 5 + 10 + 3.5 = 18.5 rounded to 18
+
+    def test_get_total_distance_filter_activity(self) -> None:
+        """Test get_total_distance with activity type filter."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Running", "Cycling"],
+                "distance": [5.0, 7.0, 20.0],
+            }
+        ))
+
+        assert workouts.get_total_distance("Running") == 12
+        assert workouts.get_total_distance("Cycling") == 20
+
+    def test_get_total_distance_all_keyword(self) -> None:
+        """Test get_total_distance with 'All' keyword returns all activities."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Walking", "Cycling"],
+                "distance": [5.0, 3.0, 15.0],
+            }
+        ))
+
+        assert workouts.get_total_distance("All") == 23
+
+    def test_get_total_distance_no_match(self) -> None:
+        """Test get_total_distance with activity type that doesn't exist."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Cycling"],
+                "distance": [5.0, 10.0],
+            }
+        ))
+
+        assert workouts.get_total_distance("Swimming") == 0
+
+    def test_get_total_distance_zero_distance(self) -> None:
+        """Test get_total_distance with zero total distance."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Walking"],
+                "distance": [0.0, 0.0],
+            }
+        ))
+
+        assert workouts.get_total_distance() == 0
+
+    def test_get_total_distance_no_distance_column(self) -> None:
+        """Test get_total_distance when distance column is missing."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Cycling"],
+                "duration": [3600, 1800],
+            }
+        ))
+
+        assert workouts.get_total_distance() == 0
+
+    def test_get_total_distance_large_values(self) -> None:
+        """Test get_total_distance with large distance values."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Cycling"],
+                "distance": [100.5, 250.75],
+            }
+        ))
+
+        assert workouts.get_total_distance() == 351  # 100.5 + 250.75 = 351.25 rounded to 351
+
+    def test_get_total_distance_rounding(self) -> None:
+        """Test rounding behavior of get_total_distance."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Walking"],
+                "distance": [5.4, 2.4],  # Total: 7.8, should round to 8
+            }
+        ))
+
+        assert workouts.get_total_distance() == 8
+
+    def test_get_total_distance_rounding_down(self) -> None:
+        """Test rounding down behavior of get_total_distance."""
+        workouts = wm.WorkoutManager(pd.DataFrame(
+            {
+                "activityType": ["Running", "Walking"],
+                "distance": [5.2, 2.1],  # Total: 7.3, should round to 7
+            }
+        ))
+
+        assert workouts.get_total_distance() == 7
 
 
 class TestGetTotalDuration:
