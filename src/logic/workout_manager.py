@@ -40,7 +40,7 @@ class WorkoutManager:
         return len(self.workouts)
 
     def get_total_distance(self, activity_type: str = "All", unit: str = "km") -> int:
-        """Return the total distance optionally per activity_type, and in the given unit
+        """Return the total distance optionally per activity_type, and in the given unit.
 
         Args:
             activity_type (str, optional): type of activity. Defaults to "All".
