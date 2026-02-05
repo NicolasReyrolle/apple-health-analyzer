@@ -189,3 +189,9 @@ class TestStrDistanceToMeters:
         parser = ep.ExportParser()
         with pytest.raises(ValueError, match="Unknown distance unit"):
             parser._str_distance_to_meters("1", "yd")
+
+    def test_distance_none_unit_raises(self) -> None:
+        """None unit raises ValueError with clear message."""
+        parser = ep.ExportParser()
+        with pytest.raises(ValueError, match="Distance unit is missing"):
+            parser._str_distance_to_meters("1", None)
