@@ -302,7 +302,7 @@ class TestGetTotalDistance:
             pd.DataFrame(
                 {
                     "activityType": ["Running", "Cycling"],
-                    "distance": [100.5, 250.75],
+                    "distance": [100500, 250750],
                 }
             )
         )
