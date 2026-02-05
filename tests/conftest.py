@@ -1,5 +1,7 @@
 """Fixtures for testing Apple Health Analyzer."""
 
+# pylint: disable=line-too-long
+
 import asyncio
 import contextlib
 import logging
