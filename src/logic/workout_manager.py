@@ -59,17 +59,17 @@ class WorkoutManager:
         if "distance" in workouts.columns:
             total_distance_meters = workouts["distance"].sum()
             if unit == "km":
-                result = int(round(total_distance_meters / 1000))
+                result = total_distance_meters / 1000
             elif unit == "m":
                 result = total_distance_meters
             elif unit == "mi":
-                result = int(round(total_distance_meters / 1609.34))
+                result = total_distance_meters / 1609.34
             else:
                 raise ValueError(f"Unsupported unit: {unit}")
         else:
             result = 0
 
-        return result
+        return int(round(result))
 
     def get_total_duration(self, activity_type: str = "All") -> int:
         """Return the total duration of workouts in hours rounded to the nearest integer"""
