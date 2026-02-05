@@ -61,9 +61,9 @@ class WorkoutManager:
             if unit == "km":
                 result = int(round(total_distance_meters / 1000))
             elif unit == "m":
-                return total_distance_meters
+                result = total_distance_meters
             elif unit == "mi":
-                return int(round(total_distance_meters / 1609.34))
+                result = int(round(total_distance_meters / 1609.34))
             else:
                 raise ValueError(f"Unsupported unit: {unit}")
         else:
