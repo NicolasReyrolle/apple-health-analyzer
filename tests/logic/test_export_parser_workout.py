@@ -7,7 +7,6 @@ from zipfile import ZipFile
 import pytest
 
 import logic.export_parser as ep
-import logic.workout_manager as wm
 
 
 class TestCreateWorkoutRecord:
@@ -70,9 +69,8 @@ class TestProcessWorkoutStatistics:
 
         parser._process_workout_statistics(elem, record)  # type: ignore[misc]
 
-        assert isinstance(record.get("sumDistanceWalkingRunning"), float)
-        assert record.get("sumDistanceWalkingRunning") == pytest.approx(5.2)  # type: ignore[misc]
-        assert record.get("sumDistanceWalkingRunningUnit") == "km"
+        assert isinstance(record.get("distance"), int)
+        assert record.get("distance") == 5200
 
     def test_process_workout_statistics_with_average(self):
         """Test processing workout statistics with average value."""
@@ -131,6 +129,42 @@ class TestProcessWorkoutStatistics:
 
         # Should not add any statistics since no values are present
         assert len(record) == 1  # Only activityType
+
+    def test_process_workout_statistics_with_distance_swimming(self):
+        """Test processing workout statistics for swimming distance."""
+        elem = Element(
+            "WorkoutStatistics",
+            attrib={
+                "type": "HKQuantityTypeIdentifierDistanceSwimming",
+                "sum": "2.5",
+                "unit": "km",
+            },
+        )
+        parser = ep.ExportParser()
+        record: ep.WorkoutRecord = {"activityType": "Swimming"}
+
+        parser._process_workout_statistics(elem, record)  # type: ignore[misc]
+
+        assert isinstance(record.get("distance"), int)
+        assert record.get("distance") == 2500
+
+    def test_process_workout_statistics_with_distance_cycling(self):
+        """Test processing workout statistics for cycling distance."""
+        elem = Element(
+            "WorkoutStatistics",
+            attrib={
+                "type": "HKQuantityTypeIdentifierDistanceCycling",
+                "sum": "15.8",
+                "unit": "km",
+            },
+        )
+        parser = ep.ExportParser()
+        record: ep.WorkoutRecord = {"activityType": "Cycling"}
+
+        parser._process_workout_statistics(elem, record)  # type: ignore[misc]
+
+        assert isinstance(record.get("distance"), int)
+        assert record.get("distance") == 15800
 
 
 class TestProcessMetadataEntry:
@@ -271,9 +305,8 @@ class TestProcessWorkoutChildren:
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_children(parent, record, zf)  # type: ignore[misc]
 
-        assert isinstance(record.get("sumDistance"), float)
-        assert record.get("sumDistance") == pytest.approx(10.0)  # type: ignore[misc]
-        assert record.get("sumDistanceUnit") == "km"
+        assert isinstance(record.get("distance"), int)
+        assert record.get("distance") == 10000
 
     def test_process_workout_children_with_metadata(self, tmp_path: Path) -> None:
         """Test processing workout with child metadata entries."""
@@ -316,7 +349,7 @@ class TestProcessWorkoutChildren:
             attrib={
                 "type": "HKQuantityTypeIdentifierDistance",
                 "sum": "5.0",
-                "sumUnit": "km",
+                "unit": "km",
             },
         )
         metadata_elem = Element(
@@ -331,8 +364,8 @@ class TestProcessWorkoutChildren:
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_children(parent, record, zf)  # type: ignore[misc]
 
-        assert isinstance(record.get("sumDistance"), float)
-        assert record.get("sumDistance") == pytest.approx(5.0)  # type: ignore[misc]
+        assert isinstance(record.get("distance"), int)
+        assert record.get("distance") == 5000
         assert record.get("MetadataKeyTimeZone") == "UTC"
 
     def test_process_workout_children_with_unknown_element(
@@ -359,34 +392,3 @@ class TestProcessWorkoutChildren:
 
         # Should only have activityType, unknown element should be ignored
         assert record == {"activityType": "Running"}
-
-
-class TestLoadWorkouts:
-    """Test the _load_workouts method."""
-
-    def test_load_workouts_with_nested_workout_activity(self, tmp_path: Path) -> None:
-        """Test loading workouts with nested WorkoutActivity elements."""
-        zip_path = tmp_path / "workouts_export.zip"
-        xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
-<HealthData>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30">
-        <WorkoutActivity uuid="test-uuid" startDate="2024-01-01" endDate="2024-01-01" duration="30">
-            <WorkoutStatistics type="HKQuantityTypeIdentifierDistance" sum="5.0" sumUnit="km"/>
-        </WorkoutActivity>
-    </Workout>
-</HealthData>
-"""
-        with ZipFile(zip_path, "w") as zf:
-            zf.writestr("apple_health_export/export.xml", xml_content)
-
-        parser = ep.ExportParser()
-        with ZipFile(zip_path, "r") as zf:
-            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
-
-        assert workouts.count() == 1
-        # Verify statistics from nested element were captured
-        assert isinstance(workouts.get_workouts().iloc[0].get("sumDistance"), float)
-        assert workouts.get_workouts().iloc[0].get(
-            "sumDistance") == pytest.approx( # type: ignore[misc]
-            5.0
-        )

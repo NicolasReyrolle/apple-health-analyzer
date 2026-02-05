@@ -26,7 +26,7 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     source: Optional[str]
     routeFile: Optional[str]
     route: Optional[pd.DataFrame]
-    sumDistanceWalkingRunning: Optional[float]
+    distance: Optional[int]  # Total distance in meters
 
 
 class WorkoutRoute(TypedDict):
@@ -155,9 +155,7 @@ class ExportParser:
 
             result = pd.DataFrame(rows)
             if len(result) > 0:
-                result["startDate"] = pd.to_datetime(
-                    result["startDate"]
-                ).dt.tz_localize(None)
+                result["startDate"] = pd.to_datetime(result["startDate"]).dt.tz_localize(None)
 
             return result
 
@@ -166,19 +164,17 @@ class ExportParser:
         activity_type_raw = elem.get("workoutActivityType", "")
         return activity_type_raw.replace("HKWorkoutActivityType", "")
 
-    def _create_workout_record(
-        self, elem: Element, activity_type: str
-    ) -> WorkoutRecord:
+    def _create_workout_record(self, elem: Element, activity_type: str) -> WorkoutRecord:
         """Create base workout record from element attributes."""
         duration_str = elem.get("duration")
         duration_unit_str: str = elem.get("durationUnit") or ""
         return {
             "activityType": activity_type,
-            "duration": self._duration_to_seconds(
-                float(duration_str), duration_unit_str
-            )
-            if duration_str
-            else None,
+            "duration": (
+                self._duration_to_seconds(float(duration_str), duration_unit_str)
+                if duration_str
+                else None
+            ),
             "durationUnit": "seconds",
             "startDate": elem.get("startDate"),
             "endDate": elem.get("endDate"),
@@ -199,17 +195,33 @@ class ExportParser:
             elif child.tag == "WorkoutRoute":
                 self._process_workout_route(child, record, zipfile)
 
-    def _process_workout_statistics(
-        self, child: Element, record: WorkoutRecord
-    ) -> None:
+    def _str_distance_to_meters(self, value: str, unit: Optional[str]) -> int:
+        """Convert distance to meters."""
+        if unit is None:
+            raise ValueError("Distance unit is missing (None). Cannot convert to meters.")
+        if unit == "km":
+            return int(float(value) * 1000)
+        if unit == "m":
+            return int(float(value))
+        if unit == "mi":
+            return int(float(value) * 1609.34)
+        raise ValueError(f"Unknown distance unit: {unit}")
+
+    def _process_workout_statistics(self, child: Element, record: WorkoutRecord) -> None:
         """Process workout statistics child element."""
         stat_type = child.get("type", "").replace("HKQuantityTypeIdentifier", "")
 
         for stat_attr in ["sum", "average", "minimum", "maximum"]:
             if child.get(stat_attr):
                 stat_attr_str = child.get(stat_attr) or "0"
-                record[f"{stat_attr}{stat_type}"] = float(stat_attr_str)
-                record[f"{stat_attr}{stat_type}Unit"] = child.get("unit")
+                # Consolidate all distance types into a single Distance field
+                if stat_attr == "sum" and "Distance" in stat_type:
+                    record["distance"] = self._str_distance_to_meters(
+                        stat_attr_str, child.get("unit")
+                    )
+                else:
+                    record[f"{stat_attr}{stat_type}"] = float(stat_attr_str)
+                    record[f"{stat_attr}{stat_type}Unit"] = child.get("unit")
 
     def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[pd.DataFrame]:
         """Load GPX route file from the export zip."""
@@ -217,10 +229,7 @@ class ExportParser:
             with zipfile.open(f"apple_health_export{route_path}") as route_file:
                 rows: List[WorkoutRoute] = []
                 for event, elem in iterparse(route_file, events=("start", "end")):
-                    if (
-                        event == "end"
-                        and elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt"
-                    ):
+                    if event == "end" and elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt":
                         latitude: str = elem.get("lat") or "0.0"
                         longitude: str = elem.get("lon") or "0.0"
 
@@ -228,18 +237,12 @@ class ExportParser:
                         ele_elem = elem.find("{http://www.topografix.com/GPX/1/1}ele")
                         time_elem = elem.find("{http://www.topografix.com/GPX/1/1}time")
 
-                        altitude: str = (
-                            ele_elem.text or "0.0" if ele_elem is not None else "0.0"
-                        )
-                        time_str: str = (
-                            time_elem.text or "" if time_elem is not None else ""
-                        )
+                        altitude: str = ele_elem.text or "0.0" if ele_elem is not None else "0.0"
+                        time_str: str = time_elem.text or "" if time_elem is not None else ""
 
                         rows.append(
                             {
-                                "time": datetime.fromisoformat(
-                                    time_str.replace("Z", "+00:00")
-                                ),
+                                "time": datetime.fromisoformat(time_str.replace("Z", "+00:00")),
                                 "latitude": float(latitude),
                                 "longitude": float(longitude),
                                 "altitude": float(altitude),
