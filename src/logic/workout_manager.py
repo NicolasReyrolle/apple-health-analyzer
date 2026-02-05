@@ -45,7 +45,8 @@ class WorkoutManager:
 
         Args:
             activity_type (str, optional): type of activity. Defaults to "All".
-            unit (str, optional): unit in which to return the distance. Defaults to "km". Allowed: "km", "m", "mi".
+            unit (str, optional): unit in which to return the distance. Defaults to "km".
+                Allowed: "km", "m", "mi".
 
         Returns:
             int: Total distance in the specified unit.
