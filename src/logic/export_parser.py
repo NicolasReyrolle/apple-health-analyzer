@@ -195,7 +195,7 @@ class ExportParser:
             elif child.tag == "WorkoutRoute":
                 self._process_workout_route(child, record, zipfile)
 
-    def _str_distance_to_meters(self, value: str, unit: str | None) -> int:
+    def _str_distance_to_meters(self, value: str, unit: Optional[str]) -> int:
         """Convert distance to meters."""
         if unit == "km":
             return int(float(value) * 1000)
