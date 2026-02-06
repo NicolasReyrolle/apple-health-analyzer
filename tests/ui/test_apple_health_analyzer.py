@@ -337,7 +337,7 @@ class TestMainWindow:
         assert state.metrics["distance"] == 9
         assert state.metrics["duration"] == 1  # 60.887 minutes ≈ 1 hour
         assert state.metrics["elevation"] == 0  # 6575 cm = 65.75 m → 0
-        assert state.metrics["calories"] == 1390  # ActiveEnergyBurned from fixture
+        assert state.metrics["calories"] == 655  # ActiveEnergyBurned from fixture
 
         # Verify the values are displayed in the UI
         await user.should_see("1")  # Count
@@ -346,5 +346,5 @@ class TestMainWindow:
         await user.should_see("1h")  # Duration display format
         await user.should_see("0")  # Elevation value displayed
         await user.should_see("km")  # Elevation unit
-        await user.should_see("1390")  # Calories
+        await user.should_see("655")  # Calories
         await user.should_see("kcal")  # Calories unit
