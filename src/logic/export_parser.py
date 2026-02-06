@@ -145,6 +145,7 @@ class ExportParser:
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
             rows: List[WorkoutRecord] = []
+            progress_interval = 100
 
             for event, elem in iterparse(export_file, events=("start", "end")):
                 if event == "end" and elem.tag == "Workout":
@@ -154,11 +155,18 @@ class ExportParser:
                     self._process_workout_children(elem, record, zipfile)
                     rows.append(record)
 
+                    # Report progress every N workouts
+                    if len(rows) % progress_interval == 0:
+                        self._log(f"Processed {len(rows)} workouts...")
+
                     elem.clear()
 
             result = pd.DataFrame(rows)
             if len(result) > 0:
                 result["startDate"] = pd.to_datetime(result["startDate"]).dt.tz_localize(None)
+
+            # Log final count
+            self._log(f"Loaded {len(result)} workouts total.")
 
             return result
 
