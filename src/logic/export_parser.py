@@ -279,7 +279,7 @@ class ExportParser:
 
         # If the key already exists, do not consider it as there can be duplicate in the real file
         if key in record:
-            logging.info("Duplicate key '%s' found, bypassing the second one", key)
+            logging.debug("Duplicate key '%s' found, bypassing the second one", key)
         else:
             record[key] = value
             if unit:
