@@ -312,6 +312,8 @@ class TestMainWindow:
         await user.should_see("h")
         await user.should_see("Elevation")
         await user.should_see("km")
+        await user.should_see("Calories")
+        await user.should_see("kcal")
 
     async def test_stat_cards_update_after_load(
         self, user: User, create_health_zip: Callable[..., str]
@@ -324,6 +326,7 @@ class TestMainWindow:
         assert state.metrics["distance"] == 0
         assert state.metrics["duration"] == 0
         assert state.metrics["elevation"] == 0
+        assert state.metrics["calories"] == 0
 
         # 2. Load a valid health data file
         await load_health_export(user, create_health_zip)
@@ -338,11 +341,13 @@ class TestMainWindow:
         assert state.metrics["distance"] == 16
         assert state.metrics["duration"] == 2  # 119.27 minutes ≈ 2 hours
         assert state.metrics["elevation"] == 2  # 154430 cm = 1544.3 m → 2
+        assert state.metrics["calories"] == 1390  # ActiveEnergyBurned from fixture
 
         # Verify the values are displayed in the UI
         await user.should_see("1")  # Count
         await user.should_see("16")  # Distance
-        # Duration display calculation is in get_statistics(), verify it's rendered
         await user.should_see("2h")  # Duration display format
         await user.should_see("2")  # Elevation value displayed
         await user.should_see("km")  # Elevation unit
+        await user.should_see("1390")  # Calories
+        await user.should_see("kcal")  # Calories unit

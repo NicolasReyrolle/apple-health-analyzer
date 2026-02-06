@@ -95,6 +95,18 @@ class WorkoutManager:
 
         return 0
 
+    def get_total_calories(self, activity_type: str = "All") -> int:
+        """Return the total calories burned of workouts in kcal rounded to the nearest integer."""
+        if activity_type != "All":
+            workouts = self.workouts[self.workouts["activityType"] == activity_type]
+        else:
+            workouts = self.workouts
+
+        if "sumActiveEnergyBurned" in workouts.columns:
+            return int(round(workouts["sumActiveEnergyBurned"].sum()))
+
+        return 0
+
     def get_workouts(self) -> pd.DataFrame:
         """Return the DataFrame of workouts."""
         return self.workouts

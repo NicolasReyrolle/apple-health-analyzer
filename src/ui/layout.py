@@ -30,6 +30,7 @@ def refresh_data() -> None:
     state.metrics["distance"] = state.workouts.get_total_distance(state.selected_activity_type)
     state.metrics["duration"] = state.workouts.get_total_duration(state.selected_activity_type)
     state.metrics["elevation"] = state.workouts.get_total_elevation(state.selected_activity_type)
+    state.metrics["calories"] = state.workouts.get_total_calories(state.selected_activity_type)
 
 
 def _update_activity_filter(new_value: str) -> None:
@@ -199,3 +200,5 @@ def render_body() -> None:
                 stat_card("Distance", state.metrics, "distance", "km")
                 stat_card("Duration", state.metrics, "duration", "h")
                 stat_card("Elevation", state.metrics, "elevation", "km")
+            with ui.row().classes("w-full justify-center gap-4"):
+                stat_card("Calories", state.metrics, "calories", "kcal")
