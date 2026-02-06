@@ -10,6 +10,7 @@ from nicegui.testing import User
 from tests.types_helper import StateAssertion
 
 from app_state import state
+from ui.helpers import format_integer
 
 
 def is_valid_json(data_string: str) -> bool:
@@ -308,6 +309,8 @@ class TestMainWindow:
         await user.should_see("h")
         await user.should_see("Elevation")
         await user.should_see("km")
+        await user.should_see("Calories")
+        await user.should_see("kcal")
 
     async def test_stat_cards_update_after_load(
         self, user: User, create_health_zip: Callable[..., str]
@@ -320,6 +323,7 @@ class TestMainWindow:
         assert state.metrics["distance"] == 0
         assert state.metrics["duration"] == 0
         assert state.metrics["elevation"] == 0
+        assert state.metrics["calories"] == 0
 
         # 2. Load a valid health data file
         await load_health_export(user, create_health_zip)
@@ -334,6 +338,7 @@ class TestMainWindow:
         assert state.metrics["distance"] == 9
         assert state.metrics["duration"] == 1  # 60.887 minutes ≈ 1 hour
         assert state.metrics["elevation"] == 0  # 6575 cm = 65.75 m → 0
+        assert state.metrics["calories"] == 1655  # ActiveEnergyBurned from fixture
 
         # Verify the values are displayed in the UI
         await user.should_see("1")  # Count
@@ -342,3 +347,5 @@ class TestMainWindow:
         await user.should_see("1h")  # Duration display format
         await user.should_see("0")  # Elevation value displayed
         await user.should_see("km")  # Elevation unit
+        await user.should_see(format_integer(1655))  # Calories
+        await user.should_see("kcal")  # Calories unit

@@ -554,3 +554,160 @@ class TestGetTotalElevation:
         )
 
         assert workouts.get_total_elevation() == 3
+
+
+class TestGetTotalCalories:
+    """Test suite for WorkoutManager.get_total_calories method."""
+
+    def test_get_total_calories_empty(self) -> None:
+        """Test get_total_calories with empty DataFrame."""
+        workouts = wm.WorkoutManager()
+
+        assert workouts.get_total_calories() == 0
+
+    def test_get_total_calories_single_workout(self) -> None:
+        """Test get_total_calories with a single workout."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "sumActiveEnergyBurned": [250.5],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories() == 250  # 250.5 rounded to nearest int
+
+    def test_get_total_calories_multiple_workouts(self) -> None:
+        """Test get_total_calories with multiple workouts."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Cycling", "Swimming"],
+                    "sumActiveEnergyBurned": [300.0, 400.5, 200.3],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories() == 901  # 300 + 400.5 + 200.3 = 900.8 → 901
+
+    def test_get_total_calories_filter_activity(self) -> None:
+        """Test get_total_calories filters by activity type."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Cycling"],
+                    "sumActiveEnergyBurned": [300.0, 250.0, 500.0],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories() == 1050
+        assert workouts.get_total_calories("Running") == 550
+        assert workouts.get_total_calories("Cycling") == 500
+
+    def test_get_total_calories_all_keyword(self) -> None:
+        """Test get_total_calories with 'All' keyword returns all activities."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking", "Cycling"],
+                    "sumActiveEnergyBurned": [300.0, 150.0, 400.0],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories("All") == 850
+
+    def test_get_total_calories_no_match(self) -> None:
+        """Test get_total_calories with non-existent activity type."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Cycling"],
+                    "sumActiveEnergyBurned": [300.0, 400.0],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories("Swimming") == 0
+
+    def test_get_total_calories_zero(self) -> None:
+        """Test get_total_calories with zero calories."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "sumActiveEnergyBurned": [0.0],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories() == 0
+
+    def test_get_total_calories_rounding_up(self) -> None:
+        """Test get_total_calories rounds up correctly."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking"],
+                    "sumActiveEnergyBurned": [250.7, 249.6],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories() == 500  # 250.7 + 249.6 = 500.3 → 500
+
+    def test_get_total_calories_rounding_down(self) -> None:
+        """Test get_total_calories rounds down correctly."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking"],
+                    "sumActiveEnergyBurned": [250.2, 249.2],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories() == 499  # 250.2 + 249.2 = 499.4 → 499
+
+    def test_get_total_calories_no_column(self) -> None:
+        """Test get_total_calories when sumActiveEnergyBurned column missing."""
+
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "duration": [3600],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories() == 0
+
+    def test_get_total_calories_large_values(self) -> None:
+        """Test get_total_calories with large calorie values."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "sumActiveEnergyBurned": [5000.75],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories() == 5001
+
+    def test_get_total_calories_multiple_same_activity(self) -> None:
+        """Test get_total_calories with multiple workouts of same activity type."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Running"],
+                    "sumActiveEnergyBurned": [250.0, 300.0, 275.5],
+                }
+            )
+        )
+
+        assert workouts.get_total_calories("Running") == 826  # 250 + 300 + 275.5 = 825.5 → 826
+        assert workouts.get_total_calories() == 826

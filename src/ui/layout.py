@@ -9,6 +9,7 @@ from app_state import state
 from assets import APP_ICON_BASE64
 from logic.export_parser import ExportParser
 from logic.workout_manager import WorkoutManager
+from ui.helpers import format_integer
 from ui.local_file_picker import LocalFilePicker
 
 
@@ -30,13 +31,20 @@ def refresh_data() -> None:
     state.metrics["distance"] = state.workouts.get_total_distance(state.selected_activity_type)
     state.metrics["duration"] = state.workouts.get_total_duration(state.selected_activity_type)
     state.metrics["elevation"] = state.workouts.get_total_elevation(state.selected_activity_type)
+    state.metrics["calories"] = state.workouts.get_total_calories(state.selected_activity_type)
+
+    state.metrics_display["count"] = format_integer(state.metrics["count"])
+    state.metrics_display["distance"] = format_integer(state.metrics["distance"])
+    state.metrics_display["duration"] = format_integer(state.metrics["duration"])
+    state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
+    state.metrics_display["calories"] = format_integer(state.metrics["calories"])
 
 
 def _update_activity_filter(new_value: str) -> None:
-    """Update the selected activity type filter and refresh derived metrics.  
+    """Update the selected activity type filter and refresh derived metrics.
 
-    Args:  
-        new_value: The activity type selected from the UI dropdown.  
+    Args:
+        new_value: The activity type selected from the UI dropdown.
     """
     state.selected_activity_type = new_value
     refresh_data()
@@ -113,13 +121,13 @@ def render_header() -> None:
         ).props("flat round").classes("text-main")
 
 
-def stat_card(label: str, value_ref: dict[str, int], key: str, unit: str = ""):
+def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):
     """
     Create a reactive KPI card.
     'value_ref' is a dictionary containing the totals,
     allowing automatic updates via NiceGUI binding.
     """
-    with ui.card().classes("w-32 h-24 items-center justify-center shadow-sm"):
+    with ui.card().classes("w-40 h-24 items-center justify-center shadow-sm"):
         ui.label(label).classes("text-xs text-gray-500 uppercase")
         with ui.row().classes("items-baseline gap-1"):
             # Bind the text to the dictionary key for reactive updates
@@ -195,7 +203,9 @@ def render_body() -> None:
     with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
         with ui.tab_panel(tab_summary):
             with ui.row().classes("w-full justify-center gap-4"):
-                stat_card("Count", state.metrics, "count")
-                stat_card("Distance", state.metrics, "distance", "km")
-                stat_card("Duration", state.metrics, "duration", "h")
-                stat_card("Elevation", state.metrics, "elevation", "km")
+                stat_card("Count", state.metrics_display, "count")
+                stat_card("Distance", state.metrics_display, "distance", "km")
+                stat_card("Duration", state.metrics_display, "duration", "h")
+                stat_card("Elevation", state.metrics_display, "elevation", "km")
+            with ui.row().classes("w-full justify-center gap-4"):
+                stat_card("Calories", state.metrics_display, "calories", "kcal")
