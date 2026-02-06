@@ -160,7 +160,7 @@ class TestDurationToSeconds:
 
 
 class TestStrDistanceToMeters:
-    """Test the _str_distance_to_meters method."""
+    """Test the str_distance_to_meters method."""
 
     def test_distance_kilometers_to_meters(self) -> None:
         """Convert kilometers to meters."""
