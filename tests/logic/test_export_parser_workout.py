@@ -213,12 +213,6 @@ class TestProcessMetadataEntry:
 
         assert record.get("MetadataKeyIsIndoorWorkout") is True
 
-
-class TestMetadataEntryAccumulation:
-    """Test numeric accumulation in _process_metadata_entry."""
-
-    # pylint: disable=protected-access
-
     def test_process_metadata_entry_skips_interval_step_key(self) -> None:
         """Test that WOIntervalStepKeyPath is skipped."""
         elem = Element(
