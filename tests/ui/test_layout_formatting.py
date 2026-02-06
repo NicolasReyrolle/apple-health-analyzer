@@ -18,9 +18,7 @@ class _DummyWorkouts(WorkoutManager):
     ) -> int:
         return 67890
 
-    def get_total_duration(
-        self, activity_type: str = "All", unit: str = "h"  # pylint: disable=unused-argument
-    ) -> int:
+    def get_total_duration(self, activity_type: str = "All") -> int:
         return 24680
 
     def get_total_elevation(
