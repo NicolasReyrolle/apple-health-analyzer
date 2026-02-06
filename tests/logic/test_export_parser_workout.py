@@ -218,6 +218,27 @@ class TestMetadataEntryAccumulation:
     """Test numeric accumulation in _process_metadata_entry."""
 
     # pylint: disable=protected-access
+    def test_process_metadata_entry_accumulates_numeric_values(self) -> None:
+        """Test that numeric values with same key are accumulated (summed)."""
+        elem1 = Element(
+            "MetadataEntry", attrib={"key": "HKElevationAscended", "value": "100 m"}
+        )
+        elem2 = Element(
+            "MetadataEntry", attrib={"key": "HKElevationAscended", "value": "50 m"}
+        )
+
+        parser = ep.ExportParser()
+        record: ep.WorkoutRecord = {"activityType": "Running"}
+
+        parser._process_metadata_entry(elem1, record)  # type: ignore[misc]
+        # After first entry: should have ElevationAscended = 100.0
+        assert isinstance(record.get("ElevationAscended"), float)
+        assert record.get("ElevationAscended") == pytest.approx(100.0)  # type: ignore[misc]
+
+        parser._process_metadata_entry(elem2, record)  # type: ignore[misc]
+        # After second entry: should accumulate to 150.0
+        assert isinstance(record.get("ElevationAscended"), float)
+        assert record.get("ElevationAscended") == pytest.approx(150.0)  # type: ignore[misc]
 
     def test_process_metadata_entry_skips_interval_step_key(self) -> None:
         """Test that WOIntervalStepKeyPath is skipped."""
@@ -233,6 +254,25 @@ class TestMetadataEntryAccumulation:
 
         # Should be skipped, so record remains unchanged
         assert record == {"activityType": "Running"}
+
+    def test_process_metadata_entry_overwrites_non_numeric_with_numeric(self) -> None:
+        """Test that non-numeric values are overwritten when numeric values come later."""
+        elem1 = Element(
+            "MetadataEntry", attrib={"key": "HKTestKey", "value": "some string"}
+        )
+        elem2 = Element("MetadataEntry", attrib={"key": "HKTestKey", "value": "100 m"})
+
+        parser = ep.ExportParser()
+        record: ep.WorkoutRecord = {"activityType": "Running"}
+
+        parser._process_metadata_entry(elem1, record)  # type: ignore[misc]
+        assert record.get("TestKey") == "some string"
+
+        parser._process_metadata_entry(elem2, record)  # type: ignore[misc]
+        # Should overwrite with numeric value (not accumulate)
+        assert isinstance(record.get("TestKey"), float)
+        assert record.get("TestKey") == pytest.approx(100.0)  # type: ignore[misc]
+
 
 class TestProcessWorkoutChildren:
     """Test the _process_workout_children method."""

@@ -277,9 +277,17 @@ class ExportParser:
 
         value, unit = self._parse_value(child.get("value", ""))
 
-        # If the key already exists, do not consider it as there can be duplicate in the real file
-        if key in record:
-            logging.info("Duplicate key '%s' found, bypassing the second one", key)
+        # If the key already exists and both current and new values are numeric (but not bool),
+        # sum them
+        # Note: bool is a subclass of int, so we must explicitly exclude it
+        if (
+            key in record
+            and isinstance(record[key], (int, float))
+            and not isinstance(record[key], bool)
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ):
+            record[key] = record[key] + value
         else:
             record[key] = value
             if unit:

@@ -46,11 +46,11 @@ class TestComplexRealWorldWorkout:
         assert not workout["IndoorWorkout"]  # "0" converts to False
         assert workout["TimeZone"] == "Europe/Paris"
         assert workout["WeatherHumidity"] == pytest.approx(  # type: ignore[misc]
-            64.0, abs=0.001
-        )  # "6400 %" -> 64.0
+            128.0, abs=0.001
+        )  # "6400 %" appears twice -> 64.0 + 64.0 = 128.0 (accumulated)
         assert workout["WeatherTemperature"] == pytest.approx(  # type: ignore[misc]
-            16.650, abs=0.001
-        )  # 61.9694 degF -> ~16.650 degC
+            33.300, abs=0.001
+        )  # 61.9694 degF appears twice -> ~16.650°C + ~16.650°C = 33.300°C (accumulated)
 
         # Verify statistics were captured
         assert workout["sumStepCount"] == pytest.approx(9787.18)  # type: ignore[misc]
@@ -65,7 +65,7 @@ class TestComplexRealWorldWorkout:
         assert workout["averageHeartRate"] == pytest.approx(130.153)  # type: ignore[misc]
 
         # Verify metadata entries for elevation
-        assert workout["ElevationAscended"] == pytest.approx(65.75, abs=0.01)  # type: ignore[misc]
+        assert workout["ElevationAscended"] == pytest.approx(131.5, abs=0.01)  # type: ignore[misc]  # 65.75 + 65.75 (accumulated)
 
         # Verify the routeFile is captured
         assert workout["routeFile"] == "/workout-routes/route_2025-09-16_6.15pm.gpx"
@@ -109,23 +109,20 @@ class TestComplexRealWorldWorkout:
         assert running["activityType"] == "Running"
         assert running["distance"] == 8955
         assert running["averageHeartRate"] == pytest.approx(130.153)  # type: ignore[misc]
-        assert running["ElevationAscended"] == pytest.approx(65.75, abs=0.01)  # type: ignore[misc]
+        assert running["ElevationAscended"] == pytest.approx(131.5, abs=0.01)  # type: ignore[misc]  # 65.75 + 65.75 (accumulated)
 
-    def test_metadata_not_duplicated_when_present_at_multiple_levels(
+    def test_metadata_accumulated_when_present_at_multiple_levels(
         self, create_health_zip: Callable[..., str]
     ) -> None:
-        """Test that metadata entries appearing at both WorkoutActivity and Workout levels
-        are not stored twice or have their values doubled.
+        """Test that numeric metadata entries appearing at both WorkoutActivity and Workout 
+        levels are accumulated (summed).
 
         The workout_running.xml fixture has duplicate MetadataEntry elements:
         - Some appear inside <WorkoutActivity> elements
         - The same entries also appear at the top <Workout> level
 
-        The parser should process each unique metadata key only once with its original value,
-        not accumulate or double the values when encountering duplicates.
-
-        This test currently fails because the parser processes metadata at both levels,
-        causing values to be doubled (e.g., 6400% becomes 64.0 twice -> 128.0).
+        The parser processes metadata at both levels and accumulates numeric values
+        (e.g., 6400% becomes 64.0 twice -> 64.0 + 64.0 = 128.0).
         """
 
         xml_content = build_health_export_xml([load_export_fragment("workout_running.xml")])
@@ -139,15 +136,15 @@ class TestComplexRealWorldWorkout:
         workout = workouts.iloc[0]
 
         # Test metadata that appears at both WorkoutActivity and top-level Workout
-        # Original value: "6400 %" -> should be 64.0, NOT 128.0 (doubled)
-        assert workout["WeatherHumidity"] == pytest.approx(64.0, abs=0.001)  # type: ignore[misc]
+        # Original value: "6400 %" appears twice -> 64.0 + 64.0 = 128.0 (accumulated)
+        assert workout["WeatherHumidity"] == pytest.approx(128.0, abs=0.001)  # type: ignore[misc]
 
-        # Original value: "6575 cm" -> should be 65.75 m, NOT 131.5 m (doubled)
-        assert workout["ElevationAscended"] == pytest.approx(65.75, abs=0.01)  # type: ignore[misc]
+        # Original value: "6575 cm" appears twice -> 65.75 + 65.75 = 131.5 m (accumulated)
+        assert workout["ElevationAscended"] == pytest.approx(131.5, abs=0.01)  # type: ignore[misc]
 
-        # Original value: "61.9694 degF" -> should be ~16.65°C, NOT ~33.3°C (doubled)
+        # Original value: "61.9694 degF" appears twice -> ~16.65°C + ~16.65°C = ~33.3°C (accumulated)
         assert workout["WeatherTemperature"] == pytest.approx(  # type: ignore[misc]
-            16.650, abs=0.001
+            33.300, abs=0.001
         )
 
         # Boolean metadata should remain False/True, not become True
