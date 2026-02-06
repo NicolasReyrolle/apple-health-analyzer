@@ -70,6 +70,32 @@ class TestComplexRealWorldWorkout:
         # Verify the routeFile is captured
         assert workout["routeFile"] == "/workout-routes/route_2025-09-16_6.15pm.gpx"
 
+    def test_workout_activity_stats_and_metadata_are_ignored(
+        self, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Ensure data inside WorkoutActivity is not loaded into the workout record."""
+
+        workout_fragment = """
+<Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01 10:00:00 +0000" endDate="2024-01-01 10:10:00 +0000" duration="10" durationUnit="min">
+  <WorkoutActivity>
+    <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" sum="123" unit="kcal"/>
+    <MetadataEntry key="HKWeatherHumidity" value="5000 %"/>
+  </WorkoutActivity>
+</Workout>
+""".strip()
+
+        xml_content = build_health_export_xml([workout_fragment])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        parser = ExportParser()
+        with parser:
+            workouts = parser.parse(str(zip_path))
+
+        assert len(workouts) == 1
+
+        assert "sumActiveEnergyBurned" not in workouts.columns
+        assert "WeatherHumidity" not in workouts.columns
+
     def test_parse_multiple_separate_workouts_with_different_distance_units(
         self, tmp_path: Path
     ) -> None:

@@ -193,8 +193,6 @@ class ExportParser:
                 self._process_workout_statistics(child, record)
             elif child.tag == "MetadataEntry":
                 self._process_metadata_entry(child, record)
-            elif child.tag == "WorkoutActivity":
-                self._process_workout_children(child, record, zipfile)
             elif child.tag == "WorkoutRoute":
                 self._process_workout_route(child, record, zipfile)
 
