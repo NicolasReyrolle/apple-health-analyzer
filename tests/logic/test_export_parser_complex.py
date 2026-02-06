@@ -125,8 +125,9 @@ class TestComplexRealWorldWorkout:
         The parser should process each unique metadata key only once with its original value,
         not accumulate or double the values when encountering the same key multiple times.
 
-        This test currently fails because the parser processes top-level metadata multiple times,
-        causing values to be doubled (e.g., 6400% becomes 64.0 twice -> 128.0).
+        This test verifies that duplicate top-level metadata entries are ignored after their first
+        occurrence and that the resulting workout record contains the correct, non-duplicated
+        values for humidity, elevation, temperature, and boolean flags.
         """
 
         xml_content = build_health_export_xml([load_export_fragment("workout_running.xml")])
