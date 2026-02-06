@@ -1,15 +1,14 @@
 """Tests for complex workout parsing and route handling."""
 
 from pathlib import Path
+from typing import Callable
 from xml.etree.ElementTree import Element
 from zipfile import ZipFile
-from typing import Callable
 
 import pandas as pd
 import pytest
 
 from logic.export_parser import ExportParser, WorkoutRecord
-
 from tests.conftest import build_health_export_xml, load_export_fragment
 
 
@@ -114,7 +113,7 @@ class TestComplexRealWorldWorkout:
     def test_metadata_accumulated_when_present_at_multiple_levels(
         self, create_health_zip: Callable[..., str]
     ) -> None:
-        """Test that numeric metadata entries appearing at both WorkoutActivity and Workout 
+        """Test that numeric metadata entries appearing at both WorkoutActivity and Workout
         levels are accumulated (summed).
 
         The workout_running.xml fixture has duplicate MetadataEntry elements:

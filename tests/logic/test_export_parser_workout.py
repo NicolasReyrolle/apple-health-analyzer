@@ -37,9 +37,7 @@ class TestCreateWorkoutRecord:
 
     def test_create_workout_record_with_missing_attributes(self):
         """Test creating a workout record with missing attributes."""
-        elem = Element(
-            "Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeRunning"}
-        )
+        elem = Element("Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeRunning"})
         parser = ep.ExportParser()
         record = parser._create_workout_record(elem, "Running")  # type: ignore[misc]
 
@@ -220,12 +218,8 @@ class TestMetadataEntryAccumulation:
     # pylint: disable=protected-access
     def test_process_metadata_entry_accumulates_numeric_values(self) -> None:
         """Test that numeric values with same key are accumulated (summed)."""
-        elem1 = Element(
-            "MetadataEntry", attrib={"key": "HKElevationAscended", "value": "100 m"}
-        )
-        elem2 = Element(
-            "MetadataEntry", attrib={"key": "HKElevationAscended", "value": "50 m"}
-        )
+        elem1 = Element("MetadataEntry", attrib={"key": "HKElevationAscended", "value": "100 m"})
+        elem2 = Element("MetadataEntry", attrib={"key": "HKElevationAscended", "value": "50 m"})
 
         parser = ep.ExportParser()
         record: ep.WorkoutRecord = {"activityType": "Running"}
@@ -257,9 +251,7 @@ class TestMetadataEntryAccumulation:
 
     def test_process_metadata_entry_overwrites_non_numeric_with_numeric(self) -> None:
         """Test that non-numeric values are overwritten when numeric values come later."""
-        elem1 = Element(
-            "MetadataEntry", attrib={"key": "HKTestKey", "value": "some string"}
-        )
+        elem1 = Element("MetadataEntry", attrib={"key": "HKTestKey", "value": "some string"})
         elem2 = Element("MetadataEntry", attrib={"key": "HKTestKey", "value": "100 m"})
 
         parser = ep.ExportParser()
@@ -368,9 +360,7 @@ class TestProcessWorkoutChildren:
         assert record.get("distance") == 5000
         assert record.get("MetadataKeyTimeZone") == "UTC"
 
-    def test_process_workout_children_with_unknown_element(
-        self, tmp_path: Path
-    ) -> None:
+    def test_process_workout_children_with_unknown_element(self, tmp_path: Path) -> None:
         """Test processing workout with unknown child element (should be ignored)."""
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
