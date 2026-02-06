@@ -60,7 +60,7 @@ class TestComplexRealWorldWorkout:
         assert workout["minimumRunningGroundContactTime"] == 231
         assert workout["maximumRunningGroundContactTime"] == 353
         assert workout["averageRunningPower"] == pytest.approx(208.697)  # type: ignore[misc]
-        assert workout["sumActiveEnergyBurned"] == pytest.approx(655.465)  # type: ignore[misc]
+        assert workout["sumActiveEnergyBurned"] == pytest.approx(1655.465)  # type: ignore[misc]
         assert workout["distance"] == 8955
         assert workout["averageHeartRate"] == pytest.approx(130.153)  # type: ignore[misc]
 

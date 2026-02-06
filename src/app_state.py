@@ -24,6 +24,13 @@ class AppState:
             "elevation": 0,
             "calories": 0,
         }
+        self.metrics_display = {
+            "count": "0",
+            "distance": "0",
+            "duration": "0",
+            "elevation": "0",
+            "calories": "0",
+        }
 
         self.selected_activity_type: str = "All"
         self.activity_options: list[str] = ["All"]
