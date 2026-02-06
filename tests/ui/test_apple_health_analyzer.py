@@ -86,8 +86,8 @@ class TestMainWindow:
         await load_health_export(user, create_health_zip)
 
         # 2. Check if the UI correctly displays data from our XML
-        await user.should_see("Total distance of 16", retries=50)
-        await user.should_see("Total duration of 1h")
+        await user.should_see("Total distance of 9", retries=50)
+        await user.should_see("Total duration of 1h 0m 53s")
 
     async def test_browse_button_opens_picker(self, user: User) -> None:
         """Test that the browse button opens the file picker dialog."""
@@ -112,9 +112,7 @@ class TestMainWindow:
         user.find("Load").click()
         await user.should_see("Error parsing file")
 
-    async def test_browse_no_file_selected(
-        self, user: User, mock_file_picker_context: Any
-    ) -> None:
+    async def test_browse_no_file_selected(self, user: User, mock_file_picker_context: Any) -> None:
         """Test that not selecting a file (mock returns empty) shows a notification."""
 
         with mock_file_picker_context(None):  # None = empty result
@@ -127,9 +125,7 @@ class TestMainWindow:
             # Should see "No file selected" notification
             await user.should_see("No file selected")
 
-    async def test_browse_file_selected(
-        self, user: User, mock_file_picker_context: Any
-    ) -> None:
+    async def test_browse_file_selected(self, user: User, mock_file_picker_context: Any) -> None:
         """Test that selecting a file via the dialog updates the input_file value."""
         fake_path = "/path/to/fake_health_export.zip"
 
@@ -334,20 +330,21 @@ class TestMainWindow:
         # 3. Verify stat card values are updated correctly
         # The create_health_zip fixture provides:
         # - 1 workout
-        # - 16.1244 km distance (rounded to 16)
-        # - 119.27 minutes duration (approximately 2 hours)
-        # - 154430 cm elevation (approximately 2 km)
+        # - 8.95512 km distance (rounded to 9)
+        # - 60.887 minutes duration (approximately 1 hour)
+        # - 6575 cm elevation (approximately 0.066 km)
         assert state.metrics["count"] == 1
-        assert state.metrics["distance"] == 16
-        assert state.metrics["duration"] == 2  # 119.27 minutes ≈ 2 hours
-        assert state.metrics["elevation"] == 2  # 154430 cm = 1544.3 m → 2
+        assert state.metrics["distance"] == 9
+        assert state.metrics["duration"] == 1  # 60.887 minutes ≈ 1 hour
+        assert state.metrics["elevation"] == 0  # 6575 cm = 65.75 m → 0
         assert state.metrics["calories"] == 1390  # ActiveEnergyBurned from fixture
 
         # Verify the values are displayed in the UI
         await user.should_see("1")  # Count
-        await user.should_see("16")  # Distance
-        await user.should_see("2h")  # Duration display format
-        await user.should_see("2")  # Elevation value displayed
+        await user.should_see("9")  # Distance
+        # Duration display calculation is in get_statistics(), verify it's rendered
+        await user.should_see("1h")  # Duration display format
+        await user.should_see("0")  # Elevation value displayed
         await user.should_see("km")  # Elevation unit
         await user.should_see("1390")  # Calories
         await user.should_see("kcal")  # Calories unit

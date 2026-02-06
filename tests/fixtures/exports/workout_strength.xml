@@ -1,0 +1,15 @@
+<Workout workoutActivityType="HKWorkoutActivityTypeFunctionalStrengthTraining" duration="20.25170261661212" durationUnit="min" sourceName="Apple Watch" sourceVersion="11.6.1" device="&lt;&lt;HKDevice: 0xc937f6fa0&gt;, name:Apple Watch, manufacturer:Apple Inc., model:Watch, hardware:Watch7,2, software:11.6.1, creation date:2025-08-14 23:49:07 +0000&gt;" creationDate="2025-09-15 18:48:45 +0100" startDate="2025-09-15 18:28:29 +0100" endDate="2025-09-15 18:48:44 +0100">
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKWeatherHumidity" value="6600 %"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Paris"/>
+  <MetadataEntry key="HKWeatherTemperature" value="62.4433 degF"/>
+  <MetadataEntry key="HKAverageMETs" value="2.81267 kcal/hr-kg"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2025-09-15 18:28:29 +0100" endDate="2025-09-15 18:48:44 +0100" sum="46.8991" unit="kcal"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierHeartRate" startDate="2025-09-15 18:28:29 +0100" endDate="2025-09-15 18:48:44 +0100" average="79.9571" minimum="66" maximum="93" unit="count/min"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierBasalEnergyBurned" startDate="2025-09-15 18:28:29 +0100" endDate="2025-09-15 18:48:44 +0100" sum="35.322" unit="kcal"/>
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKWeatherHumidity" value="6600 %"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Paris"/>
+  <MetadataEntry key="HKWeatherTemperature" value="62.4433 degF"/>
+  <MetadataEntry key="HKAverageMETs" value="2.81267 kcal/hr-kg"/>
+</Workout>

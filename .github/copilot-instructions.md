@@ -70,7 +70,7 @@ CI validates code quality and tests on push/PR to main/develop (`.github/workflo
 - **NiceGUI components**: Familiarize with `@ui.page` decorator, `ui.dialog`, async/await patterns, and testing plugin usage
 - **Async/await patterns**: NiceGUI operations are async; always use `async def` and `await` where required. Tests must wait for async operations with `asyncio.sleep()` or similar.
 - **Mocking for tests**: Use centralized mock factories from `tests/conftest.py` (e.g., `mock_file_picker_context`) rather than inline mocks. When mocking NiceGUI components, use module-level lookups (e.g., `import apple_health_analyzer as _module; _module.LocalFilePicker`) to enable runtime patching.
-- **Test fixtures**: Add to `tests/fixtures/` (tests auto-skip if missing). Use pytest fixtures with `@pytest.fixture` decorator for setup/teardown.
+- **Test fixtures**: Add to `tests/fixtures/` (tests auto-skip if missing). Use pytest fixtures with `@pytest.fixture` decorator for setup/teardown. Never modify any file in `tests/fixtures/exports` unless adding new sample export files for testing. They are real export samples and should not be altered.
 - **Dependencies**: Check GPL-3.0 license compatibility for additions. NiceGUI and defusedxml are core dependencies.
 - **Entry point**: Sync entry point in `pyproject.toml` with `main()` function in `src/apple_health_analyzer.py`
 - **Memory efficiency**: Use iterparse + `.clear()` pattern for large XML files (see `_load_running_workouts()` in `export_parser.py`)

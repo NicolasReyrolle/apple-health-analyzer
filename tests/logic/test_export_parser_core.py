@@ -92,106 +92,99 @@ class TestLoadWorkouts:
 
 
 class TestDurationToSeconds:
-    """Test the _duration_to_seconds static method."""
+    """Test the duration_to_seconds static method."""
 
-    # pylint: disable=protected-access
     def test_duration_minutes_to_seconds(self) -> None:
         """Test converting minutes to seconds."""
-        assert ep.ExportParser._duration_to_seconds(1, "min") == 60  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(5, "min") == 300  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(30, "min") == 1800  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(119.27, "min") == 7156  # type: ignore
+        assert ep.ExportParser.duration_to_seconds(1, "min") == 60
+        assert ep.ExportParser.duration_to_seconds(5, "min") == 300
+        assert ep.ExportParser.duration_to_seconds(30, "min") == 1800
+        assert ep.ExportParser.duration_to_seconds(119.27, "min") == 7156
 
     def test_duration_hours_to_seconds(self) -> None:
         """Test converting hours to seconds."""
-        assert ep.ExportParser._duration_to_seconds(1, "h") == 3600  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(2, "h") == 7200  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(0.5, "h") == 1800  # type: ignore
+        assert ep.ExportParser.duration_to_seconds(1, "h") == 3600
+        assert ep.ExportParser.duration_to_seconds(2, "h") == 7200
+        assert ep.ExportParser.duration_to_seconds(0.5, "h") == 1800
 
     def test_duration_seconds_to_seconds(self) -> None:
         """Test that seconds remain unchanged."""
-        assert ep.ExportParser._duration_to_seconds(60, "s") == 60  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(3600, "s") == 3600  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(5, "s") == 5  # type: ignore
+        assert ep.ExportParser.duration_to_seconds(60, "s") == 60
+        assert ep.ExportParser.duration_to_seconds(3600, "s") == 3600
+        assert ep.ExportParser.duration_to_seconds(5, "s") == 5
 
     def test_duration_zero_value(self) -> None:
         """Test handling zero duration."""
-        assert ep.ExportParser._duration_to_seconds(0, "min") == 0  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(0, "h") == 0  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(0, "s") == 0  # type: ignore
+        assert ep.ExportParser.duration_to_seconds(0, "min") == 0
+        assert ep.ExportParser.duration_to_seconds(0, "h") == 0
+        assert ep.ExportParser.duration_to_seconds(0, "s") == 0
 
     def test_duration_decimal_values(self) -> None:
         """Test handling decimal values."""
-        assert ep.ExportParser._duration_to_seconds(1.5, "min") == 90  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(2.5, "h") == 9000  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(30.5, "s") == 30  # type: ignore
+        assert ep.ExportParser.duration_to_seconds(1.5, "min") == 90
+        assert ep.ExportParser.duration_to_seconds(2.5, "h") == 9000
+        assert ep.ExportParser.duration_to_seconds(30.5, "s") == 30
 
     def test_duration_returns_int(self) -> None:
         """Test that the method always returns an integer."""
-        result = ep.ExportParser._duration_to_seconds(1.5, "min")  # type: ignore
+        result = ep.ExportParser.duration_to_seconds(1.5, "min")
         assert isinstance(result, int)
         assert result == 90
 
     def test_duration_invalid_unit_raises_error(self) -> None:
         """Test that invalid unit raises ValueError."""
         with pytest.raises(ValueError, match="Unknown duration unit"):
-            ep.ExportParser._duration_to_seconds(10, "invalid")  # type: ignore
+            ep.ExportParser.duration_to_seconds(10, "invalid")
 
         with pytest.raises(ValueError, match="Unknown duration unit"):
-            ep.ExportParser._duration_to_seconds(10, "sec")  # type: ignore
+            ep.ExportParser.duration_to_seconds(10, "sec")
 
     def test_missing_unit_processed_as_minutes(self) -> None:
         """Test that missing unit defaults to minutes."""
-        result = ep.ExportParser._duration_to_seconds(10, "")  # type: ignore
+        result = ep.ExportParser.duration_to_seconds(10, "")
         assert isinstance(result, int)
         assert result == 600
 
     def test_duration_large_values(self) -> None:
         """Test handling large duration values."""
         # 24 hours in seconds
-        assert ep.ExportParser._duration_to_seconds(24, "h") == 86400  # type: ignore
+        assert ep.ExportParser.duration_to_seconds(24, "h") == 86400
         # 1000 minutes in seconds
-        assert ep.ExportParser._duration_to_seconds(1000, "min") == 60000  # type: ignore
+        assert ep.ExportParser.duration_to_seconds(1000, "min") == 60000
 
     def test_duration_very_small_values(self) -> None:
         """Test handling very small decimal values."""
         # Truncates to integer
-        assert ep.ExportParser._duration_to_seconds(0.1, "min") == 6  # type: ignore
-        assert ep.ExportParser._duration_to_seconds(0.01, "h") == 36  # type: ignore
+        assert ep.ExportParser.duration_to_seconds(0.1, "min") == 6
+        assert ep.ExportParser.duration_to_seconds(0.01, "h") == 36
 
 
 class TestStrDistanceToMeters:
-    """Test the _str_distance_to_meters method."""
+    """Test the str_distance_to_meters method."""
 
-    # pylint: disable=protected-access
     def test_distance_kilometers_to_meters(self) -> None:
         """Convert kilometers to meters."""
-        parser = ep.ExportParser()
-        assert parser._str_distance_to_meters("1", "km") == 1000
-        assert parser._str_distance_to_meters("2.5", "km") == 2500
-        assert parser._str_distance_to_meters("0", "km") == 0
+        assert ep.ExportParser.str_distance_to_meters("1", "km") == 1000
+        assert ep.ExportParser.str_distance_to_meters("2.5", "km") == 2500
+        assert ep.ExportParser.str_distance_to_meters("0", "km") == 0
 
     def test_distance_meters_to_meters(self) -> None:
         """Convert meters to meters (identity)."""
-        parser = ep.ExportParser()
-        assert parser._str_distance_to_meters("1", "m") == 1
-        assert parser._str_distance_to_meters("250.7", "m") == 250
-        assert parser._str_distance_to_meters("0", "m") == 0
+        assert ep.ExportParser.str_distance_to_meters("1", "m") == 1
+        assert ep.ExportParser.str_distance_to_meters("250.7", "m") == 250
+        assert ep.ExportParser.str_distance_to_meters("0", "m") == 0
 
     def test_distance_miles_to_meters(self) -> None:
         """Convert miles to meters."""
-        parser = ep.ExportParser()
-        assert parser._str_distance_to_meters("1", "mi") == 1609
-        assert parser._str_distance_to_meters("0.5", "mi") == 804
+        assert ep.ExportParser.str_distance_to_meters("1", "mi") == 1609
+        assert ep.ExportParser.str_distance_to_meters("0.5", "mi") == 804
 
     def test_distance_invalid_unit_raises(self) -> None:
         """Invalid units raise ValueError."""
-        parser = ep.ExportParser()
         with pytest.raises(ValueError, match="Unknown distance unit"):
-            parser._str_distance_to_meters("1", "yd")
+            ep.ExportParser.str_distance_to_meters("1", "yd")
 
     def test_distance_none_unit_raises(self) -> None:
         """None unit raises ValueError with clear message."""
-        parser = ep.ExportParser()
         with pytest.raises(ValueError, match="Distance unit is missing"):
-            parser._str_distance_to_meters("1", None)
+            ep.ExportParser.str_distance_to_meters("1", None)
