@@ -53,7 +53,7 @@ def build_health_export_xml(workout_fragments: List[str]) -> str:
 def create_health_zip() -> Generator[Callable[..., str], None, None]:
     """
     Factory fixture to generate a health export ZIP file.
-    Usage: zip_path = create_health_zip([xml_content], [fixture_name])
+    Usage: zip_path = create_health_zip(xml_content=..., fixture_name=...)
     """
     temp_dirs: list[str] = []
 
