@@ -1,0 +1,58 @@
+<Workout workoutActivityType="HKWorkoutActivityTypeCycling" duration="72.54702780048052" durationUnit="min" sourceName="Apple Watch" sourceVersion="11.5" device="&lt;&lt;HKDevice: 0xc937f43c0&gt;, name:Apple Watch, manufacturer:Apple Inc., model:Watch, hardware:Watch7,2, software:11.5, creation date:2025-05-14 22:06:53 +0000&gt;" creationDate="2025-07-14 17:52:00 +0100" startDate="2025-07-14 16:39:21 +0100" endDate="2025-07-14 17:51:54 +0100">
+  <MetadataEntry key="HKWeatherTemperature" value="76.654 degF"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Paris"/>
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKWeatherHumidity" value="6100 %"/>
+  <MetadataEntry key="HKElevationAscended" value="23178 cm"/>
+  <MetadataEntry key="HKAverageMETs" value="6.72441 kcal/hr-kg"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:39:21 +0100" duration="3.109969836473465" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:39:21 +0100" duration="5.510833543539047" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:39:21 +0100" duration="21.73980343937874" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:42:28 +0100" duration="3.589252636830012" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:44:52 +0100" duration="7.692429063717524" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:46:03 +0100" duration="4.806410086154938" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:50:52 +0100" duration="6.442703845103582" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:52:34 +0100" duration="7.81701220870018" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 16:57:18 +0100" duration="3.791467034816742" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:00:23 +0100" duration="5.708168268203735" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:01:06 +0100" duration="3.7145059466362" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:01:06 +0100" duration="18.05958245396614" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:04:49 +0100" duration="3.017480057477951" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:06:05 +0100" duration="5.688192158937454" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:07:50 +0100" duration="3.704843121767044" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:11:32 +0100" duration="4.512058852116267" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:11:46 +0100" duration="6.668149950106939" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:16:03 +0100" duration="3.110694475968679" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:18:27 +0100" duration="3.853922297557195" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:19:09 +0100" duration="2.408737536271413" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:19:09 +0100" duration="17.91603328784307" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:21:34 +0100" duration="3.014772162834803" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:22:18 +0100" duration="5.100970546404521" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:24:35 +0100" duration="3.245233215888341" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:27:24 +0100" duration="5.927394549051921" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:27:50 +0100" duration="3.545400750637055" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:31:22 +0100" duration="5.701889622211456" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:33:19 +0100" duration="7.32983061671257" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:37:04 +0100" duration="3.236782536904017" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:37:04 +0100" duration="14.81876502633095" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:40:19 +0100" duration="4.080605073769887" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:40:39 +0100" duration="6.040119636058807" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:44:23 +0100" duration="3.154871757825215" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:46:42 +0100" duration="5.197161368529001" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-07-14 17:47:33 +0100" duration="4.346505657831828" durationUnit="min"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierHeartRate" startDate="2025-07-14 16:39:21 +0100" endDate="2025-07-14 17:51:54 +0100" average="133.592" minimum="102" maximum="170" unit="count/min"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierBasalEnergyBurned" startDate="2025-07-14 16:39:21 +0100" endDate="2025-07-14 17:51:54 +0100" sum="129.607" unit="kcal"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceCycling" startDate="2025-07-14 16:39:21 +0100" endDate="2025-07-14 17:51:54 +0100" sum="18.9895" unit="km"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2025-07-14 16:39:21 +0100" endDate="2025-07-14 17:51:54 +0100" sum="540.846" unit="kcal"/>
+  <WorkoutRoute sourceName="Apple Watch" sourceVersion="11.5" creationDate="2025-07-14 17:52:06 +0100" startDate="2025-07-14 16:39:22 +0100" endDate="2025-07-14 17:51:54 +0100">
+   <MetadataEntry key="HKMetadataKeySyncVersion" value="2"/>
+   <MetadataEntry key="HKMetadataKeySyncIdentifier" value="DEAA2557-ECC1-443C-B5B6-F8E7A521BC75"/>
+   <FileReference path="/workout-routes/route_2025-07-14_6.51pm.gpx"/>
+  </WorkoutRoute>
+  <MetadataEntry key="HKWeatherTemperature" value="76.654 degF"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Paris"/>
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKWeatherHumidity" value="6100 %"/>
+  <MetadataEntry key="HKElevationAscended" value="23178 cm"/>
+  <MetadataEntry key="HKAverageMETs" value="6.72441 kcal/hr-kg"/>
+</Workout>
