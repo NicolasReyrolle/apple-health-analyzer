@@ -96,7 +96,14 @@ class WorkoutManager:
         return 0
 
     def get_total_calories(self, activity_type: str = "All") -> int:
-        """Return the total calories burned of workouts in kcal rounded to the nearest integer."""
+        """Return the total calories burned of workouts.
+
+        Args:
+            activity_type (str, optional): Type of activity to filter by. Defaults to "All".
+
+        Returns:
+            int: Total calories burned in kilocalories, rounded to the nearest integer.
+        """
         if activity_type != "All":
             workouts = self.workouts[self.workouts["activityType"] == activity_type]
         else:
