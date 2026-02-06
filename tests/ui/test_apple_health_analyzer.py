@@ -10,6 +10,7 @@ from nicegui.testing import User
 from tests.types_helper import StateAssertion
 
 from app_state import state
+from ui.helpers import format_integer
 
 
 def is_valid_json(data_string: str) -> bool:
@@ -346,5 +347,5 @@ class TestMainWindow:
         await user.should_see("1h")  # Duration display format
         await user.should_see("0")  # Elevation value displayed
         await user.should_see("km")  # Elevation unit
-        await user.should_see("1,655")  # Calories
+        await user.should_see(format_integer(1655))  # Calories
         await user.should_see("kcal")  # Calories unit
