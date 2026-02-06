@@ -211,29 +211,6 @@ class TestProcessMetadataEntry:
 
         assert record.get("MetadataKeyIsIndoorWorkout") is True
 
-
-class TestMetadataEntryAccumulation:
-    """Test numeric accumulation in _process_metadata_entry."""
-
-    # pylint: disable=protected-access
-    def test_process_metadata_entry_accumulates_numeric_values(self) -> None:
-        """Test that numeric values with same key are accumulated (summed)."""
-        elem1 = Element("MetadataEntry", attrib={"key": "HKElevationAscended", "value": "100 m"})
-        elem2 = Element("MetadataEntry", attrib={"key": "HKElevationAscended", "value": "50 m"})
-
-        parser = ep.ExportParser()
-        record: ep.WorkoutRecord = {"activityType": "Running"}
-
-        parser._process_metadata_entry(elem1, record)  # type: ignore[misc]
-        # After first entry: should have ElevationAscended = 100.0
-        assert isinstance(record.get("ElevationAscended"), float)
-        assert record.get("ElevationAscended") == pytest.approx(100.0)  # type: ignore[misc]
-
-        parser._process_metadata_entry(elem2, record)  # type: ignore[misc]
-        # After second entry: should accumulate to 150.0
-        assert isinstance(record.get("ElevationAscended"), float)
-        assert record.get("ElevationAscended") == pytest.approx(150.0)  # type: ignore[misc]
-
     def test_process_metadata_entry_skips_interval_step_key(self) -> None:
         """Test that WOIntervalStepKeyPath is skipped."""
         elem = Element(

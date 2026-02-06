@@ -113,15 +113,20 @@ class TestComplexRealWorldWorkout:
     def test_metadata_accumulated_when_present_at_multiple_levels(
         self, create_health_zip: Callable[..., str]
     ) -> None:
-        """Test that numeric metadata entries appearing at both WorkoutActivity and Workout
-        levels are accumulated (summed).
+        """Test that duplicate metadata entries at the top-level Workout are not processed twice.
 
-        The workout_running.xml fixture has duplicate MetadataEntry elements:
-        - Some appear inside <WorkoutActivity> elements
-        - The same entries also appear at the top <Workout> level
+        The workout_running.xml fixture has duplicate MetadataEntry elements at the top-level
+        <Workout> element:
+        - First set appears before <WorkoutActivity> (lines 2-7)
+        - Same entries appear again after <WorkoutActivity> (lines 66-71)
+        - The <WorkoutActivity> contains only one metadata key "WOIntervalStepKeyPath" which is
+          skipped by the parser and doesn't overlap with top-level metadata
 
-        The parser processes metadata at both levels and accumulates numeric values
-        (e.g., 6400% becomes 64.0 twice -> 64.0 + 64.0 = 128.0).
+        The parser should process each unique metadata key only once with its original value,
+        not accumulate or double the values when encountering the same key multiple times.
+
+        This test currently fails because the parser processes top-level metadata multiple times,
+        causing values to be doubled (e.g., 6400% becomes 64.0 twice -> 128.0).
         """
 
         xml_content = build_health_export_xml([load_export_fragment("workout_running.xml")])
@@ -134,9 +139,9 @@ class TestComplexRealWorldWorkout:
         assert len(workouts) == 1
         workout = workouts.iloc[0]
 
-        # Test metadata that appears at both WorkoutActivity and top-level Workout
-        # Original value: "6400 %" appears twice -> 64.0 + 64.0 = 128.0 (accumulated)
-        assert workout["WeatherHumidity"] == pytest.approx(128.0, abs=0.001)  # type: ignore[misc]
+        # Test metadata that appears twice at top-level Workout (before and after WorkoutActivity)
+        # Original value: "6400 %" -> should be 64.0, NOT 128.0 (doubled)
+        assert workout["WeatherHumidity"] == pytest.approx(64.0, abs=0.001)  # type: ignore[misc]
 
         # Original value: "6575 cm" appears twice -> 65.75 + 65.75 = 131.5 m (accumulated)
         assert workout["ElevationAscended"] == pytest.approx(131.5, abs=0.01)  # type: ignore[misc]
