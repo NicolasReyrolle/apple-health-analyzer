@@ -1,0 +1,103 @@
+<Workout workoutActivityType="HKWorkoutActivityTypeSwimming" duration="39.12815843423208" durationUnit="min" sourceName="Apple Watch" sourceVersion="11.6.1" device="&lt;&lt;HKDevice: 0xc937f6fa0&gt;, name:Apple Watch, manufacturer:Apple Inc., model:Watch, hardware:Watch7,2, software:11.6.1, creation date:2025-08-14 23:49:07 +0000&gt;" creationDate="2025-09-13 16:18:26 +0100" startDate="2025-09-13 15:39:17 +0100" endDate="2025-09-13 16:18:24 +0100">
+  <MetadataEntry key="HKLapLength" value="50 m"/>
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Luxembourg"/>
+  <MetadataEntry key="HKSwimmingLocationType" value="1"/>
+  <MetadataEntry key="HKAverageMETs" value="6.52565 kcal/hr-kg"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 15:39:17 +0100" duration="2.565596975882848" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="105.7867826223373"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:39:24 +0100" duration="1.096330326795578" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="96.77981960773468"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:40:32 +0100" duration="1.313229093949" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="114.79374563694"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:43:58 +0100" duration="1.284610609213511" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="113.0766365528107"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 15:43:58 +0100" duration="2.627101369698842" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="113.3250246047974"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:45:17 +0100" duration="1.309556877613068" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="113.5734126567841"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:46:48 +0100" duration="1.406862123807271" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="124.4117274284363"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 15:46:48 +0100" duration="2.803910994529724" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="122.9127463102341"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:48:13 +0100" duration="1.390229419867198" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="121.4137651920319"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:51:26 +0100" duration="1.298752246300379" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="114.9251347780228"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 15:51:26 +0100" duration="2.656549125909805" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="115.5566905736923"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:52:44 +0100" duration="1.353137439489365" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="116.1882463693619"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 15:58:44 +0100" duration="1.144728014866511" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="2"/>
+   <MetadataEntry key="HKSWOLFScore" value="94.68368089199066"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 15:58:44 +0100" duration="1.144728014866511" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="94.68368089199066"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 16:01:14 +0100" duration="1.327356433868408" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="120.6413860321045"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 16:01:14 +0100" duration="1.327356433868408" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="120.6413860321045"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 16:06:15 +0100" duration="1.347311659653982" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="118.8386995792389"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 16:06:15 +0100" duration="2.720741947491964" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="117.745030105114"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 16:07:38 +0100" duration="1.327522677183151" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="116.6513606309891"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 16:13:05 +0100" duration="1.362115430831909" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="122.7269258499146"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 16:13:05 +0100" duration="1.362115430831909" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="122.7269258499146"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 16:15:09 +0100" duration="1.280777303377787" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="4"/>
+   <MetadataEntry key="HKSWOLFScore" value="111.8466382026672"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-13 16:15:09 +0100" duration="1.543126481771469" durationUnit="min">
+   <MetadataEntry key="HKSWOLFScore" value="111.8466382026672"/>
+  </WorkoutEvent>
+  <WorkoutEvent type="HKWorkoutEventTypeLap" date="2025-09-13 16:16:29 +0100" duration="0.20525723695755" durationUnit="min">
+   <MetadataEntry key="HKSwimmingStrokeStyle" value="0"/>
+  </WorkoutEvent>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceSwimming" startDate="2025-09-13 15:39:17 +0100" endDate="2025-09-13 16:18:24 +0100" sum="750" unit="m"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierSwimmingStrokeCount" startDate="2025-09-13 15:39:17 +0100" endDate="2025-09-13 16:18:24 +0100" sum="509" unit="count"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierBasalEnergyBurned" startDate="2025-09-13 15:39:17 +0100" endDate="2025-09-13 16:18:24 +0100" sum="68.55" unit="kcal"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2025-09-13 15:39:17 +0100" endDate="2025-09-13 16:18:24 +0100" sum="277.588" unit="kcal"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierHeartRate" startDate="2025-09-13 15:39:17 +0100" endDate="2025-09-13 16:18:24 +0100" average="102.834" minimum="80" maximum="133" unit="count/min"/>
+  <MetadataEntry key="HKLapLength" value="50 m"/>
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Luxembourg"/>
+  <MetadataEntry key="HKSwimmingLocationType" value="1"/>
+  <MetadataEntry key="HKAverageMETs" value="6.52565 kcal/hr-kg"/>
+</Workout>

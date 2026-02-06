@@ -1,5 +1,7 @@
 """Export processor for Apple Health data."""
 
+import logging
+
 from datetime import datetime
 from types import TracebackType
 from typing import Any, List, Optional, Tuple, Type, TypedDict
@@ -120,7 +122,8 @@ class ExportParser:
         return val, unit
 
     @staticmethod
-    def _duration_to_seconds(value: float, unit: str = "min") -> int:
+    def duration_to_seconds(value: float, unit: str = "min") -> int:
+        """Convert duration to seconds based on the unit."""
         if unit == "min" or unit == "":
             return int(value * 60)
         elif unit == "h":
@@ -171,7 +174,7 @@ class ExportParser:
         return {
             "activityType": activity_type,
             "duration": (
-                self._duration_to_seconds(float(duration_str), duration_unit_str)
+                self.duration_to_seconds(float(duration_str), duration_unit_str)
                 if duration_str
                 else None
             ),
@@ -195,7 +198,8 @@ class ExportParser:
             elif child.tag == "WorkoutRoute":
                 self._process_workout_route(child, record, zipfile)
 
-    def _str_distance_to_meters(self, value: str, unit: Optional[str]) -> int:
+    @staticmethod
+    def str_distance_to_meters(value: str, unit: Optional[str]) -> int:
         """Convert distance to meters."""
         if unit is None:
             raise ValueError("Distance unit is missing (None). Cannot convert to meters.")
@@ -216,7 +220,7 @@ class ExportParser:
                 stat_attr_str = child.get(stat_attr) or "0"
                 # Consolidate all distance types into a single Distance field
                 if stat_attr == "sum" and "Distance" in stat_type:
-                    record["distance"] = self._str_distance_to_meters(
+                    record["distance"] = self.str_distance_to_meters(
                         stat_attr_str, child.get("unit")
                     )
                 else:
@@ -273,17 +277,9 @@ class ExportParser:
 
         value, unit = self._parse_value(child.get("value", ""))
 
-        # If the key already exists and both current and new values are numeric (but not bool),
-        # sum them
-        # Note: bool is a subclass of int, so we must explicitly exclude it
-        if (
-            key in record
-            and isinstance(record[key], (int, float))
-            and not isinstance(record[key], bool)
-            and isinstance(value, (int, float))
-            and not isinstance(value, bool)
-        ):
-            record[key] = record[key] + value
+        # If the key already exists, do not consider it as there can be duplicate in the real file
+        if key in record:
+            logging.debug("Duplicate key '%s' found, bypassing the second one", key)
         else:
             record[key] = value
             if unit:
