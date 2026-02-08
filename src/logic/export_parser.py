@@ -11,6 +11,9 @@ from zipfile import ZipFile
 from nicegui import ui
 import pandas as pd
 
+# Configuration constants
+WORKOUT_PROGRESS_INTERVAL = 100  # Report progress every N workouts
+
 
 class WorkoutRecordRequired(TypedDict):
     """Required fields for workout record."""
@@ -154,11 +157,18 @@ class ExportParser:
                     self._process_workout_children(elem, record, zipfile)
                     rows.append(record)
 
+                    # Report progress every N workouts
+                    if len(rows) % WORKOUT_PROGRESS_INTERVAL == 0:
+                        self._log(f"Processed {len(rows)} workouts...")
+
                     elem.clear()
 
             result = pd.DataFrame(rows)
             if len(result) > 0:
                 result["startDate"] = pd.to_datetime(result["startDate"]).dt.tz_localize(None)
+
+            # Log final count
+            self._log(f"Loaded {len(result)} workouts total.")
 
             return result
 

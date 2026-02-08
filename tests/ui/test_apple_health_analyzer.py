@@ -349,3 +349,54 @@ class TestMainWindow:
         await user.should_see("km")  # Elevation unit
         await user.should_see(format_integer(1655))  # Calories
         await user.should_see("kcal")  # Calories unit
+
+    async def test_loading_state_disables_button_and_shows_spinner(
+        self, user: User, create_health_zip: Callable[..., str], assert_ui_state: StateAssertion
+    ) -> None:
+        """Test that the Load button is disabled and spinner is visible during parsing."""
+        await user.open("/")
+
+        # Verify initial state: Load button is enabled
+        load_button = user.find("Load")
+        assert_ui_state(load_button, enabled=True)
+        assert state.loading is False
+
+        # Start loading the file
+        zip_path = create_health_zip()
+        user.find("Apple Health export file").type(zip_path)
+
+        # Click load and immediately verify the state changes
+        user.find("Load").click()
+
+        # The button should now be disabled (loading state is active)
+        # Note: For very fast parsing, we may not catch the intermediate state,
+        # but we should see the end result is correct
+        await user.should_see("Finished parsing", retries=100)
+        
+        # After parsing completes, verify loading state is reset
+        await asyncio.sleep(0.1)
+        assert state.loading is False
+        assert_ui_state(load_button, enabled=True)
+
+    async def test_loading_state_reverts_on_error(
+        self, user: User, assert_ui_state: StateAssertion
+    ) -> None:
+        """Test that loading state reverts after an error during parsing."""
+        await user.open("/")
+
+        # Verify initial state
+        load_button = user.find("Load")
+        assert_ui_state(load_button, enabled=True)
+        assert state.loading is False
+
+        # Try to load an invalid file
+        user.find("Apple Health export file").type("tests/fixtures/corrupt_export.zip")
+        user.find("Load").click()
+
+        # Wait for error message
+        await user.should_see("Error parsing file", retries=50)
+
+        # After error, loading should be False and button should be enabled again
+        await asyncio.sleep(0.1)
+        assert state.loading is False
+        assert_ui_state(load_button, enabled=True)

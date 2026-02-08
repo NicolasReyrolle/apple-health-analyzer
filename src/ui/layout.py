@@ -1,7 +1,7 @@
 """UI layout components for Apple Health Analyzer application."""
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
+import time
 
 from nicegui import app, ui
 
@@ -159,14 +159,15 @@ async def load_file() -> None:
         ui.notify("Please select an Apple Health export file first.")
         return
 
+    state.loading = True
+    start_time = time.perf_counter()
+
     try:
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as executor:
-            await loop.run_in_executor(
-                executor,
-                lambda: load_workouts_from_file(state.input_file.value),
-            )
+        await asyncio.to_thread(load_workouts_from_file, state.input_file.value)
+
+        elapsed = time.perf_counter() - start_time
         state.log.push(state.workouts.get_statistics())
+        state.log.push(f"Finished parsing in {elapsed:.1f} seconds.")
         ui.notify("File parsed successfully.")
         state.file_loaded = True
         activity_types = state.workouts.get_activity_types()
@@ -176,6 +177,8 @@ async def load_file() -> None:
         refresh_data()
     except Exception as e:  # pylint: disable=broad-except
         ui.notify(f"Error parsing file: {e}")
+    finally:
+        state.loading = False
 
 
 def render_body() -> None:
@@ -192,7 +195,10 @@ def render_body() -> None:
         ui.button("Browse", on_click=pick_file, icon="folder_open")
 
     with ui.row().classes("w-full items-center"):
-        ui.button("Load", on_click=load_file, icon="play_arrow").classes("flex-grow")
+        ui.button("Load", on_click=load_file, icon="play_arrow").classes(
+            "flex-grow"
+        ).bind_enabled_from(state, "loading", backward=lambda loading: not loading)
+        ui.spinner(size="lg").bind_visibility_from(state, "loading")
 
     with ui.tabs().classes("w-full") as tabs:
         tab_summary = ui.tab("Overview")
