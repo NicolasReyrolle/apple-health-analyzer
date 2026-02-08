@@ -364,10 +364,10 @@ class TestMainWindow:
         # Start loading the file
         zip_path = create_health_zip()
         user.find("Apple Health export file").type(zip_path)
-        
+
         # Click load and immediately verify the state changes
         user.find("Load").click()
-        
+
         # The button should now be disabled (loading state is active)
         # Note: For very fast parsing, we may not catch the intermediate state,
         # but we should see the end result is correct
