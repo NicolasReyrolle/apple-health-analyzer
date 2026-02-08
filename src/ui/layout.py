@@ -160,12 +160,12 @@ async def load_file() -> None:
         return
 
     state.loading = True
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     try:
         await asyncio.to_thread(load_workouts_from_file, state.input_file.value)
 
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
         state.log.push(state.workouts.get_statistics())
         state.log.push(f"Finished parsing in {elapsed:.1f} seconds.")
         ui.notify("File parsed successfully.")

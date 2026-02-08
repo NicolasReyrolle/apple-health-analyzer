@@ -11,6 +11,9 @@ from zipfile import ZipFile
 from nicegui import ui
 import pandas as pd
 
+# Configuration constants
+WORKOUT_PROGRESS_INTERVAL = 100  # Report progress every N workouts
+
 
 class WorkoutRecordRequired(TypedDict):
     """Required fields for workout record."""
@@ -145,7 +148,6 @@ class ExportParser:
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
             rows: List[WorkoutRecord] = []
-            progress_interval = 100
 
             for event, elem in iterparse(export_file, events=("start", "end")):
                 if event == "end" and elem.tag == "Workout":
@@ -156,7 +158,7 @@ class ExportParser:
                     rows.append(record)
 
                     # Report progress every N workouts
-                    if len(rows) % progress_interval == 0:
+                    if len(rows) % WORKOUT_PROGRESS_INTERVAL == 0:
                         self._log(f"Processed {len(rows)} workouts...")
 
                     elem.clear()
