@@ -114,9 +114,9 @@ class WorkoutManager:
 
         # Apply transformation
         transformed = transformation(grouped)
-        result_float: Dict[str, float] = transformed.astype(  # type: ignore[reportUnknownMemberType]
+        result_float: Dict[str, float] = transformed.astype(
             float
-        ).to_dict()
+        ).to_dict()  # type: ignore[reportUnknownMemberType]
 
         # Apply grouping if threshold > 0
         if combination_threshold > 0:
