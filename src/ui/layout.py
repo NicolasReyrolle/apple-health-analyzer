@@ -39,6 +39,8 @@ def refresh_data() -> None:
     state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
 
+    render_activity_graphs.refresh()
+
 
 def _update_activity_filter(new_value: str) -> None:
     """Update the selected activity type filter and refresh derived metrics.
@@ -136,6 +138,31 @@ def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):
                 ui.label(unit).classes("text-xs text-gray-400")
 
 
+def render_pie_rose_graph(label: str, values: dict[str, int], unit: str = "") -> None:
+    """Render a pie/rose graph for the given values."""
+
+    # Transform dictionary data into ECharts format: [{'value': x, 'name': y}, ...]
+    chart_data = [{"value": v, "name": k} for k, v in values.items()]
+
+    with ui.card().classes("w-100 h-100 items-center justify-center shadow-sm"):
+        ui.label(label).classes("text-sm text-gray-500 uppercase")
+        ui.echart(
+            {
+                "tooltip": {"trigger": "item", "formatter": f"{{b}}: {{c}} {unit} ({{d}}%)"},
+                "series": [
+                    {
+                        "type": "pie",
+                        "name": label,
+                        "data": chart_data,
+                        "roseType": "rose",
+                        "radius": ["10", "60"],
+                        "center": ["50%", "50%"],
+                    },
+                ],
+            }
+        )
+
+
 async def pick_file() -> None:
     """Open a file picker dialog to select the Apple Health export file."""
     result: list[str] = await LocalFilePicker("~", multiple=False, file_filter=".zip")
@@ -202,7 +229,7 @@ def render_body() -> None:
 
     with ui.tabs().classes("w-full") as tabs:
         tab_summary = ui.tab("Overview")
-        ui.tab("Activities").props("disable")
+        tab_activities = ui.tab("Activities").bind_enabled_from(state, "file_loaded")
         ui.tab("Health Data").props("disable")
         ui.tab("Trends").props("disable")
 
@@ -215,3 +242,27 @@ def render_body() -> None:
                 stat_card("Elevation", state.metrics_display, "elevation", "km")
             with ui.row().classes("w-full justify-center gap-4"):
                 stat_card("Calories", state.metrics_display, "calories", "kcal")
+
+        with ui.tab_panel(tab_activities):
+            render_activity_graphs()
+
+
+@ui.refreshable
+def render_activity_graphs():
+    """Render graphs by activity type."""
+    with ui.row().classes("w-full justify-center gap-4"):
+        render_pie_rose_graph("Count by activity", state.workouts.get_count_by_activity())
+        render_pie_rose_graph(
+            "Distance by activity", state.workouts.get_distance_by_activity(), "km"
+        )
+    with ui.row().classes("w-full justify-center gap-4"):
+        render_pie_rose_graph(
+            "Calories by activity", state.workouts.get_calories_by_activity(), "kcal"
+        )
+        render_pie_rose_graph(
+            "Duration by activity", state.workouts.get_duration_by_activity(), "h"
+        )
+    with ui.row().classes("w-full justify-center gap-4"):
+        render_pie_rose_graph(
+            "Elevation by activity", state.workouts.get_elevation_by_activity(), "km"
+        )

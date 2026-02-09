@@ -1,7 +1,7 @@
 """Module to manage workout data and metrics."""
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Mapping
 
 import pandas as pd
 
@@ -57,18 +57,24 @@ class WorkoutManager:
 
         if "distance" in workouts.columns:
             total_distance_meters = workouts["distance"].sum()
-            if unit == "km":
-                result = total_distance_meters / 1000
-            elif unit == "m":
-                result = total_distance_meters
-            elif unit == "mi":
-                result = total_distance_meters / 1609.34
-            else:
-                raise ValueError(f"Unsupported unit: {unit}")
+            result = self.convert_distance(unit, total_distance_meters)
         else:
             result = 0
 
         return int(round(result))
+
+    def convert_distance(self, unit: str, total_distance_meters: float) -> float:
+        """Convert distance in meters to the specified unit."""
+        if unit == "km":
+            result = total_distance_meters / 1000
+        elif unit == "m":
+            result = total_distance_meters
+        elif unit == "mi":
+            result = total_distance_meters / 1609.34
+        else:
+            raise ValueError(f"Unsupported unit: {unit}")
+
+        return result
 
     def get_total_duration(self, activity_type: str = "All") -> int:
         """Return the total duration of workouts in hours rounded to the nearest integer"""
@@ -113,6 +119,212 @@ class WorkoutManager:
             return int(round(workouts["sumActiveEnergyBurned"].sum()))
 
         return 0
+
+    def get_calories_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+        """Return a dictionary mapping activity types to total calories burned.
+        Activities that represent less than the combination_threshold percentage of total calories
+        are grouped into an "Others" category."""
+        if (
+            "activityType" in self.workouts.columns
+            and "sumActiveEnergyBurned" in self.workouts.columns
+        ):
+            result_float: Dict[str, float] = (
+                self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
+                    "sumActiveEnergyBurned"
+                ]
+                .sum()
+                .round()
+                .astype(float)
+                .to_dict()
+            )
+            if combination_threshold > 0:
+                result_float = self.group_small_values(
+                    result_float, threshold_percent=combination_threshold
+                )
+            # Round after grouping
+            result: Dict[str, int] = {
+                activity: int(round(calories)) for activity, calories in result_float.items()
+            }
+
+            # Filter out zero values
+            result = {k: v for k, v in result.items() if v > 0}
+
+            return result
+        return {}
+
+    def get_distance_by_activity(
+        self, unit: str = "km", combination_threshold: float = 10.0
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping activity types to total distance.
+        Activities that represent less than the combination_threshold percentage of total distance
+        are grouped into an "Others" category."""
+        if "activityType" in self.workouts.columns and "distance" in self.workouts.columns:
+            grouped = self.workouts.groupby(  # type: ignore[reportUnknownMemberType]
+                "activityType"
+            )["distance"].sum()
+            if grouped.empty:
+                return {}
+            # Convert distances to the requested unit, then apply grouping before rounding
+            converted: Mapping[str, float] = {
+                activity: self.convert_distance(unit, distance)
+                for activity, distance in grouped.items()  # type: ignore[reportUnknownMemberType]
+            }
+            if combination_threshold > 0:
+                converted = self.group_small_values(
+                    converted, threshold_percent=combination_threshold
+                )
+            # Round after grouping so small values that sum together round correctly
+            result: Dict[str, int] = {
+                activity: int(round(distance)) for activity, distance in converted.items()
+            }
+
+            # Filter out zero values
+            result = {k: v for k, v in result.items() if v > 0}
+
+            return result
+        return {}
+
+    def get_count_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+        """Return a dictionary mapping activity types to workout counts.
+        Activities that represent less than the combination_threshold percentage of total count
+        are grouped into an "Others" category."""
+        if "activityType" in self.workouts.columns:
+            result_float: Mapping[str, float] = (
+                self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
+                    "activityType"
+                ]
+                .count()
+                .astype(float)
+                .to_dict()
+            )
+            if combination_threshold > 0:
+                result_float = self.group_small_values(
+                    result_float, threshold_percent=combination_threshold
+                )
+            # Round after grouping
+            result: Dict[str, int] = {
+                activity: int(round(count)) for activity, count in result_float.items()
+            }
+
+            # Filter out zero values
+            result = {k: v for k, v in result.items() if v > 0}
+
+            return result
+        return {}
+
+    def get_duration_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+        """Return a dictionary mapping activity types to total duration.
+        Activities that represent less than the combination_threshold percentage of total duration
+        are grouped into an "Others" category."""
+        if "activityType" in self.workouts.columns and "duration" in self.workouts.columns:
+            grouped = (
+                self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
+                    "duration"
+                ]
+                .sum()
+                .div(3600)
+            )  # Convert to hours
+            if grouped.empty:
+                return {}
+            result: Dict[str, int] = grouped.to_dict()  # type: ignore[reportUnknownMemberType]
+            if combination_threshold > 0:
+                float_result: Dict[str, float] = {k: float(v) for k, v in result.items()}
+                grouped_float_result = self.group_small_values(
+                    float_result, threshold_percent=combination_threshold
+                )
+                result = {k: int(round(v)) for k, v in grouped_float_result.items()}
+
+            # Filter out zero values
+            result = {k: v for k, v in result.items() if v > 0}
+
+            return result
+        return {}
+
+    def get_elevation_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+        """Return a dictionary mapping activity types to total elevation gain.
+        Activities that represent less than the combination_threshold percentage of total elevation
+        are grouped into an "Others" category."""
+        if "activityType" in self.workouts.columns and "ElevationAscended" in self.workouts.columns:
+            result_float: Dict[str, float] = (
+                self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
+                    "ElevationAscended"
+                ]
+                .sum()
+                .div(1000)  # Convert to kilometers
+                .astype(float)
+                .to_dict()
+            )
+            if combination_threshold > 0:
+                result_float = self.group_small_values(
+                    result_float, threshold_percent=combination_threshold
+                )
+            # Round after grouping
+            result: Dict[str, int] = {
+                activity: int(round(count)) for activity, count in result_float.items()
+            }
+
+            return result
+        return {}
+
+    def group_small_values(
+        self,
+        data: Mapping[str, float],
+        threshold_percent: float = 10.0,
+        others_label: str = "Others",
+    ) -> Dict[str, float]:
+        """Group smallest values whose cumulative sum is below threshold into a single category.
+
+        Accumulates the smallest values until their cumulative sum would exceed the threshold
+        percentage of the total, and combines them into a single category (default: "Others").
+
+        Args:
+            data: Dictionary mapping keys to numeric values
+            threshold_percent: Percentage threshold (0-100) below which smallest values
+                are accumulated and grouped. Defaults to 10.0.
+            others_label: Label for the grouped small values. Defaults to "Others".
+
+        Returns:
+            Dictionary with small values grouped under the others_label.
+
+        Example:
+            >>> data = {"A": 100, "B": 50, "C": 5, "D": 3}
+            >>> manager.group_small_values(data, threshold_percent=10.0)
+            {"A": 100, "B": 50, "Others": 8}  # C(5) + D(3) cumulative sum = 8 < 10% of 158
+        """
+        if not data:
+            return {}
+
+        # Calculate total
+        total = sum(data.values())
+
+        if total == 0:
+            return dict(data)
+
+        # Calculate threshold value
+        threshold_value = total * (threshold_percent / 100.0)
+
+        # Sort items by value (smallest first)
+        sorted_items = sorted(data.items(), key=lambda x: x[1])
+
+        # Accumulate smallest values while cumulative sum <= threshold
+        result: Dict[str, float] = {}
+        others_sum = 0.0
+        cumulative_sum = 0.0
+
+        for key, value in sorted_items:
+            if cumulative_sum + value <= threshold_value:
+                # This value can be added to "Others"
+                others_sum += value
+                cumulative_sum += value
+            else:
+                # This and all remaining values are large enough to stay separate
+                result[key] = value
+
+        # Add "Others" category if there are small values
+        if others_sum > 0:
+            result[others_label] = others_sum
+
+        return result
 
     def get_workouts(self) -> pd.DataFrame:
         """Return the DataFrame of workouts."""
