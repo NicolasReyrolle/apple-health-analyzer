@@ -144,7 +144,7 @@ def render_pie_rose_graph(label: str, values: dict[str, int], unit: str = "") ->
     # Transform dictionary data into ECharts format: [{'value': x, 'name': y}, ...]
     chart_data = [{"value": v, "name": k} for k, v in values.items()]
 
-    with ui.card().classes("w-100 h-100 items-center justify-center shadow-sm"):
+    with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
         ui.label(label).classes("text-sm text-gray-500 uppercase")
         ui.echart(
             {
