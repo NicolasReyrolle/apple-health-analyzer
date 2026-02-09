@@ -1,9 +1,10 @@
 """Module to manage workout data and metrics."""
 
 import json
-from typing import Any, Dict, List, Optional, Mapping
+from typing import Any, Callable, Dict, List, Optional, Mapping
 
 import pandas as pd
+from pandas.core.groupby.generic import SeriesGroupBy
 
 
 class WorkoutManager:
@@ -33,11 +34,108 @@ class WorkoutManager:
             return []
         return self.workouts["activityType"].dropna().unique().tolist()
 
+    def _filter_by_activity(self, activity_type: str = "All") -> pd.DataFrame:
+        """Filter workouts by activity type. Returns all workouts if activity_type is 'All'."""
+        if activity_type != "All":
+            return self.workouts[self.workouts["activityType"] == activity_type]
+        return self.workouts
+
+    def _get_filtered_columns(self, exclude_columns: Optional[set[str]] = None) -> List[str]:
+        """Return list of columns after applying exclusion filters."""
+        excluded = exclude_columns if exclude_columns is not None else self.DEFAULT_EXCLUDED_COLUMNS
+        return [col for col in self.workouts.columns if col not in excluded]
+
+    def _get_distance_divisor(self, unit: str) -> float:
+        """Get the divisor for distance conversion based on unit."""
+        if unit == "km":
+            return 1000
+        elif unit == "m":
+            return 1
+        elif unit == "mi":
+            return 1609.34
+        else:
+            raise ValueError(f"Unsupported unit: {unit}")
+
+    def _get_aggregate_total(
+        self,
+        activity_type: str,
+        column: str,
+        divisor: float = 1.0,
+        default: int = 0,
+    ) -> int:
+        """Generic method to calculate total for any column with optional unit conversion.
+
+        Args:
+            activity_type: Filter by activity type ("All" for all)
+            column: Column name to aggregate
+            divisor: Divide the sum by this value (for unit conversion)
+            default: Value to return if column doesn't exist
+
+        Returns:
+            Rounded total in the specified unit
+        """
+        workouts = self._filter_by_activity(activity_type)
+        if column not in workouts.columns:
+            return default
+        total = workouts[column].sum() / divisor
+        return int(round(total))
+
+    def _aggregate_by_activity(
+        self,
+        column: str,
+        aggregation: Callable[[SeriesGroupBy[Any, Any]], pd.Series],
+        transformation: Callable[[pd.Series], pd.Series],
+        column_check: Optional[str] = None,
+        filter_zeros: bool = True,
+        combination_threshold: float = 10.0,
+    ) -> Dict[str, int]:
+        """Generic method to aggregate metrics by activity type.
+
+        Args:
+            column: Column name to aggregate
+            aggregation: Function to apply for aggregating (e.g., lambda x: x.sum())
+            transformation: Function to apply to the aggregated series (e.g., .div(3600))
+            column_check: Additional column to check exists (defaults to column)
+            filter_zeros: Whether to filter out zero values
+            combination_threshold: Threshold for grouping small values
+
+        Returns:
+            Dictionary mapping activity types to aggregated values
+        """
+        column_check = column_check or column
+        if "activityType" not in self.workouts.columns or column_check not in self.workouts.columns:
+            return {}
+
+        grouped = aggregation(
+            self.workouts.groupby("activityType")[column]  # type: ignore[reportUnknownMemberType]
+        )
+        if grouped.empty:
+            return {}
+
+        # Apply transformation
+        transformed = transformation(grouped)
+        result_float: Dict[str, float] = transformed.astype(  # type: ignore[reportUnknownMemberType]
+            float
+        ).to_dict()
+
+        # Apply grouping if threshold > 0
+        if combination_threshold > 0:
+            result_float = self.group_small_values(
+                result_float, threshold_percent=combination_threshold
+            )
+
+        # Round to integers
+        result: Dict[str, int] = {k: int(round(v)) for k, v in result_float.items()}
+
+        # Filter zero values if needed
+        if filter_zeros:
+            result = {k: v for k, v in result.items() if v > 0}
+
+        return result
+
     def count(self, activity_type: str = "All") -> int:
         """Return the number of workouts."""
-        if activity_type != "All":
-            return len(self.workouts[self.workouts["activityType"] == activity_type])
-        return len(self.workouts)
+        return len(self._filter_by_activity(activity_type))
 
     def get_total_distance(self, activity_type: str = "All", unit: str = "km") -> int:
         """Return the total distance optionally per activity_type, and in the given unit.
@@ -50,56 +148,24 @@ class WorkoutManager:
         Returns:
             int: Total distance in the specified unit.
         """
-        if activity_type != "All":
-            workouts = self.workouts[self.workouts["activityType"] == activity_type]
-        else:
-            workouts = self.workouts
-
-        if "distance" in workouts.columns:
-            total_distance_meters = workouts["distance"].sum()
-            result = self.convert_distance(unit, total_distance_meters)
-        else:
-            result = 0
-
-        return int(round(result))
+        divisor = self._get_distance_divisor(unit)
+        return self._get_aggregate_total(activity_type, "distance", divisor=divisor)
 
     def convert_distance(self, unit: str, total_distance_meters: float) -> float:
         """Convert distance in meters to the specified unit."""
-        if unit == "km":
-            result = total_distance_meters / 1000
-        elif unit == "m":
-            result = total_distance_meters
-        elif unit == "mi":
-            result = total_distance_meters / 1609.34
-        else:
-            raise ValueError(f"Unsupported unit: {unit}")
-
-        return result
+        divisor = self._get_distance_divisor(unit)
+        return total_distance_meters / divisor
 
     def get_total_duration(self, activity_type: str = "All") -> int:
         """Return the total duration of workouts in hours rounded to the nearest integer"""
-        if activity_type != "All":
-            workouts = self.workouts[self.workouts["activityType"] == activity_type]
-        else:
-            workouts = self.workouts
-
-        if "duration" in workouts.columns:
-            return int(round(workouts["duration"].sum() / 3600))
-
-        return 0
+        return self._get_aggregate_total(activity_type, "duration", divisor=3600)
 
     def get_total_elevation(self, activity_type: str = "All") -> int:
-        """Return the total elevation gain of workouts in kilometers
-        rounded to the nearest integer."""
-        if activity_type != "All":
-            workouts = self.workouts[self.workouts["activityType"] == activity_type]
-        else:
-            workouts = self.workouts
-
-        if "ElevationAscended" in workouts.columns:
-            return int(round(workouts["ElevationAscended"].sum() / 1000))
-
-        return 0
+        """
+        Return the total elevation gain of workouts in kilometers
+        rounded to the nearest integer.
+        """
+        return self._get_aggregate_total(activity_type, "ElevationAscended", divisor=1000)
 
     def get_total_calories(self, activity_type: str = "All") -> int:
         """Return the total calories burned of workouts.
@@ -110,47 +176,18 @@ class WorkoutManager:
         Returns:
             int: Total calories burned in kilocalories, rounded to the nearest integer.
         """
-        if activity_type != "All":
-            workouts = self.workouts[self.workouts["activityType"] == activity_type]
-        else:
-            workouts = self.workouts
-
-        if "sumActiveEnergyBurned" in workouts.columns:
-            return int(round(workouts["sumActiveEnergyBurned"].sum()))
-
-        return 0
+        return self._get_aggregate_total(activity_type, "sumActiveEnergyBurned")
 
     def get_calories_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total calories burned.
         Activities that represent less than the combination_threshold percentage of total calories
         are grouped into an "Others" category."""
-        if (
-            "activityType" in self.workouts.columns
-            and "sumActiveEnergyBurned" in self.workouts.columns
-        ):
-            result_float: Dict[str, float] = (
-                self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
-                    "sumActiveEnergyBurned"
-                ]
-                .sum()
-                .round()
-                .astype(float)
-                .to_dict()
-            )
-            if combination_threshold > 0:
-                result_float = self.group_small_values(
-                    result_float, threshold_percent=combination_threshold
-                )
-            # Round after grouping
-            result: Dict[str, int] = {
-                activity: int(round(calories)) for activity, calories in result_float.items()
-            }
-
-            # Filter out zero values
-            result = {k: v for k, v in result.items() if v > 0}
-
-            return result
-        return {}
+        return self._aggregate_by_activity(
+            "sumActiveEnergyBurned",
+            lambda x: x.sum(),
+            lambda x: x.round(),
+            combination_threshold=combination_threshold,
+        )
 
     def get_distance_by_activity(
         self, unit: str = "km", combination_threshold: float = 10.0
@@ -158,113 +195,65 @@ class WorkoutManager:
         """Return a dictionary mapping activity types to total distance.
         Activities that represent less than the combination_threshold percentage of total distance
         are grouped into an "Others" category."""
-        if "activityType" in self.workouts.columns and "distance" in self.workouts.columns:
-            grouped = self.workouts.groupby(  # type: ignore[reportUnknownMemberType]
-                "activityType"
-            )["distance"].sum()
-            if grouped.empty:
-                return {}
-            # Convert distances to the requested unit, then apply grouping before rounding
-            converted: Mapping[str, float] = {
-                activity: self.convert_distance(unit, distance)
-                for activity, distance in grouped.items()  # type: ignore[reportUnknownMemberType]
-            }
-            if combination_threshold > 0:
-                converted = self.group_small_values(
-                    converted, threshold_percent=combination_threshold
-                )
-            # Round after grouping so small values that sum together round correctly
-            result: Dict[str, int] = {
-                activity: int(round(distance)) for activity, distance in converted.items()
-            }
+        if "activityType" not in self.workouts.columns or "distance" not in self.workouts.columns:
+            return {}
 
-            # Filter out zero values
-            result = {k: v for k, v in result.items() if v > 0}
+        grouped = self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
+            "distance"
+        ].sum()
+        if grouped.empty:
+            return {}
 
-            return result
-        return {}
+        # Convert distances to requested unit
+        converted: Mapping[str, float] = {
+            activity: self.convert_distance(unit, distance)
+            for activity, distance in grouped.items()  # type: ignore[reportUnknownMemberType]
+        }
+
+        if combination_threshold > 0:
+            converted = self.group_small_values(converted, threshold_percent=combination_threshold)
+
+        result: Dict[str, int] = {
+            activity: int(round(distance)) for activity, distance in converted.items()
+        }
+        result = {k: v for k, v in result.items() if v > 0}
+
+        return result
 
     def get_count_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
         """Return a dictionary mapping activity types to workout counts.
         Activities that represent less than the combination_threshold percentage of total count
         are grouped into an "Others" category."""
-        if "activityType" in self.workouts.columns:
-            result_float: Mapping[str, float] = (
-                self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
-                    "activityType"
-                ]
-                .count()
-                .astype(float)
-                .to_dict()
-            )
-            if combination_threshold > 0:
-                result_float = self.group_small_values(
-                    result_float, threshold_percent=combination_threshold
-                )
-            # Round after grouping
-            result: Dict[str, int] = {
-                activity: int(round(count)) for activity, count in result_float.items()
-            }
-
-            # Filter out zero values
-            result = {k: v for k, v in result.items() if v > 0}
-
-            return result
-        return {}
+        return self._aggregate_by_activity(
+            "activityType",
+            lambda x: x.count(),
+            lambda x: x,
+            column_check="activityType",
+            combination_threshold=combination_threshold,
+        )
 
     def get_duration_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total duration.
         Activities that represent less than the combination_threshold percentage of total duration
         are grouped into an "Others" category."""
-        if "activityType" in self.workouts.columns and "duration" in self.workouts.columns:
-            grouped = (
-                self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
-                    "duration"
-                ]
-                .sum()
-                .div(3600)
-            )  # Convert to hours
-            if grouped.empty:
-                return {}
-            result: Dict[str, int] = grouped.to_dict()  # type: ignore[reportUnknownMemberType]
-            if combination_threshold > 0:
-                float_result: Dict[str, float] = {k: float(v) for k, v in result.items()}
-                grouped_float_result = self.group_small_values(
-                    float_result, threshold_percent=combination_threshold
-                )
-                result = {k: int(round(v)) for k, v in grouped_float_result.items()}
-
-            # Filter out zero values
-            result = {k: v for k, v in result.items() if v > 0}
-
-            return result
-        return {}
+        return self._aggregate_by_activity(
+            "duration",
+            lambda x: x.sum(),
+            lambda x: x.div(3600),
+            combination_threshold=combination_threshold,
+        )
 
     def get_elevation_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total elevation gain.
         Activities that represent less than the combination_threshold percentage of total elevation
         are grouped into an "Others" category."""
-        if "activityType" in self.workouts.columns and "ElevationAscended" in self.workouts.columns:
-            result_float: Dict[str, float] = (
-                self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
-                    "ElevationAscended"
-                ]
-                .sum()
-                .div(1000)  # Convert to kilometers
-                .astype(float)
-                .to_dict()
-            )
-            if combination_threshold > 0:
-                result_float = self.group_small_values(
-                    result_float, threshold_percent=combination_threshold
-                )
-            # Round after grouping
-            result: Dict[str, int] = {
-                activity: int(round(count)) for activity, count in result_float.items()
-            }
-
-            return result
-        return {}
+        return self._aggregate_by_activity(
+            "ElevationAscended",
+            lambda x: x.sum(),
+            lambda x: x.div(1000),
+            filter_zeros=False,
+            combination_threshold=combination_threshold,
+        )
 
     def group_small_values(
         self,
@@ -352,11 +341,7 @@ class WorkoutManager:
         Args:
             exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
         """
-        # Filter columns to exclude (default: routeFile and route)
-        excluded: set[str] = (
-            exclude_columns if exclude_columns is not None else self.DEFAULT_EXCLUDED_COLUMNS
-        )
-        cols_to_keep = [col for col in self.workouts.columns if col not in excluded]
+        cols_to_keep = self._get_filtered_columns(exclude_columns)
         df_filtered = self.workouts[cols_to_keep]
 
         # 1. Get the raw JSON string
@@ -404,16 +389,8 @@ class WorkoutManager:
             activity_type: Filter by activity type. "All" returns all activities.
             exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
         """
-        # Filter columns to exclude (default: routeFile and route)
-        excluded: set[str] = (
-            exclude_columns if exclude_columns is not None else self.DEFAULT_EXCLUDED_COLUMNS
-        )
-
-        # Filter workouts by activity type
-        if activity_type != "All":
-            filtered_workouts = self.workouts[self.workouts["activityType"] == activity_type]
-        else:
-            filtered_workouts = self.workouts
+        cols_to_keep = self._get_filtered_columns(exclude_columns)
+        filtered_workouts = self._filter_by_activity(activity_type)
 
         result: str = ""
 
@@ -427,11 +404,13 @@ class WorkoutManager:
                 "endDate",
                 "source",
             ]
+            excluded = (
+                exclude_columns if exclude_columns is not None else self.DEFAULT_EXCLUDED_COLUMNS
+            )
             cols_to_keep = [col for col in expected_columns if col not in excluded]
             empty_df = pd.DataFrame(columns=cols_to_keep)
             result = empty_df.to_csv(index=False)
         else:
-            cols_to_keep = [col for col in filtered_workouts.columns if col not in excluded]
             result = filtered_workouts[cols_to_keep].to_csv(index=False)
 
         return result
