@@ -4,7 +4,6 @@ import json
 from typing import Any, Callable, Dict, List, Optional, Mapping
 
 import pandas as pd
-from pandas.core.groupby.generic import SeriesGroupBy
 
 
 class WorkoutManager:
@@ -83,7 +82,7 @@ class WorkoutManager:
     def _aggregate_by_activity(
         self,
         column: str,
-        aggregation: Callable[[SeriesGroupBy[Any, Any]], pd.Series],
+        aggregation: Callable[[Any], pd.Series],
         transformation: Callable[[pd.Series], pd.Series],
         column_check: Optional[str] = None,
         filter_zeros: bool = True,
@@ -185,7 +184,7 @@ class WorkoutManager:
         return self._aggregate_by_activity(
             "sumActiveEnergyBurned",
             lambda x: x.sum(),
-            lambda x: x.round(),
+            lambda x: x,
             combination_threshold=combination_threshold,
         )
 

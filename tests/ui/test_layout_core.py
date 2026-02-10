@@ -1,12 +1,13 @@
 """Tests for ui.layout core behaviors not covered by integration tests."""
 
 from __future__ import annotations
-from typing import Any
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from app_state import state
 from ui import layout
+
 
 def test_render_activity_graphs_renders_all_charts() -> None:
     """Test that render_activity_graphs calls render_pie_rose_graph for all metrics."""
