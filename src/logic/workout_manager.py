@@ -1,7 +1,7 @@
 """Module to manage workout data and metrics."""
 
 import json
-from typing import Any, Callable, Dict, List, Optional, Mapping
+from typing import Any, Callable, Dict, List, Mapping, Optional
 
 import pandas as pd
 
