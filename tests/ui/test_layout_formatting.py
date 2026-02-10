@@ -1,6 +1,7 @@
 """Tests for UI formatting in layout refresh."""
 
 from typing import Any
+from unittest.mock import patch
 
 from logic.workout_manager import WorkoutManager
 
@@ -35,7 +36,10 @@ def test_refresh_data_formats_metrics_display() -> None:
     try:
         state.workouts = _DummyWorkouts()
         state.selected_activity_type = "All"
-        refresh_data()
+
+        # Mock the refresh call to avoid event loop issues in testing
+        with patch("ui.layout.render_activity_graphs.refresh"):
+            refresh_data()
 
         assert state.metrics_display["count"] == format_integer(12345)
         assert state.metrics_display["distance"] == format_integer(67890)
