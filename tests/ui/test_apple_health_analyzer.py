@@ -3,6 +3,7 @@
 import asyncio
 import json
 from typing import Callable, Any, cast
+from unittest.mock import patch
 
 from nicegui import ui
 from nicegui.testing import User
@@ -18,7 +19,7 @@ def is_valid_json(data_string: str) -> bool:
     try:
         json.loads(data_string)
         return True
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         return False
 
 
@@ -82,16 +83,21 @@ class TestMainWindow:
         self, user: User, create_health_zip: Callable[..., str]
     ) -> None:
         """Test that loading a valid export file shows statistics."""
-        await user.open("/")
-        # 1. Load the file and wait for parsing
-        await load_health_export(user, create_health_zip)
 
-        # 2. Check if the UI correctly displays data from our XML
-        await user.should_see("Total distance of 9", retries=50)
-        await user.should_see("Total duration of 1h 0m 53s")
-        # Small delay to ensure Windows releases file handles and
-        # async operations complete before teardown
-        await asyncio.sleep(0.2)
+        async def _noop_run_javascript(self, *args, **kwargs):  # type: ignore[no-self-use]
+            return False
+
+        with patch("nicegui.client.Client.run_javascript", new=_noop_run_javascript):
+            await user.open("/")
+            # 1. Load the file and wait for parsing
+            await load_health_export(user, create_health_zip)
+
+            # 2. Check if the UI correctly displays data from our XML
+            await user.should_see("Total distance of 9", retries=50)
+            await user.should_see("Total duration of 1h 0m 53s")
+            # Small delay to ensure Windows releases file handles and
+            # async operations complete before teardown
+            await asyncio.sleep(0.2)
 
     async def test_browse_button_opens_picker(self, user: User) -> None:
         """Test that the browse button opens the file picker dialog."""
