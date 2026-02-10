@@ -20,7 +20,7 @@ def is_valid_json(data_string: str) -> bool:
     try:
         json.loads(data_string)
         return True
-    except json.JSONDecodeError, TypeError:
+    except (json.JSONDecodeError, TypeError):
         return False
 
 
