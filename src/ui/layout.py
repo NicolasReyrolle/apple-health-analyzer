@@ -248,7 +248,7 @@ def render_body() -> None:
 
 
 @ui.refreshable
-def render_activity_graphs():
+def render_activity_graphs() -> None:
     """Render graphs by activity type."""
     with ui.row().classes("w-full justify-center gap-4"):
         render_pie_rose_graph("Count by activity", state.workouts.get_count_by_activity())

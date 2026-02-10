@@ -1,12 +1,14 @@
 """Tests for ui.layout core behaviors not covered by integration tests."""
 
 from __future__ import annotations
-from typing import Any
 
+from types import TracebackType
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from app_state import state
 from ui import layout
+
 
 def test_render_activity_graphs_renders_all_charts() -> None:
     """Test that render_activity_graphs calls render_pie_rose_graph for all metrics."""
@@ -19,10 +21,27 @@ def test_render_activity_graphs_renders_all_charts() -> None:
     workouts_mock.get_duration_by_activity.return_value = {"Running": 1}
     workouts_mock.get_elevation_by_activity.return_value = {"Running": 1}
 
+    class _DummyRow:
+        def __enter__(self):
+            return self
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> bool:
+            return False
+
+        def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
+            """Mock method to allow chaining."""
+            return self
+
     try:
         state.workouts = workouts_mock
-        with patch("ui.layout.render_pie_rose_graph") as render_graph_mock:
-            layout.render_activity_graphs()
+        with patch("ui.layout.ui.row", return_value=_DummyRow()):
+            with patch("ui.layout.render_pie_rose_graph") as render_graph_mock:
+                layout.render_activity_graphs.func()
 
         assert render_graph_mock.call_count == 5
         render_graph_mock.assert_any_call("Count by activity", {"Running": 1})

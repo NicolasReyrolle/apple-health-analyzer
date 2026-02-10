@@ -1,8 +1,10 @@
 """Test suite for missing coverage in WorkoutManager methods."""
 
 import math
-import pytest
+
 import pandas as pd
+import pytest
+
 import logic.workout_manager as wm
 
 
@@ -156,9 +158,13 @@ class TestGetDistanceByActivityUnits:
         result = workouts.get_distance_by_activity(unit="m", combination_threshold=5.0)
 
         # Result should be in meters, with total ~ 15700m
+        # Walking (500m, 3.18%) and Yoga (200m, 1.27%) are each below 5% threshold
+        # So both should be grouped into "Others" = 700m
         assert result["Running"] == 10000
         assert result["Cycling"] == 5000
-        # Others should include Walking (500m) and Yoga (200m) = 700m
+        assert result["Others"] == 700
+        # Verify total is preserved
+        assert sum(result.values()) == 15700
 
     def test_get_distance_by_activity_invalid_unit(self) -> None:
         """Test get_distance_by_activity with invalid unit raises error."""
@@ -306,9 +312,15 @@ class TestElevationByActivityEdgeCases:
 
         result = workouts.get_elevation_by_activity(combination_threshold=50.0)
 
-        # Total = 450, threshold = 225, so individual walks might all be grouped
-        # or some might remain - depends on algorithm
-        assert isinstance(result, dict)
+        # Total = 450m → 0.45km, threshold_value = 0.45 * 0.5 = 0.225km
+        # Values after div(1000): Walk1(0.1), Walk2(0.15), Walk3(0.2)
+        # Walk1(0.1) cumulative=0.1 <= 0.225 → grouped to Others
+        # Walk2(0.15) cumulative=0.25 > 0.225 → stays separate
+        # Walk3(0.2) stays separate
+        # After rounding: all values round to 0 (filter_zeros=False so they remain)
+        assert result == {"Walk2": 0, "Walk3": 0, "Others": 0}
+        # Total is preserved (all round to 0)
+        assert sum(result.values()) == 0
 
     def test_get_elevation_by_activity_missing_column(self) -> None:
         """Test elevation by activity when ElevationAscended column is missing."""
@@ -410,13 +422,12 @@ class TestDurationByActivityEdgeCases:
 
         result = workouts.get_duration_by_activity()
 
-        # Default threshold (10%) applies grouping
-        # Walking (0.5h) rounds to 0 or 1, and if 0 is filtered
-        # Running (1.5h) rounds to 2
-        # Cycling (2h) stays as 2
-        assert result["Running"] == 2
-        assert result["Cycling"] == 2
-        # Walking may or may not show up depending on how it rounds
+        # Total = 4h, threshold = 0.4h
+        # Sorted: Walking(0.5h), Running(1.5h), Cycling(2.0h)
+        # Walking(0.5h) cumulative=0.5 > 0.4 → stays separate
+        # After rounding: Walking rounds to 0 and is filtered, Running→2, Cycling→2
+        assert result == {"Running": 2, "Cycling": 2}
+        # Walking is not present because round(0.5) = 0 and zeros are filtered
 
     def test_get_duration_by_activity_boundary_cases(self) -> None:
         """Test duration by activity at rounding boundaries."""
