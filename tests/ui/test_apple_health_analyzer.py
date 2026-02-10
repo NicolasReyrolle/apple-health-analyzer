@@ -20,7 +20,7 @@ def is_valid_json(data_string: str) -> bool:
     try:
         json.loads(data_string)
         return True
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         return False
 
 
@@ -85,10 +85,15 @@ class TestMainWindow:
     ) -> None:
         """Test that loading a valid export file shows statistics."""
 
+        class _AwaitableFalse:
+            def __await__(self) -> Any:
+                yield from []
+                return False
+
         # Type hint `self` with Client to resolve type unknown for `new` argument in patch.
         # Explicitly type `args` and `kwargs` for better type inference.
-        async def _noop_run_javascript(_self: Client, *_args: Any, **_kwargs: Any) -> bool:
-            return False
+        def _noop_run_javascript(_self: Client, *_args: Any, **_kwargs: Any):
+            return _AwaitableFalse()
 
         with patch("nicegui.client.Client.run_javascript", new=_noop_run_javascript):
             await user.open("/")
