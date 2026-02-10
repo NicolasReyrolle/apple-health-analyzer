@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import TracebackType
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -24,10 +25,16 @@ def test_render_activity_graphs_renders_all_charts() -> None:
         def __enter__(self):
             return self
 
-        def __exit__(self, exc_type, exc, tb):
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> bool:
             return False
 
-        def classes(self, *args, **kwargs):
+        def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
+            """Mock method to allow chaining."""
             return self
 
     try:

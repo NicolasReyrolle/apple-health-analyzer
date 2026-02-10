@@ -6,6 +6,7 @@ from typing import Callable, Any, cast
 from unittest.mock import patch
 
 from nicegui import ui
+from nicegui.client import Client  # Added for type hinting
 from nicegui.testing import User
 
 from tests.types_helper import StateAssertion
@@ -19,7 +20,7 @@ def is_valid_json(data_string: str) -> bool:
     try:
         json.loads(data_string)
         return True
-    except json.JSONDecodeError, TypeError:
+    except (json.JSONDecodeError, TypeError):
         return False
 
 
@@ -84,7 +85,9 @@ class TestMainWindow:
     ) -> None:
         """Test that loading a valid export file shows statistics."""
 
-        async def _noop_run_javascript(self, *args, **kwargs):  # type: ignore[no-self-use]
+        # Type hint `self` with Client to resolve type unknown for `new` argument in patch.
+        # Explicitly type `args` and `kwargs` for better type inference.
+        async def _noop_run_javascript(_self: Client, *_args: Any, **_kwargs: Any) -> bool:
             return False
 
         with patch("nicegui.client.Client.run_javascript", new=_noop_run_javascript):
