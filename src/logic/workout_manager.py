@@ -194,30 +194,12 @@ class WorkoutManager:
         """Return a dictionary mapping activity types to total distance.
         Activities that represent less than the combination_threshold percentage of total distance
         are grouped into an "Others" category."""
-        if "activityType" not in self.workouts.columns or "distance" not in self.workouts.columns:
-            return {}
-
-        grouped = self.workouts.groupby("activityType")[  # type: ignore[reportUnknownMemberType]
-            "distance"
-        ].sum()
-        if grouped.empty:
-            return {}
-
-        # Convert distances to requested unit
-        converted: Mapping[str, float] = {
-            activity: self.convert_distance(unit, distance)
-            for activity, distance in grouped.items()  # type: ignore[reportUnknownMemberType]
-        }
-
-        if combination_threshold > 0:
-            converted = self.group_small_values(converted, threshold_percent=combination_threshold)
-
-        result: Dict[str, int] = {
-            activity: int(round(distance)) for activity, distance in converted.items()
-        }
-        result = {k: v for k, v in result.items() if v > 0}
-
-        return result
+        return self._aggregate_by_activity(
+            "distance",
+            lambda x: x.sum(),
+            lambda x: x.div(self._get_distance_divisor(unit)),
+            combination_threshold=combination_threshold,
+        )
 
     def get_count_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
         """Return a dictionary mapping activity types to workout counts.
