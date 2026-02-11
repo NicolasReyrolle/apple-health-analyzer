@@ -132,6 +132,64 @@ class WorkoutManager:
 
         return result
 
+    def _aggregate_by_period(
+        self,
+        column: str,
+        period: str,
+        aggregation: Callable[[Any], Any],
+        transformation: Callable[[pd.Series], pd.Series],
+        column_check: Optional[str] = None,
+        filter_zeros: bool = True,
+        combination_threshold: float = 10.0,
+        activity_type: str = "All",
+    ) -> Dict[str, int]:
+        """Generic method to aggregate metrics by period.
+        Args:
+            column: Column name to aggregate
+            period: Period to group by (e.g., 'Y' for year, 'M' for month, 'W' for week)
+            aggregation: Function to apply for aggregating
+            transformation: Function to apply to the aggregated series
+            column_check: Additional column to check exists (defaults to column)
+            filter_zeros: Whether to filter out zero values
+            combination_threshold: Threshold for grouping small values
+            activity_type: Type of activity to filter by (defaults to "All")
+        Returns:
+            Dictionary mapping periods to aggregated values
+        """
+        column_check = column_check or column
+        if "activityType" not in self.workouts.columns or column_check not in self.workouts.columns:
+            return {}
+
+        workouts = self._filter_by_activity(activity_type)
+        grouped = aggregation(
+            workouts.groupby(  # type: ignore[reportUnknownMemberType]
+                workouts["startDate"].dt.to_period(period)  # type: ignore[reportUnknownMemberType]
+            )[column]
+        )
+        if grouped.empty:
+            return {}
+
+        # Apply transformation
+        transformed = transformation(grouped)
+        result_float: Dict[str, float] = transformed.astype(
+            float
+        ).to_dict()  # type: ignore[reportUnknownMemberType]
+
+        # Apply grouping if threshold > 0
+        if combination_threshold > 0:
+            result_float = self.group_small_values(
+                result_float, threshold_percent=combination_threshold
+            )
+
+        # Convert period to str and round to integers
+        result: Dict[str, int] = {str(k): int(round(v)) for k, v in result_float.items()}
+
+        # Filter zero values if needed
+        if filter_zeros:
+            result = {k: v for k, v in result.items() if v > 0}
+
+        return result
+
     def count(self, activity_type: str = "All") -> int:
         """Return the number of workouts."""
         return len(self._filter_by_activity(activity_type))
@@ -186,6 +244,21 @@ class WorkoutManager:
             lambda x: x.sum(),
             lambda x: x,
             combination_threshold=combination_threshold,
+        )
+
+    def get_calories_by_period(
+        self, period: str, combination_threshold: float = 0.0, activity_type: str = "All"
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to total calories burned.
+        Activities that represent less than the combination_threshold percentage of total calories
+        are grouped into an "Others" category."""
+        return self._aggregate_by_period(
+            "sumActiveEnergyBurned",
+            period,
+            lambda x: x.sum(),
+            lambda x: x,
+            combination_threshold=combination_threshold,
+            activity_type=activity_type,
         )
 
     def get_distance_by_activity(
