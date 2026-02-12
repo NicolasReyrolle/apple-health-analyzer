@@ -142,6 +142,7 @@ class WorkoutManager:
         filter_zeros: bool = True,
         combination_threshold: float = 10.0,
         activity_type: str = "All",
+        fill_missing_periods: bool = True,
     ) -> Dict[str, int]:
         """Generic method to aggregate metrics by period.
         Args:
@@ -153,6 +154,8 @@ class WorkoutManager:
             filter_zeros: Whether to filter out zero values
             combination_threshold: Threshold for grouping small values
             activity_type: Type of activity to filter by (defaults to "All")
+            fill_missing_periods: Whether to fill missing periods with zero values
+                (defaults to True)
         Returns:
             Dictionary mapping periods to aggregated values
         """
@@ -161,6 +164,12 @@ class WorkoutManager:
             return {}
 
         workouts = self._filter_by_activity(activity_type)
+
+        # If there is no data after filtering, return empty dict as
+        # dt.to_period would fail
+        if workouts.empty:
+            return {}
+
         grouped = aggregation(
             workouts.groupby(  # type: ignore[reportUnknownMemberType]
                 workouts["startDate"].dt.to_period(period)  # type: ignore[reportUnknownMemberType]
@@ -168,6 +177,17 @@ class WorkoutManager:
         )
         if grouped.empty:
             return {}
+
+        # Add missing periods with zero values if needed
+        if fill_missing_periods:
+            full_range = pd.period_range(
+                start=grouped.index.min(),
+                end=grouped.index.max(),
+                freq=period,
+            )
+            grouped = grouped.reindex(
+                full_range, fill_value=0
+            )  # type: ignore[reportUnknownMemberType]
 
         # Apply transformation
         transformed = transformation(grouped)
@@ -184,8 +204,8 @@ class WorkoutManager:
         # Convert period to str and round to integers
         result: Dict[str, int] = {str(k): int(round(v)) for k, v in result_float.items()}
 
-        # Filter zero values if needed
-        if filter_zeros:
+        # Filter zero values if needed, only if we didn't already filled missing periods with zeros
+        if filter_zeros and not fill_missing_periods:
             result = {k: v for k, v in result.items() if v > 0}
 
         return result
@@ -247,7 +267,11 @@ class WorkoutManager:
         )
 
     def get_calories_by_period(
-        self, period: str, combination_threshold: float = 0.0, activity_type: str = "All"
+        self,
+        period: str,
+        combination_threshold: float = 0.0,
+        activity_type: str = "All",
+        fill_missing_periods: bool = True,
     ) -> Dict[str, int]:
         """Return a dictionary mapping periods to total calories burned.
         Activities that represent less than the combination_threshold percentage of total calories
@@ -259,6 +283,7 @@ class WorkoutManager:
             lambda x: x,
             combination_threshold=combination_threshold,
             activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
         )
 
     def get_distance_by_activity(
@@ -272,6 +297,29 @@ class WorkoutManager:
             lambda x: x.sum(),
             lambda x: x.div(self._get_distance_divisor(unit)),
             combination_threshold=combination_threshold,
+        )
+
+    def get_distance_by_period(
+        self,
+        period: str,
+        combination_threshold: float = 0.0,
+        activity_type: str = "All",
+        unit: str = "km",
+        fill_missing_periods: bool = True,
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping activity types to total distance.
+        Activities that represent less than the combination_threshold percentage of total distance
+        are grouped into an "Others" category."""
+
+        return self._aggregate_by_period(
+            "distance",
+            period,
+            lambda x: x.sum(),
+            lambda x: x.div(self._get_distance_divisor(unit)),
+            filter_zeros=False,
+            combination_threshold=combination_threshold,
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
         )
 
     def get_count_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
