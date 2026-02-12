@@ -334,12 +334,28 @@ def render_trends_graphs() -> None:
     """Render trend graphs."""
     with ui.row().classes("w-full justify-center gap-4"):
         render_bar_graph(
+            "Count by month",
+            state.workouts.get_count_by_period("M", activity_type=state.selected_activity_type),
+        )
+        render_bar_graph(
             "Distance by month",
             state.workouts.get_distance_by_period("M", activity_type=state.selected_activity_type),
             "km",
         )
+    with ui.row().classes("w-full justify-center gap-4"):
         render_bar_graph(
             "Calories by month",
             state.workouts.get_calories_by_period("M", activity_type=state.selected_activity_type),
             "kcal",
+        )
+        render_bar_graph(
+            "Duration by month",
+            state.workouts.get_duration_by_period("M", activity_type=state.selected_activity_type),
+            "h",
+        )
+    with ui.row().classes("w-full justify-center gap-4"):
+        render_bar_graph(
+            "Elevation by month",
+            state.workouts.get_elevation_by_period("M", activity_type=state.selected_activity_type),
+            "km",
         )

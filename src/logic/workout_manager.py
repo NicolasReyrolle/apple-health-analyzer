@@ -140,7 +140,6 @@ class WorkoutManager:
         transformation: Callable[[pd.Series], pd.Series],
         column_check: Optional[str] = None,
         filter_zeros: bool = True,
-        combination_threshold: float = 10.0,
         activity_type: str = "All",
         fill_missing_periods: bool = True,
     ) -> Dict[str, int]:
@@ -152,10 +151,8 @@ class WorkoutManager:
             transformation: Function to apply to the aggregated series
             column_check: Additional column to check exists (defaults to column)
             filter_zeros: Whether to filter out zero values
-            combination_threshold: Threshold for grouping small values
-            activity_type: Type of activity to filter by (defaults to "All")
+            activity_type: Type of activity to filter by
             fill_missing_periods: Whether to fill missing periods with zero values
-                (defaults to True)
         Returns:
             Dictionary mapping periods to aggregated values
         """
@@ -195,12 +192,6 @@ class WorkoutManager:
             float
         ).to_dict()  # type: ignore[reportUnknownMemberType]
 
-        # Apply grouping if threshold > 0
-        if combination_threshold > 0:
-            result_float = self.group_small_values(
-                result_float, threshold_percent=combination_threshold
-            )
-
         # Convert period to str and round to integers
         result: Dict[str, int] = {str(k): int(round(v)) for k, v in result_float.items()}
 
@@ -215,16 +206,7 @@ class WorkoutManager:
         return len(self._filter_by_activity(activity_type))
 
     def get_total_distance(self, activity_type: str = "All", unit: str = "km") -> int:
-        """Return the total distance optionally per activity_type, and in the given unit.
-
-        Args:
-            activity_type (str, optional): type of activity. Defaults to "All".
-            unit (str, optional): unit in which to return the distance. Defaults to "km".
-                Allowed: "km", "m", "mi".
-
-        Returns:
-            int: Total distance in the specified unit.
-        """
+        """Return the total distance optionally per activity_type, and in the given unit."""
         divisor = self._get_distance_divisor(unit)
         return self._get_aggregate_total(activity_type, "distance", divisor=divisor)
 
@@ -238,21 +220,11 @@ class WorkoutManager:
         return self._get_aggregate_total(activity_type, "duration", divisor=3600)
 
     def get_total_elevation(self, activity_type: str = "All") -> int:
-        """
-        Return the total elevation gain of workouts in kilometers
-        rounded to the nearest integer.
-        """
+        """Return the total elevation gain of workouts in kilometers"""
         return self._get_aggregate_total(activity_type, "ElevationAscended", divisor=1000)
 
     def get_total_calories(self, activity_type: str = "All") -> int:
-        """Return the total calories burned of workouts.
-
-        Args:
-            activity_type (str, optional): Type of activity to filter by. Defaults to "All".
-
-        Returns:
-            int: Total calories burned in kilocalories, rounded to the nearest integer.
-        """
+        """Return the total calories burned of workouts"""
         return self._get_aggregate_total(activity_type, "sumActiveEnergyBurned")
 
     def get_calories_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
@@ -269,19 +241,15 @@ class WorkoutManager:
     def get_calories_by_period(
         self,
         period: str,
-        combination_threshold: float = 0.0,
         activity_type: str = "All",
         fill_missing_periods: bool = True,
     ) -> Dict[str, int]:
-        """Return a dictionary mapping periods to total calories burned.
-        Activities that represent less than the combination_threshold percentage of total calories
-        are grouped into an "Others" category."""
+        """Return a dictionary mapping periods to total calories burned."""
         return self._aggregate_by_period(
             "sumActiveEnergyBurned",
             period,
             lambda x: x.sum(),
             lambda x: x,
-            combination_threshold=combination_threshold,
             activity_type=activity_type,
             fill_missing_periods=fill_missing_periods,
         )
@@ -302,22 +270,17 @@ class WorkoutManager:
     def get_distance_by_period(
         self,
         period: str,
-        combination_threshold: float = 0.0,
         activity_type: str = "All",
         unit: str = "km",
         fill_missing_periods: bool = True,
     ) -> Dict[str, int]:
-        """Return a dictionary mapping activity types to total distance.
-        Activities that represent less than the combination_threshold percentage of total distance
-        are grouped into an "Others" category."""
-
+        """Return a dictionary mapping periods to total distance."""
         return self._aggregate_by_period(
             "distance",
             period,
             lambda x: x.sum(),
             lambda x: x.div(self._get_distance_divisor(unit)),
             filter_zeros=False,
-            combination_threshold=combination_threshold,
             activity_type=activity_type,
             fill_missing_periods=fill_missing_periods,
         )
@@ -334,6 +297,20 @@ class WorkoutManager:
             combination_threshold=combination_threshold,
         )
 
+    def get_count_by_period(
+        self, period: str, activity_type: str = "All", fill_missing_periods: bool = True
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to workout counts."""
+        return self._aggregate_by_period(
+            "activityType",
+            period,
+            lambda x: x.count(),
+            lambda x: x,
+            column_check="activityType",
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
+        )
+
     def get_duration_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total duration.
         Activities that represent less than the combination_threshold percentage of total duration
@@ -343,6 +320,19 @@ class WorkoutManager:
             lambda x: x.sum(),
             lambda x: x.div(3600),
             combination_threshold=combination_threshold,
+        )
+
+    def get_duration_by_period(
+        self, period: str, activity_type: str = "All", fill_missing_periods: bool = True
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to total duration in hours."""
+        return self._aggregate_by_period(
+            "duration",
+            period,
+            lambda x: x.sum(),
+            lambda x: x.div(3600),
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
         )
 
     def get_elevation_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
@@ -355,6 +345,20 @@ class WorkoutManager:
             lambda x: x.div(1000),
             filter_zeros=False,
             combination_threshold=combination_threshold,
+        )
+
+    def get_elevation_by_period(
+        self, period: str, activity_type: str = "All", fill_missing_periods: bool = True
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to total elevation gain in kilometers."""
+        return self._aggregate_by_period(
+            "ElevationAscended",
+            period,
+            lambda x: x.sum(),
+            lambda x: x.div(1000),
+            filter_zeros=False,
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
         )
 
     def group_small_values(
