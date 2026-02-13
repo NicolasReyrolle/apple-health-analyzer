@@ -144,17 +144,19 @@ class WorkoutManager:
         fill_missing_periods: bool = True,
     ) -> Dict[str, int]:
         """Generic method to aggregate metrics by period.
+
         Args:
-            column: Column name to aggregate
-            period: Period to group by (e.g., 'Y' for year, 'M' for month, 'W' for week)
-            aggregation: Function to apply for aggregating
-            transformation: Function to apply to the aggregated series
-            column_check: Additional column to check exists (defaults to column)
-            filter_zeros: Whether to filter out zero values
-            activity_type: Type of activity to filter by
-            fill_missing_periods: Whether to fill missing periods with zero values
+            column: Column name to aggregate.
+            period: Period to group by (e.g., 'Y' for year, 'M' for month, 'W' for week).
+            aggregation: Function to apply for aggregating.
+            transformation: Function to apply to the aggregated series.
+            column_check: Additional column to check exists (defaults to column).
+            filter_zeros: Whether to filter out zero values.
+            activity_type: Type of activity to filter by.
+            fill_missing_periods: Whether to fill missing periods with zero values.
+
         Returns:
-            Dictionary mapping periods to aggregated values
+            Dictionary mapping periods to aggregated values.
         """
         column_check = column_check or column
         if (
