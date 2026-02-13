@@ -354,7 +354,9 @@ class WorkoutManager:
         fill_missing_periods: bool = True,
         unit: str = "m",
     ) -> Dict[str, int]:
-        """Return a dictionary mapping periods to total elevation gain in kilometers."""
+        """Return a dictionary mapping periods to total elevation gain in the specified unit.
+
+        The `unit` parameter controls the unit of measurement ("m", "km", or "mi")."""
         return self._aggregate_by_period(
             "ElevationAscended",
             period,
