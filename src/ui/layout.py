@@ -317,6 +317,8 @@ def render_activity_graphs() -> None:
             "Duration by activity", state.workouts.get_duration_by_activity(), "h"
         )
     with ui.row().classes("w-full justify-center gap-4"):
+        # Display elevation in meters (not km like the stat card) because per-activity
+        # values can be small and would show as 0.0X km, making the chart less readable
         render_pie_rose_graph(
             "Elevation by activity", state.workouts.get_elevation_by_activity(), "m"
         )
@@ -347,6 +349,8 @@ def render_trends_graphs() -> None:
             "h",
         )
     with ui.row().classes("w-full justify-center gap-4"):
+        # Display elevation in meters (not km like the stat card) because monthly
+        # values can be small and would show as 0.0X km, making the chart less readable
         render_bar_graph(
             "Elevation by month",
             state.workouts.get_elevation_by_period("M", activity_type=state.selected_activity_type),
