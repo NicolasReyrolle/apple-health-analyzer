@@ -262,7 +262,22 @@ class WorkoutManager:
         activity_type: str = "All",
         fill_missing_periods: bool = True,
     ) -> Dict[str, int]:
-        """Return a dictionary mapping periods to total calories burned."""
+        """Return a dictionary mapping periods to total calories burned.
+
+        Args:
+            period: The period over which to aggregate calories. Typical values include
+                "D" for day, "W" for week, "M" for month, and "Y" for year. The value is
+                passed to the internal aggregation logic and should follow the expected
+                period codes used there.
+            activity_type: Filter by activity type ("All" for all activities). Defaults
+                to "All".
+            fill_missing_periods: If True, include periods with zero calories in the
+                result. If False, only periods with recorded workouts are returned.
+
+        Returns:
+            A dictionary mapping period labels (as strings) to total calories burned
+            in each period.
+        """
         return self._aggregate_by_period(
             "sumActiveEnergyBurned",
             period,
