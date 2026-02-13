@@ -417,6 +417,60 @@ class TestGetTotalElevation:
 
         assert workouts.get_total_elevation() == 3
 
+    def test_get_total_elevation_unit_km(self) -> None:
+        """Test get_total_elevation with km unit (default)."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Hiking"],
+                    "ElevationAscended": [1500.0],  # 1.5 km
+                }
+            )
+        )
+
+        assert workouts.get_total_elevation(unit="km") == 2
+        assert workouts.get_total_elevation() == 2  # Default is km
+
+    def test_get_total_elevation_unit_m(self) -> None:
+        """Test get_total_elevation with meters unit."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Hiking"],
+                    "ElevationAscended": [1557.0],  # 1557 meters
+                }
+            )
+        )
+
+        assert workouts.get_total_elevation(unit="m") == 1557
+
+    def test_get_total_elevation_unit_mi(self) -> None:
+        """Test get_total_elevation with miles unit."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Hiking"],
+                    "ElevationAscended": [1609.34],  # 1 mile in meters
+                }
+            )
+        )
+
+        assert workouts.get_total_elevation(unit="mi") == 1
+
+    def test_get_total_elevation_invalid_unit(self) -> None:
+        """Test get_total_elevation with invalid unit raises ValueError."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Hiking"],
+                    "ElevationAscended": [1000.0],
+                }
+            )
+        )
+
+        with pytest.raises(ValueError, match="Unsupported unit"):
+            workouts.get_total_elevation(unit="yards")
+
 
 class TestGetTotalCalories:
     """Test suite for WorkoutManager.get_total_calories method."""
