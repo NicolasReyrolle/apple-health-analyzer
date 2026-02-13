@@ -22,7 +22,7 @@ class _DummyWorkouts(WorkoutManager):
     def get_total_duration(self, activity_type: str = "All") -> int:
         return 24680
 
-    def get_total_elevation(self, activity_type: str = "All") -> int:
+    def get_total_elevation(self, activity_type: str = "All", unit: str = "m") -> int:
         return 13579
 
     def get_total_calories(self, activity_type: str = "All") -> int:
