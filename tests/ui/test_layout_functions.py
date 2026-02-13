@@ -8,6 +8,8 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
 
+import pandas as pd
+
 from app_state import state
 from ui import layout
 
@@ -275,7 +277,7 @@ class TestLoadWorkoutsFromFile:
 
             with patch("ui.layout.ExportParser") as parser_class_mock:
                 parser_instance_mock = MagicMock()
-                parser_instance_mock.parse.return_value = []
+                parser_instance_mock.parse.return_value = pd.DataFrame()
                 parser_class_mock.return_value.__enter__.return_value = parser_instance_mock
                 parser_class_mock.return_value.__exit__.return_value = None
 
