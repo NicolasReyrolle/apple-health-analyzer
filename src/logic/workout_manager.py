@@ -164,6 +164,10 @@ class WorkoutManager:
         ):
             return {}
 
+        # Validate that startDate is datetime-like
+        if not pd.api.types.is_datetime64_any_dtype(self.workouts["startDate"]):
+            return {}
+
         workouts = self._filter_by_activity(activity_type)
 
         # If there is no data after filtering, return empty dict as

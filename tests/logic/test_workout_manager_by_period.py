@@ -31,6 +31,37 @@ class TestGetCaloriesByPeriod:
 
         assert result == {}
 
+    def test_get_calories_by_period_missing_startDate_column(self) -> None:
+        """Return empty dict when startDate column is missing."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "sumActiveEnergyBurned": [300.0],
+                }
+            )
+        )
+
+        result = workouts.get_calories_by_period("M")
+
+        assert result == {}
+
+    def test_get_calories_by_period_non_datetime_startDate(self) -> None:
+        """Return empty dict when startDate is not datetime-like."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": ["2024-01-01"],  # String instead of datetime
+                    "sumActiveEnergyBurned": [300.0],
+                }
+            )
+        )
+
+        result = workouts.get_calories_by_period("M")
+
+        assert result == {}
+
     def test_get_calories_by_period_groups_by_month(self) -> None:
         """Aggregate calories by month without grouping threshold."""
         workouts = wm.WorkoutManager(
@@ -107,6 +138,37 @@ class TestGetDistanceByPeriod:
                 {
                     "activityType": ["Running"],
                     "startDate": pd.to_datetime(["2024-01-01"]),
+                }
+            )
+        )
+
+        result = workouts.get_distance_by_period("M")
+
+        assert result == {}
+
+    def test_get_distance_by_period_missing_startDate_column(self) -> None:
+        """Return empty dict when startDate column is missing."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [5000.0],
+                }
+            )
+        )
+
+        result = workouts.get_distance_by_period("M")
+
+        assert result == {}
+
+    def test_get_distance_by_period_non_datetime_startDate(self) -> None:
+        """Return empty dict when startDate is not datetime-like."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": ["2024-01-01"],  # String instead of datetime
+                    "distance": [5000.0],
                 }
             )
         )
@@ -271,6 +333,35 @@ class TestGetCountByPeriod:
 
         assert result == {}
 
+    def test_get_count_by_period_missing_startDate_column(self) -> None:
+        """Return empty dict when startDate column is missing."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                }
+            )
+        )
+
+        result = workouts.get_count_by_period("M")
+
+        assert result == {}
+
+    def test_get_count_by_period_non_datetime_startDate(self) -> None:
+        """Return empty dict when startDate is not datetime-like."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": ["2024-01-01"],  # String instead of datetime
+                }
+            )
+        )
+
+        result = workouts.get_count_by_period("M")
+
+        assert result == {}
+
     def test_get_count_by_period_groups_by_month(self) -> None:
         """Count workouts by month without fill_missing_periods."""
         workouts = wm.WorkoutManager(
@@ -423,6 +514,37 @@ class TestGetDurationByPeriod:
 
         assert result == {}
 
+    def test_get_duration_by_period_missing_startDate_column(self) -> None:
+        """Return empty dict when startDate column is missing."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "duration": [3600.0],
+                }
+            )
+        )
+
+        result = workouts.get_duration_by_period("M")
+
+        assert result == {}
+
+    def test_get_duration_by_period_non_datetime_startDate(self) -> None:
+        """Return empty dict when startDate is not datetime-like."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": ["2024-01-01"],  # String instead of datetime
+                    "duration": [3600.0],
+                }
+            )
+        )
+
+        result = workouts.get_duration_by_period("M")
+
+        assert result == {}
+
     def test_get_duration_by_period_groups_by_month(self) -> None:
         """Aggregate duration by month in hours."""
         workouts = wm.WorkoutManager(
@@ -561,6 +683,37 @@ class TestGetElevationByPeriod:
                 {
                     "activityType": ["Running"],
                     "startDate": pd.to_datetime(["2024-01-01"]),
+                }
+            )
+        )
+
+        result = workouts.get_elevation_by_period("M")
+
+        assert result == {}
+
+    def test_get_elevation_by_period_missing_startDate_column(self) -> None:
+        """Return empty dict when startDate column is missing."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "ElevationAscended": [1000.0],
+                }
+            )
+        )
+
+        result = workouts.get_elevation_by_period("M")
+
+        assert result == {}
+
+    def test_get_elevation_by_period_non_datetime_startDate(self) -> None:
+        """Return empty dict when startDate is not datetime-like."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": ["2024-01-01"],  # String instead of datetime
+                    "ElevationAscended": [1000.0],
                 }
             )
         )
