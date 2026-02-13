@@ -210,7 +210,7 @@ class TestGetDistanceByPeriod:
         }
 
     def test_get_distance_by_period_filters_zero_values(self) -> None:
-        """Drop zero-valued periods when filter_zeros applies."""
+        """Ensure zero-valued periods are retained in the results."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
                 {
