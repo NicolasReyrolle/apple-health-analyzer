@@ -1,4 +1,4 @@
-babel==2.14.0
+babel==2.18.0
 defusedxml==0.7.1
 nicegui==3.7.1
 numpy==2.4.2
