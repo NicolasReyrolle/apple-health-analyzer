@@ -44,7 +44,7 @@ def refresh_data() -> None:
     render_trends_graphs.refresh()
 
 
-def _update_activity_filter(new_value: str) -> None:
+def update_activity_filter(new_value: str) -> None:
     """Update the selected activity type filter and refresh derived metrics.
 
     Args:
@@ -60,7 +60,7 @@ def render_activity_select() -> None:
 
     ui.select(
         options=state.activity_options,
-        on_change=lambda e: _update_activity_filter(e.value),
+        on_change=lambda e: update_activity_filter(e.value),
         value=state.selected_activity_type,
         label="Activity Type",
     ).classes("w-40").bind_enabled_from(state, "file_loaded")
