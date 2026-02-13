@@ -229,9 +229,15 @@ class WorkoutManager:
         """Return the total duration of workouts in hours rounded to the nearest integer"""
         return self._get_aggregate_total(activity_type, "duration", divisor=3600)
 
-    def get_total_elevation(self, activity_type: str = "All") -> int:
-        """Return the total elevation gain of workouts in kilometers"""
-        return self._get_aggregate_total(activity_type, "ElevationAscended", divisor=1000)
+    def get_total_elevation(self, activity_type: str = "All", unit: str = "km") -> int:
+        """Return the total elevation gain of workouts in the specified unit.
+
+        Args:
+            activity_type: Filter by activity type ("All" for all activities)
+            unit: Unit for elevation ("km", "m", or "mi"). Defaults to "km".
+        """
+        divisor = self._get_distance_divisor(unit)
+        return self._get_aggregate_total(activity_type, "ElevationAscended", divisor=divisor)
 
     def get_total_calories(self, activity_type: str = "All") -> int:
         """Return the total calories burned of workouts"""
