@@ -157,7 +157,11 @@ class WorkoutManager:
             Dictionary mapping periods to aggregated values
         """
         column_check = column_check or column
-        if "activityType" not in self.workouts.columns or column_check not in self.workouts.columns:
+        if (
+            "activityType" not in self.workouts.columns
+            or column_check not in self.workouts.columns
+            or "startDate" not in self.workouts.columns
+        ):
             return {}
 
         workouts = self._filter_by_activity(activity_type)
