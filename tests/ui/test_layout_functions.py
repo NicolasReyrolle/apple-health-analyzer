@@ -209,7 +209,7 @@ class TestRenderTrendsGraphs:
                 "M", activity_type="Running"
             )
             workouts_mock.get_elevation_by_period.assert_called_once_with(
-                "M", activity_type="Running"
+                "M", activity_type="Running", unit="m"
             )
         finally:
             state.workouts = original_workouts
