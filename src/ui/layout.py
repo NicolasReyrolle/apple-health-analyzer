@@ -357,6 +357,8 @@ def render_trends_graphs() -> None:
         # values can be small and would show as 0.0X km, making the chart less readable
         render_bar_graph(
             "Elevation by month",
-            state.workouts.get_elevation_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_elevation_by_period(
+                "M", activity_type=state.selected_activity_type, unit="m"
+            ),
             "m",
         )
