@@ -363,7 +363,7 @@ class TestGetCountByPeriod:
         assert result == {"2024-01": 1, "2024-02": 1}
 
     def test_get_count_by_period_with_fill_missing_periods(self) -> None:
-        """Fill missing periods, but filter out zero values by default."""
+        """Fill missing periods with zero values, preserving them in the result."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
                 {
