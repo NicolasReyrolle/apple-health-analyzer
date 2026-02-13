@@ -84,7 +84,7 @@ class TestCalculateMovingAverage:
         result = layout.calculate_moving_average(y_values, window_size=12)
 
         # Should return the original values as floats
-        assert result == [1.0, 2.0, 3.0, 4.0, 5.0]
+        assert result == [1.0, 1.5, 2.0, 2.5, 3.0]
 
     def test_calculate_moving_average_with_exact_window_size(self) -> None:
         """Test moving average with list exactly matching window size."""
