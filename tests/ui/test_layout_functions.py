@@ -89,8 +89,7 @@ class TestCalculateMovingAverage:
         y_values = [10, 20, 30, 40, 50]
         result = layout.calculate_moving_average(y_values, window_size=5)
 
-        # With pandas rolling, each value is the average of all values up to that point
-        # until the window is full, then it's the average of the last window_size values
+        # With pandas rolling and min_periods=1, uses expanding window until full
         assert result[0] == 10.0  # Average of [10]
         assert result[1] == 15.0  # Average of [10, 20]
         assert result[2] == 20.0  # Average of [10, 20, 30]
@@ -102,12 +101,13 @@ class TestCalculateMovingAverage:
         y_values = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140]
         result = layout.calculate_moving_average(y_values, window_size=3)
 
-        # With pandas rolling, values are averages from the start
-        assert result[0] == 10.0  # Average of [10]
-        assert result[1] == 15.0  # Average of [10, 20]
-        assert result[2] == 20.0  # Average of [10, 20, 30]
-        assert result[3] == 30.0  # Average of [20, 30, 40]
-        assert result[4] == 40.0  # Average of [30, 40, 50]
+        # With pandas rolling and min_periods=1, the first values use an expanding window
+        # until window_size is reached, then it becomes a sliding window
+        assert result[0] == 10.0  # Average of [10] (expanding)
+        assert result[1] == 15.0  # Average of [10, 20] (expanding)
+        assert result[2] == 20.0  # Average of [10, 20, 30] (window full)
+        assert result[3] == 30.0  # Average of [20, 30, 40] (sliding window)
+        assert result[4] == 40.0  # Average of [30, 40, 50] (sliding window)
         # Check length matches
         assert len(result) == len(y_values)
 
@@ -116,11 +116,11 @@ class TestCalculateMovingAverage:
         y_values = list(range(1, 25))  # 24 values
         result = layout.calculate_moving_average(y_values)
 
-        # With pandas rolling, values are averages from the start
+        # With pandas rolling and min_periods=1, uses expanding window until full
         assert result[0] == 1.0  # Average of [1]
         assert result[1] == 1.5  # Average of [1, 2]
         assert result[10] == 6.0  # Average of [1..11]
-        # 12th value (index 11) should be average of first 12
+        # Index 11 is the first value with a full window of 12
         expected_avg = sum(range(1, 13)) / 12
         assert result[11] == round(expected_avg, 2)
 
