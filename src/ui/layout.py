@@ -3,7 +3,7 @@
 import asyncio
 import time
 
-import numpy as np
+import pandas as pd
 from nicegui import app, ui
 
 from app_state import state
@@ -171,15 +171,8 @@ def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list
     if len(y_values) < window_size:
         return [float(y) for y in y_values]
 
-    y = np.array(y_values)
-    # Use convolution to calculate the moving average
-    moving_avg = np.convolve(y, np.ones(window_size) / window_size, mode="valid")
-
-    # Pad the beginning with the raw values to match the original list length
-    padding = [round(float(val), 2) for val in y_values[: window_size - 1]]
-    smoothed = [round(float(val), 2) for val in moving_avg]
-
-    return padding + smoothed
+    # Use pandas rolling window to calculate the moving average
+    return pd.Series(y_values).rolling(window=window_size, min_periods=1).mean().round(2).tolist()
 
 
 def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None:
