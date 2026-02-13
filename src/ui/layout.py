@@ -167,14 +167,18 @@ def render_pie_rose_graph(label: str, values: dict[str, int], unit: str = "") ->
 def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list[float]:
     """
     Calculate a moving average to smooth out peaks and valleys in sports data.
+
+    Uses a rolling window with ``min_periods=1``, which behaves like an expanding
+    average for the initial points when there are fewer samples than ``window_size``.
     """
-    if len(y_values) < window_size:
-        return [float(y) for y in y_values]
-
-    # Use pandas rolling window to calculate the moving average
-    return pd.Series(y_values).rolling(window=window_size, min_periods=1).mean().round(2).tolist()
-
-
+    # Use pandas rolling window to calculate the moving average consistently
+    return (
+        pd.Series(y_values)
+        .rolling(window=window_size, min_periods=1)
+        .mean()
+        .round(2)
+        .tolist()
+    )
 def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None:
     """Render bar graphs for the given values."""
 
