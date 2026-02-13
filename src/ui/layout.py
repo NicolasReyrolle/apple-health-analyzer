@@ -175,7 +175,7 @@ def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list
     # Use convolution to calculate the moving average
     moving_avg = np.convolve(y, np.ones(window_size) / window_size, mode="valid")
 
-    # Pad the beginning with None or the raw values to match the original list length
+    # Pad the beginning with the raw values to match the original list length
     padding = [round(float(val), 2) for val in y_values[: window_size - 1]]
     smoothed = [round(float(val), 2) for val in moving_avg]
 
