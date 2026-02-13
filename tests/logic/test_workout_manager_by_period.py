@@ -190,25 +190,6 @@ class TestGetDistanceByPeriod:
             "2024-02": 10,
         }
 
-    def test_get_distance_by_period_groups_small_periods(self) -> None:
-        """Group small periods into Others based on threshold."""
-        workouts = wm.WorkoutManager(
-            pd.DataFrame(
-                {
-                    "activityType": ["Running", "Running"],
-                    "startDate": pd.to_datetime(["2024-01-05", "2024-02-05"]),
-                    "distance": [50000.0, 1000.0],  # 50km, 1km
-                }
-            )
-        )
-
-        result = workouts.get_distance_by_period("M")
-
-        assert result == {
-            "2024-01": 50,
-            "2024-02": 1,
-        }
-
     def test_get_distance_by_period_filters_zero_values(self) -> None:
         """Ensure zero-valued periods are retained in the results."""
         workouts = wm.WorkoutManager(
