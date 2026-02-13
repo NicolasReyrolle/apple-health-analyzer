@@ -132,21 +132,93 @@ class WorkoutManager:
 
         return result
 
+    def _aggregate_by_period(
+        self,
+        column: str,
+        period: str,
+        aggregation: Callable[[Any], Any],
+        transformation: Callable[[pd.Series], pd.Series],
+        column_check: Optional[str] = None,
+        filter_zeros: bool = True,
+        activity_type: str = "All",
+        fill_missing_periods: bool = True,
+    ) -> Dict[str, int]:
+        """Generic method to aggregate metrics by period.
+
+        Args:
+            column: Column name to aggregate.
+            period: Period to group by (e.g., 'Y' for year, 'M' for month, 'W' for week).
+            aggregation: Function to apply for aggregating.
+            transformation: Function to apply to the aggregated series.
+            column_check: Additional column to check exists (defaults to column).
+            filter_zeros: Whether to filter out zero values.
+            activity_type: Type of activity to filter by.
+            fill_missing_periods: Whether to fill missing periods with zero values.
+
+        Returns:
+            Dictionary mapping periods to aggregated values.
+        """
+        column_check = column_check or column
+        if (
+            "activityType" not in self.workouts.columns
+            or column_check not in self.workouts.columns
+            or "startDate" not in self.workouts.columns
+        ):
+            return {}
+
+        # Validate that startDate is datetime-like
+        if not pd.api.types.is_datetime64_any_dtype(self.workouts["startDate"]):
+            return {}
+
+        workouts = self._filter_by_activity(activity_type)
+
+        # If there is no data after filtering, return empty dict as
+        # dt.to_period would fail
+        if workouts.empty:
+            return {}
+
+        grouped = aggregation(
+            workouts.groupby(  # type: ignore[reportUnknownMemberType]
+                workouts["startDate"].dt.to_period(period)  # type: ignore[reportUnknownMemberType]
+            )[column]
+        )
+
+        # If aggregation returned an empty Series, there is nothing to aggregate
+        # into periods; avoid calling grouped.index.min()/max() on an empty index.
+        if grouped.empty:
+            return {}
+        # Add missing periods with zero values if needed
+        if fill_missing_periods:
+            full_range = pd.period_range(
+                start=grouped.index.min(),
+                end=grouped.index.max(),
+                freq=period,
+            )
+            grouped = grouped.reindex(
+                full_range, fill_value=0
+            )  # type: ignore[reportUnknownMemberType]
+
+        # Apply transformation
+        transformed = transformation(grouped)
+        result_float: Dict[str, float] = transformed.astype(
+            float
+        ).to_dict()  # type: ignore[reportUnknownMemberType]
+
+        # Convert period to str and round to integers
+        result: Dict[str, int] = {str(k): int(round(v)) for k, v in result_float.items()}
+
+        # Filter zero values if needed, only if we didn't already filled missing periods with zeros
+        if filter_zeros and not fill_missing_periods:
+            result = {k: v for k, v in result.items() if v > 0}
+
+        return result
+
     def count(self, activity_type: str = "All") -> int:
         """Return the number of workouts."""
         return len(self._filter_by_activity(activity_type))
 
     def get_total_distance(self, activity_type: str = "All", unit: str = "km") -> int:
-        """Return the total distance optionally per activity_type, and in the given unit.
-
-        Args:
-            activity_type (str, optional): type of activity. Defaults to "All".
-            unit (str, optional): unit in which to return the distance. Defaults to "km".
-                Allowed: "km", "m", "mi".
-
-        Returns:
-            int: Total distance in the specified unit.
-        """
+        """Return the total distance optionally per activity_type, and in the given unit."""
         divisor = self._get_distance_divisor(unit)
         return self._get_aggregate_total(activity_type, "distance", divisor=divisor)
 
@@ -159,22 +231,18 @@ class WorkoutManager:
         """Return the total duration of workouts in hours rounded to the nearest integer"""
         return self._get_aggregate_total(activity_type, "duration", divisor=3600)
 
-    def get_total_elevation(self, activity_type: str = "All") -> int:
-        """
-        Return the total elevation gain of workouts in kilometers
-        rounded to the nearest integer.
-        """
-        return self._get_aggregate_total(activity_type, "ElevationAscended", divisor=1000)
-
-    def get_total_calories(self, activity_type: str = "All") -> int:
-        """Return the total calories burned of workouts.
+    def get_total_elevation(self, activity_type: str = "All", unit: str = "km") -> int:
+        """Return the total elevation gain of workouts in the specified unit.
 
         Args:
-            activity_type (str, optional): Type of activity to filter by. Defaults to "All".
-
-        Returns:
-            int: Total calories burned in kilocalories, rounded to the nearest integer.
+            activity_type: Filter by activity type ("All" for all activities)
+            unit: Unit for elevation ("km", "m", or "mi"). Defaults to "km".
         """
+        divisor = self._get_distance_divisor(unit)
+        return self._get_aggregate_total(activity_type, "ElevationAscended", divisor=divisor)
+
+    def get_total_calories(self, activity_type: str = "All") -> int:
+        """Return the total calories burned of workouts"""
         return self._get_aggregate_total(activity_type, "sumActiveEnergyBurned")
 
     def get_calories_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
@@ -186,6 +254,37 @@ class WorkoutManager:
             lambda x: x.sum(),
             lambda x: x,
             combination_threshold=combination_threshold,
+        )
+
+    def get_calories_by_period(
+        self,
+        period: str,
+        activity_type: str = "All",
+        fill_missing_periods: bool = True,
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to total calories burned.
+
+        Args:
+            period: The period over which to aggregate calories. Typical values include
+                "D" for day, "W" for week, "M" for month, and "Y" for year. The value is
+                passed to the internal aggregation logic and should follow the expected
+                period codes used there.
+            activity_type: Filter by activity type ("All" for all activities). Defaults
+                to "All".
+            fill_missing_periods: If True, include periods with zero calories in the
+                result. If False, only periods with recorded workouts are returned.
+
+        Returns:
+            A dictionary mapping period labels (as strings) to total calories burned
+            in each period.
+        """
+        return self._aggregate_by_period(
+            "sumActiveEnergyBurned",
+            period,
+            lambda x: x.sum(),
+            lambda x: x,
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
         )
 
     def get_distance_by_activity(
@@ -201,6 +300,24 @@ class WorkoutManager:
             combination_threshold=combination_threshold,
         )
 
+    def get_distance_by_period(
+        self,
+        period: str,
+        activity_type: str = "All",
+        unit: str = "km",
+        fill_missing_periods: bool = True,
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to total distance."""
+        return self._aggregate_by_period(
+            "distance",
+            period,
+            lambda x: x.sum(),
+            lambda x: x.div(self._get_distance_divisor(unit)),
+            filter_zeros=False,
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
+        )
+
     def get_count_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
         """Return a dictionary mapping activity types to workout counts.
         Activities that represent less than the combination_threshold percentage of total count
@@ -211,6 +328,20 @@ class WorkoutManager:
             lambda x: x,
             column_check="activityType",
             combination_threshold=combination_threshold,
+        )
+
+    def get_count_by_period(
+        self, period: str, activity_type: str = "All", fill_missing_periods: bool = True
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to workout counts."""
+        return self._aggregate_by_period(
+            "activityType",
+            period,
+            lambda x: x.count(),
+            lambda x: x,
+            column_check="activityType",
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
         )
 
     def get_duration_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
@@ -224,16 +355,51 @@ class WorkoutManager:
             combination_threshold=combination_threshold,
         )
 
-    def get_elevation_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+    def get_duration_by_period(
+        self, period: str, activity_type: str = "All", fill_missing_periods: bool = True
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to total duration in hours."""
+        return self._aggregate_by_period(
+            "duration",
+            period,
+            lambda x: x.sum(),
+            lambda x: x.div(3600),
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
+        )
+
+    def get_elevation_by_activity(
+        self, combination_threshold: float = 10.0, unit: str = "m"
+    ) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total elevation gain.
         Activities that represent less than the combination_threshold percentage of total elevation
         are grouped into an "Others" category."""
         return self._aggregate_by_activity(
             "ElevationAscended",
             lambda x: x.sum(),
-            lambda x: x.div(1000),
+            lambda x: x.div(self._get_distance_divisor(unit)),
             filter_zeros=False,
             combination_threshold=combination_threshold,
+        )
+
+    def get_elevation_by_period(
+        self,
+        period: str,
+        activity_type: str = "All",
+        fill_missing_periods: bool = True,
+        unit: str = "m",
+    ) -> Dict[str, int]:
+        """Return a dictionary mapping periods to total elevation gain in the specified unit.
+
+        The `unit` parameter controls the unit of measurement ("m", "km", or "mi")."""
+        return self._aggregate_by_period(
+            "ElevationAscended",
+            period,
+            lambda x: x.sum(),
+            lambda x: x.div(self._get_distance_divisor(unit)),
+            filter_zeros=False,
+            activity_type=activity_type,
+            fill_missing_periods=fill_missing_periods,
         )
 
     def group_small_values(

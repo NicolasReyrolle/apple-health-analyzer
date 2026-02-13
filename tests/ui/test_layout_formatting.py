@@ -22,7 +22,7 @@ class _DummyWorkouts(WorkoutManager):
     def get_total_duration(self, activity_type: str = "All") -> int:
         return 24680
 
-    def get_total_elevation(self, activity_type: str = "All") -> int:
+    def get_total_elevation(self, activity_type: str = "All", unit: str = "m") -> int:
         return 13579
 
     def get_total_calories(self, activity_type: str = "All") -> int:
@@ -37,9 +37,10 @@ def test_refresh_data_formats_metrics_display() -> None:
         state.workouts = _DummyWorkouts()
         state.selected_activity_type = "All"
 
-        # Mock the refresh call to avoid event loop issues in testing
+        # Mock the refresh calls to avoid event loop issues in testing
         with patch("ui.layout.render_activity_graphs.refresh"):
-            refresh_data()
+            with patch("ui.layout.render_trends_graphs.refresh"):
+                refresh_data()
 
         assert state.metrics_display["count"] == format_integer(12345)
         assert state.metrics_display["distance"] == format_integer(67890)

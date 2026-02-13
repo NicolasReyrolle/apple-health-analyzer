@@ -3,6 +3,7 @@
 import asyncio
 import time
 
+import pandas as pd
 from nicegui import app, ui
 
 from app_state import state
@@ -40,9 +41,10 @@ def refresh_data() -> None:
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
 
     render_activity_graphs.refresh()
+    render_trends_graphs.refresh()
 
 
-def _update_activity_filter(new_value: str) -> None:
+def update_activity_filter(new_value: str) -> None:
     """Update the selected activity type filter and refresh derived metrics.
 
     Args:
@@ -58,7 +60,7 @@ def render_activity_select() -> None:
 
     ui.select(
         options=state.activity_options,
-        on_change=lambda e: _update_activity_filter(e.value),
+        on_change=lambda e: update_activity_filter(e.value),
         value=state.selected_activity_type,
         label="Activity Type",
     ).classes("w-40").bind_enabled_from(state, "file_loaded")
@@ -141,7 +143,6 @@ def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):
 def render_pie_rose_graph(label: str, values: dict[str, int], unit: str = "") -> None:
     """Render a pie/rose graph for the given values."""
 
-    # Transform dictionary data into ECharts format: [{'value': x, 'name': y}, ...]
     chart_data = [{"value": v, "name": k} for k, v in values.items()]
 
     with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
@@ -157,6 +158,60 @@ def render_pie_rose_graph(label: str, values: dict[str, int], unit: str = "") ->
                         "roseType": "rose",
                         "radius": ["10", "60"],
                         "center": ["50%", "50%"],
+                    },
+                ],
+            }
+        )
+
+
+def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list[float]:
+    """
+    Calculate a moving average to smooth out peaks and valleys in sports data.
+
+    Uses a rolling window with ``min_periods=1``, which behaves like an expanding
+    average for the initial points when there are fewer samples than ``window_size``.
+    """
+    # Use pandas rolling window to calculate the moving average consistently
+    return (
+        pd.Series(y_values)
+        .rolling(window=window_size, min_periods=1)
+        .mean()
+        .round(2)
+        .tolist()
+    )
+def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None:
+    """Render bar graphs for the given values."""
+
+    # Transform dictionary data into ECharts format: [{'value': x, 'name': y}, ...]
+    chart_data = [{"value": v, "name": k} for k, v in values.items()]
+
+    # Extract raw lists for the axes and series
+    categories = [d["name"] for d in chart_data]
+    data_points = list(values.values())
+
+    with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
+        ui.label(label).classes("text-sm text-gray-500 uppercase")
+        ui.echart(
+            {
+                "tooltip": {"trigger": "axis", "formatter": f"{{b}}: {{c}} {unit}"},
+                "xAxis": {
+                    "type": "category",
+                    "data": categories,
+                    "axisTick": {"alignWithLabel": True},
+                },
+                "yAxis": {"type": "value"},
+                "series": [
+                    {"data": data_points, "type": "bar"},
+                    {
+                        "name": "Trend",
+                        "type": "line",
+                        "data": calculate_moving_average(data_points),
+                        "symbol": "none",  # Removes the dots on the line
+                        "lineStyle": {
+                            "width": 2,
+                            "type": "dashed",  # Dashed line for statistical trends
+                        },
+                        "itemStyle": {"color": "#e74c3c"},  # Red color to stand out
                     },
                 ],
             }
@@ -230,8 +285,8 @@ def render_body() -> None:
     with ui.tabs().classes("w-full") as tabs:
         tab_summary = ui.tab("Overview")
         tab_activities = ui.tab("Activities").bind_enabled_from(state, "file_loaded")
+        tab_trends = ui.tab("Trends").bind_enabled_from(state, "file_loaded")
         ui.tab("Health Data").props("disable")
-        ui.tab("Trends").props("disable")
 
     with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
         with ui.tab_panel(tab_summary):
@@ -245,6 +300,9 @@ def render_body() -> None:
 
         with ui.tab_panel(tab_activities):
             render_activity_graphs()
+
+        with ui.tab_panel(tab_trends):
+            render_trends_graphs()
 
 
 @ui.refreshable
@@ -263,6 +321,44 @@ def render_activity_graphs() -> None:
             "Duration by activity", state.workouts.get_duration_by_activity(), "h"
         )
     with ui.row().classes("w-full justify-center gap-4"):
+        # Display elevation in meters (not km like the stat card) because per-activity
+        # values can be small and would show as 0.0X km, making the chart less readable
         render_pie_rose_graph(
-            "Elevation by activity", state.workouts.get_elevation_by_activity(), "km"
+            "Elevation by activity", state.workouts.get_elevation_by_activity(), "m"
+        )
+
+
+@ui.refreshable
+def render_trends_graphs() -> None:
+    """Render trend graphs."""
+    with ui.row().classes("w-full justify-center gap-4"):
+        render_bar_graph(
+            "Count by month",
+            state.workouts.get_count_by_period("M", activity_type=state.selected_activity_type),
+        )
+        render_bar_graph(
+            "Distance by month",
+            state.workouts.get_distance_by_period("M", activity_type=state.selected_activity_type),
+            "km",
+        )
+    with ui.row().classes("w-full justify-center gap-4"):
+        render_bar_graph(
+            "Calories by month",
+            state.workouts.get_calories_by_period("M", activity_type=state.selected_activity_type),
+            "kcal",
+        )
+        render_bar_graph(
+            "Duration by month",
+            state.workouts.get_duration_by_period("M", activity_type=state.selected_activity_type),
+            "h",
+        )
+    with ui.row().classes("w-full justify-center gap-4"):
+        # Display elevation in meters (not km like the stat card) because monthly
+        # values can be small and would show as 0.0X km, making the chart less readable
+        render_bar_graph(
+            "Elevation by month",
+            state.workouts.get_elevation_by_period(
+                "M", activity_type=state.selected_activity_type, unit="m"
+            ),
+            "m",
         )

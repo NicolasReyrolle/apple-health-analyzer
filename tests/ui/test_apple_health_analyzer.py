@@ -54,8 +54,8 @@ async def load_health_export(user: User, create_health_zip: Callable[..., str]) 
     return zip_path
 
 
-class TestMainWindow:
-    """Integration tests for the main CLI."""
+class TestFileBrowsing:
+    """Tests for file browsing and file picker dialog."""
 
     async def test_click_browse(self, user: User) -> None:
         """Test that the browse button works."""
@@ -64,49 +64,6 @@ class TestMainWindow:
         user.find("Browse").click()
         await user.should_see("Ok")
 
-    async def test_load_without_file(self, user: User) -> None:
-        """Test that loading without selecting a file shows a notification."""
-        await user.open("/")
-        await user.should_see("Apple Health Analyzer")
-        user.find("Load").click()
-        await user.should_see("Please select an Apple Health export file first.")
-
-    async def test_load_with_non_existent_file(self, user: User) -> None:
-        """Test that loading a non-existent file shows an error notification."""
-
-        await user.open("/")
-        await user.should_see("Apple Health Analyzer")
-        user.find("Apple Health export file").type("invalid_export.zip")
-        user.find("Load").click()
-        await user.should_see("No such file or directory")
-
-    async def test_load_with_valid_file(
-        self, user: User, create_health_zip: Callable[..., str]
-    ) -> None:
-        """Test that loading a valid export file shows statistics."""
-
-        class _AwaitableFalse:
-            def __await__(self) -> Any:
-                yield from []
-                return False
-
-        # Type hint `self` with Client to resolve type unknown for `new` argument in patch.
-        # Explicitly type `args` and `kwargs` for better type inference.
-        def _noop_run_javascript(_self: Client, *_args: Any, **_kwargs: Any):
-            return _AwaitableFalse()
-
-        with patch("nicegui.client.Client.run_javascript", new=_noop_run_javascript):
-            await user.open("/")
-            # 1. Load the file and wait for parsing
-            await load_health_export(user, create_health_zip)
-
-            # 2. Check if the UI correctly displays data from our XML
-            await user.should_see("Total distance of 9", retries=50)
-            await user.should_see("Total duration of 1h 0m 53s")
-            # Small delay to ensure Windows releases file handles and
-            # async operations complete before teardown
-            await asyncio.sleep(0.2)
-
     async def test_browse_button_opens_picker(self, user: User) -> None:
         """Test that the browse button opens the file picker dialog."""
         await user.open("/")
@@ -114,24 +71,6 @@ class TestMainWindow:
         user.find("Browse").click()
         await user.should_see("Ok")
         # Small delay to ensure Windows releases file handles before teardown
-        await asyncio.sleep(0.2)
-
-    async def test_input_file_persists_in_storage(self, user: User) -> None:
-        """Test that the input file path is persisted in app storage."""
-        await user.open("/")
-        user.find("Apple Health export file").type("tests/fixtures/export_sample.zip")
-        await user.open("/")
-        await user.should_see("tests/fixtures/export_sample.zip")
-        # Small delay before teardown
-        await asyncio.sleep(0.2)
-
-    async def test_parse_error_shows_notification(self, user: User) -> None:
-        """Test that parse errors display error notification."""
-        await user.open("/")
-        user.find("Apple Health export file").type("tests/fixtures/corrupt_export.zip")
-        user.find("Load").click()
-        await user.should_see("Error parsing file")
-        # Small delay before teardown
         await asyncio.sleep(0.2)
 
     async def test_browse_no_file_selected(self, user: User, mock_file_picker_context: Any) -> None:
@@ -169,6 +108,74 @@ class TestMainWindow:
             assert fake_path in input_field.value, (  # type: ignore[union-attr]
                 f"Expected {fake_path} in {input_field.value}"  # type: ignore[union-attr]
             )
+
+
+class TestFileLoading:
+    """Tests for loading health export files."""
+
+    async def test_load_without_file(self, user: User) -> None:
+        """Test that loading without selecting a file shows a notification."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Load").click()
+        await user.should_see("Please select an Apple Health export file first.")
+
+    async def test_load_with_non_existent_file(self, user: User) -> None:
+        """Test that loading a non-existent file shows an error notification."""
+        await user.open("/")
+        await user.should_see("Apple Health Analyzer")
+        user.find("Apple Health export file").type("invalid_export.zip")
+        user.find("Load").click()
+        await user.should_see("No such file or directory")
+
+    async def test_load_with_valid_file(
+        self, user: User, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Test that loading a valid export file shows statistics."""
+
+        class _AwaitableFalse:
+            def __await__(self) -> Any:
+                yield from []
+                return False
+
+        # Type hint `self` with Client to resolve type unknown for `new` argument in patch.
+        # Explicitly type `args` and `kwargs` for better type inference.
+        def _noop_run_javascript(_self: Client, *_args: Any, **_kwargs: Any):
+            return _AwaitableFalse()
+
+        with patch("nicegui.client.Client.run_javascript", new=_noop_run_javascript):
+            await user.open("/")
+            # 1. Load the file and wait for parsing
+            await load_health_export(user, create_health_zip)
+
+            # 2. Check if the UI correctly displays data from our XML
+            await user.should_see("Total distance of 9", retries=50)
+            await user.should_see("Total duration of 1h 0m 53s")
+            # Small delay to ensure Windows releases file handles and
+            # async operations complete before teardown
+            await asyncio.sleep(0.2)
+
+    async def test_input_file_persists_in_storage(self, user: User) -> None:
+        """Test that the input file path is persisted in app storage."""
+        await user.open("/")
+        user.find("Apple Health export file").type("tests/fixtures/export_sample.zip")
+        await user.open("/")
+        await user.should_see("tests/fixtures/export_sample.zip")
+        # Small delay before teardown
+        await asyncio.sleep(0.2)
+
+    async def test_parse_error_shows_notification(self, user: User) -> None:
+        """Test that parse errors display error notification."""
+        await user.open("/")
+        user.find("Apple Health export file").type("tests/fixtures/corrupt_export.zip")
+        user.find("Load").click()
+        await user.should_see("Error parsing file")
+        # Small delay before teardown
+        await asyncio.sleep(0.2)
+
+
+class TestExportFunctionality:
+    """Tests for data export functionality."""
 
     async def test_export_dropdown_has_json_option(self, user: User) -> None:
         """Test that the export dropdown contains the 'to JSON' option."""
@@ -297,6 +304,10 @@ class TestMainWindow:
         export_interaction = user.find("Export data")
         assert_ui_state(export_interaction, enabled=False)
 
+
+class TestActivityFiltering:
+    """Tests for activity type filtering functionality."""
+
     async def test_activity_filter_checkbox_rendering(
         self, user: User, create_health_zip: Callable[..., str]
     ) -> None:
@@ -322,6 +333,10 @@ class TestMainWindow:
         assert state.selected_activity_type == "Running"
         # Small delay before teardown
         await asyncio.sleep(0.2)
+
+
+class TestStatCards:
+    """Tests for statistics cards display and updates."""
 
     async def test_stat_cards_initial_zero_values(self, user: User) -> None:
         """Test that stat cards display zero values by default."""
@@ -378,6 +393,10 @@ class TestMainWindow:
         await user.should_see("kcal")  # Calories unit
         # Small delay before teardown
         await asyncio.sleep(0.2)
+
+
+class TestLoadingState:
+    """Tests for loading state and UI interactions during parsing."""
 
     async def test_loading_state_disables_button_and_shows_spinner(
         self, user: User, create_health_zip: Callable[..., str], assert_ui_state: StateAssertion
