@@ -310,7 +310,7 @@ class TestElevationByActivityEdgeCases:
             )
         )
 
-        result = workouts.get_elevation_by_activity(combination_threshold=50.0)
+        result = workouts.get_elevation_by_activity(combination_threshold=50.0, unit="km")
 
         # Total = 450m → 0.45km, threshold_value = 0.45 * 0.5 = 0.225km
         # Values after div(1000): Walk1(0.1), Walk2(0.15), Walk3(0.2)

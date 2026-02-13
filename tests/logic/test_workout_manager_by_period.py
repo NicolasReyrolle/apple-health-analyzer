@@ -206,7 +206,7 @@ class TestGetDistanceByPeriod:
 
         assert result == {
             "2024-01": 50,
-            "Others": 1,
+            "2024-02": 1,
         }
 
     def test_get_distance_by_period_filters_zero_values(self) -> None:
@@ -600,7 +600,7 @@ class TestGetElevationByPeriod:
             )
         )
 
-        result = workouts.get_elevation_by_period("M", fill_missing_periods=False)
+        result = workouts.get_elevation_by_period("M", fill_missing_periods=False, unit="km")
 
         assert result == {
             "2024-01": 2,  # (1000 + 500) / 1000 = 1.5 ≈ 2 km
@@ -623,6 +623,7 @@ class TestGetElevationByPeriod:
             "M",
             fill_missing_periods=False,
             activity_type="Running",
+            unit="km",
         )
 
         assert result == {
@@ -642,7 +643,7 @@ class TestGetElevationByPeriod:
             )
         )
 
-        result = workouts.get_elevation_by_period("M", fill_missing_periods=False)
+        result = workouts.get_elevation_by_period("M", fill_missing_periods=False, unit="km")
 
         assert result == {
             "2024-01": 10,
@@ -661,7 +662,7 @@ class TestGetElevationByPeriod:
             )
         )
 
-        result = workouts.get_elevation_by_period("M", fill_missing_periods=False)
+        result = workouts.get_elevation_by_period("M", fill_missing_periods=False, unit="km")
 
         assert result == {"2024-01": 10, "2024-02": 2}
 
@@ -677,7 +678,7 @@ class TestGetElevationByPeriod:
             )
         )
 
-        result = workouts.get_elevation_by_period("M")
+        result = workouts.get_elevation_by_period("M", unit="km")
 
         assert result == {
             "2023-12": 10,
@@ -697,7 +698,7 @@ class TestGetElevationByPeriod:
             )
         )
 
-        result = workouts.get_elevation_by_period("Y", fill_missing_periods=False)
+        result = workouts.get_elevation_by_period("Y", fill_missing_periods=False, unit="km")
 
         assert result == {
             "2023": 1,
@@ -716,6 +717,6 @@ class TestGetElevationByPeriod:
             )
         )
 
-        result = workouts.get_elevation_by_period("M", fill_missing_periods=False)
+        result = workouts.get_elevation_by_period("M", fill_missing_periods=False, unit="km")
 
         assert result == {"2024-08": 1500}

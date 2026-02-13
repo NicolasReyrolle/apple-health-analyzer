@@ -48,6 +48,6 @@ def test_render_activity_graphs_renders_all_charts() -> None:
         render_graph_mock.assert_any_call("Distance by activity", {"Running": 5}, "km")
         render_graph_mock.assert_any_call("Calories by activity", {"Running": 200}, "kcal")
         render_graph_mock.assert_any_call("Duration by activity", {"Running": 1}, "h")
-        render_graph_mock.assert_any_call("Elevation by activity", {"Running": 1}, "km")
+        render_graph_mock.assert_any_call("Elevation by activity", {"Running": 1}, "m")
     finally:
         state.workouts = original_workouts

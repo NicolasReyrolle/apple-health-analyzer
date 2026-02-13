@@ -570,7 +570,7 @@ class TestGetElevationByActivity:
             )
         )
 
-        result = workouts.get_elevation_by_activity()
+        result = workouts.get_elevation_by_activity(unit="km")
 
         assert result == {"Hiking": 5}
 
@@ -585,10 +585,8 @@ class TestGetElevationByActivity:
             )
         )
 
-        result = workouts.get_elevation_by_activity()
+        result = workouts.get_elevation_by_activity(unit="km")
 
-        # Total = 11500, threshold (10%) = 1150
-        # All values >= 1150, so no grouping
         assert result == {"Hiking": 8, "Cycling": 2, "Running": 1}
 
     def test_get_elevation_by_activity_aggregates_same_type(self) -> None:
@@ -602,7 +600,7 @@ class TestGetElevationByActivity:
             )
         )
 
-        result = workouts.get_elevation_by_activity()
+        result = workouts.get_elevation_by_activity(unit="km")
 
         # Hiking total: 5000 + 3000 = 8000
         assert result == {"Hiking": 8, "Running": 1}
@@ -618,7 +616,7 @@ class TestGetElevationByActivity:
             )
         )
 
-        result = workouts.get_elevation_by_activity(combination_threshold=10.0)
+        result = workouts.get_elevation_by_activity(combination_threshold=10.0, unit="km")
 
         # Total = 8700, threshold (10%) = 870
         # Sorted: Cycling(200), Walking(500), Running(3000), Hiking(5000)

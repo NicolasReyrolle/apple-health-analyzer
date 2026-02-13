@@ -325,7 +325,7 @@ def render_activity_graphs() -> None:
         )
     with ui.row().classes("w-full justify-center gap-4"):
         render_pie_rose_graph(
-            "Elevation by activity", state.workouts.get_elevation_by_activity(), "km"
+            "Elevation by activity", state.workouts.get_elevation_by_activity(), "m"
         )
 
 
@@ -357,5 +357,5 @@ def render_trends_graphs() -> None:
         render_bar_graph(
             "Elevation by month",
             state.workouts.get_elevation_by_period("M", activity_type=state.selected_activity_type),
-            "km",
+            "m",
         )

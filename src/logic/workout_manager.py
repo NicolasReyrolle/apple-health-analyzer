@@ -335,27 +335,33 @@ class WorkoutManager:
             fill_missing_periods=fill_missing_periods,
         )
 
-    def get_elevation_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+    def get_elevation_by_activity(
+        self, combination_threshold: float = 10.0, unit: str = "m"
+    ) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total elevation gain.
         Activities that represent less than the combination_threshold percentage of total elevation
         are grouped into an "Others" category."""
         return self._aggregate_by_activity(
             "ElevationAscended",
             lambda x: x.sum(),
-            lambda x: x.div(1000),
+            lambda x: x.div(self._get_distance_divisor(unit)),
             filter_zeros=False,
             combination_threshold=combination_threshold,
         )
 
     def get_elevation_by_period(
-        self, period: str, activity_type: str = "All", fill_missing_periods: bool = True
+        self,
+        period: str,
+        activity_type: str = "All",
+        fill_missing_periods: bool = True,
+        unit: str = "m",
     ) -> Dict[str, int]:
         """Return a dictionary mapping periods to total elevation gain in kilometers."""
         return self._aggregate_by_period(
             "ElevationAscended",
             period,
             lambda x: x.sum(),
-            lambda x: x.div(1000),
+            lambda x: x.div(self._get_distance_divisor(unit)),
             filter_zeros=False,
             activity_type=activity_type,
             fill_missing_periods=fill_missing_periods,
