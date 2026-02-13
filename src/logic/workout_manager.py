@@ -172,8 +172,6 @@ class WorkoutManager:
                 workouts["startDate"].dt.to_period(period)  # type: ignore[reportUnknownMemberType]
             )[column]
         )
-        if grouped.empty:
-            return {}
 
         # Add missing periods with zero values if needed
         if fill_missing_periods:
