@@ -181,6 +181,10 @@ class WorkoutManager:
             )[column]
         )
 
+        # If aggregation returned an empty Series, there is nothing to aggregate
+        # into periods; avoid calling grouped.index.min()/max() on an empty index.
+        if grouped.empty:
+            return {}
         # Add missing periods with zero values if needed
         if fill_missing_periods:
             full_range = pd.period_range(
