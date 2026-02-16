@@ -157,6 +157,7 @@ class TestSetupLogging:
         self, clean_logger: logging.Logger, tmp_path: Path
     ) -> None:
         """Test that setup_logging creates the logs directory."""
+        assert clean_logger is logging.getLogger()
         # Use a real path in tmp_path
         log_dir = tmp_path / "logs"
         assert not log_dir.exists(), "Log directory should not exist initially"
