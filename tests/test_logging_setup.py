@@ -3,9 +3,12 @@
 import logging
 import logging.handlers
 import os
+import runpy
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Import the module to test
 import apple_health_analyzer
@@ -353,3 +356,25 @@ class TestCLIArgumentParsing:
         mock_ui_run.assert_called_once()
         call_kwargs = mock_ui_run.call_args[1]
         assert call_kwargs.get("show") is False
+
+    def test_module_entrypoint_invokes_cli_main(
+        self,
+        clean_logger: logging.Logger,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Test that running the module as __main__ triggers cli_main."""
+        assert clean_logger is logging.getLogger()
+        called = {"run": False}
+
+        def _fake_run(*_args: object, **_kwargs: object) -> None:
+            called["run"] = True
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("APPLE_HEALTH_ANALYZER_LOG_DIR", str(tmp_path / "logs"))
+        monkeypatch.setattr(sys, "argv", ["apple_health_analyzer.py"])
+        monkeypatch.setattr("nicegui.ui.run", _fake_run)
+
+        runpy.run_module("apple_health_analyzer", run_name="__main__")
+
+        assert called["run"], "cli_main should start the NiceGUI server"
