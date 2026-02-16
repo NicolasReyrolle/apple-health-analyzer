@@ -9,20 +9,25 @@ import argparse
 import logging
 import logging.handlers
 import os
-import uuid
 import sys
+import uuid
 from pathlib import Path
 
-from nicegui import ui, app
+from nicegui import app, ui
 
 from app_state import state
 from assets import APP_ICON_BASE64
+from ui.layout import load_file, render_body, render_header, render_left_drawer
 
-from ui.layout import render_left_drawer
-from ui.layout import render_header
-from ui.layout import render_body
-from ui.layout import load_file
+# Module-level variable to store dev file path from command-line arguments
+_dev_file_path: str | None = None
 
+# Configure basic logging at module level to ensure logger has handlers
+# This will be reconfigured by _setup_logging() when the application starts
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 _logger = logging.getLogger(__name__)
 
 
