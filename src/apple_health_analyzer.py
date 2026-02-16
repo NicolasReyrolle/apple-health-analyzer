@@ -85,7 +85,7 @@ def main() -> None:
     dev_file: str | None = app.storage.general.get(  # type: ignore[no-untyped-call]
         "_dev_file_path"
     )
-    if dev_file is not None:
+    if dev_file is not None and not state.file_loaded:
         _logger.info("Dev file will be auto-loaded: %s", dev_file)
         state.input_file.value = dev_file
 
@@ -93,6 +93,10 @@ def main() -> None:
             """Auto-load the dev file after UI is ready."""
             _logger.info("Auto-loading file: %s", dev_file)
             await load_file()
+            # Clear dev file from storage after successful load to prevent reload on page refresh
+            if state.file_loaded:
+                app.storage.general.pop("_dev_file_path", None)  # type: ignore[no-untyped-call]
+                _logger.debug("Cleared dev file from app storage after successful load")
 
         # Use ui.timer with the async callback
         _logger.debug("Scheduling file load via ui.timer after 1 second")
