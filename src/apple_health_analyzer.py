@@ -126,16 +126,16 @@ def cli_main() -> None:
         # Disable file logging in dev mode to avoid reload loops from log file changes
         _setup_logging(args.log_level, enable_file_logging=False)
         try:
-            dev_file_path = Path(args.dev_file).expanduser().resolve()
+            resolved_path = Path(args.dev_file).expanduser().resolve()
         except OSError as exc:
             _logger.error("Invalid dev file path '%s': %s", args.dev_file, exc)
             sys.exit(1)
-        if not dev_file_path.is_file():
-            _logger.error("File not found: %s", dev_file_path)
+        if not resolved_path.is_file():
+            _logger.error("File not found: %s", resolved_path)
             sys.exit(1)
         _logger.info("Dev mode: file logging disabled to prevent reload loops")
-        _logger.info("Dev file specified: %s", dev_file_path)
-        _dev_file_path = str(dev_file_path)
+        _logger.info("Dev file specified: %s", resolved_path)
+        _dev_file_path = str(resolved_path)
     else:
         # Enable file logging in normal mode
         _setup_logging(args.log_level, enable_file_logging=True)
