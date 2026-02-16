@@ -277,12 +277,12 @@ def clean_logger() -> Generator[logging.Logger, None, None]:
     for handler in list(logger.handlers):
         try:
             handler.close()
-        except Exception:  # pylint: disable=broad-except
+        except (OSError, ValueError):
             pass
         finally:
             try:
                 logger.removeHandler(handler)
-            except Exception:  # pylint: disable=broad-except
+            except ValueError:
                 pass
 
     # Also reset logger level to ensure it's not affected by previous tests
@@ -295,12 +295,12 @@ def clean_logger() -> Generator[logging.Logger, None, None]:
     for handler in list(logger.handlers):
         try:
             handler.close()
-        except Exception:  # pylint: disable=broad-except
+        except (OSError, ValueError):
             pass
         finally:
             try:
                 logger.removeHandler(handler)
-            except Exception:  # pylint: disable=broad-except
+            except ValueError:
                 pass
 
     # Restore original logger level
