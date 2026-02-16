@@ -82,12 +82,12 @@ def main() -> None:
         "_dev_file_path"
     )
     if dev_file is not None:
-        _logger.info("Dev file will be auto-loaded: %s", dev_file)  # type: ignore[arg-type]
+        _logger.info("Dev file will be auto-loaded: %s", dev_file)
         state.input_file.value = dev_file
 
         async def _auto_load() -> None:
             """Auto-load the dev file after UI is ready."""
-            _logger.info("Auto-loading file: %s", dev_file)  # type: ignore[arg-type]
+            _logger.info("Auto-loading file: %s", dev_file)
             await load_file()
 
         # Use ui.timer with the async callback
