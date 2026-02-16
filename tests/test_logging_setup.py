@@ -2,6 +2,7 @@
 
 import logging
 import logging.handlers
+import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -17,9 +18,6 @@ class TestSetupLogging:
 
     def test_setup_logging_with_debug_level(self, tmp_path: Path) -> None:
         """Test that _setup_logging correctly configures DEBUG level."""
-        # pylint: disable=import-outside-toplevel
-        import os
-
         # Clear any existing handlers
         logger = logging.getLogger()
         logger.handlers.clear()
@@ -56,9 +54,6 @@ class TestSetupLogging:
 
     def test_setup_logging_with_info_level(self, tmp_path: Path) -> None:
         """Test that _setup_logging correctly configures INFO level."""
-        # pylint: disable=import-outside-toplevel
-        import os
-
         logger = logging.getLogger()
         logger.handlers.clear()
 
@@ -82,9 +77,6 @@ class TestSetupLogging:
 
     def test_setup_logging_with_warning_level(self, tmp_path: Path) -> None:
         """Test that _setup_logging correctly configures WARNING level."""
-        # pylint: disable=import-outside-toplevel
-        import os
-
         logger = logging.getLogger()
         logger.handlers.clear()
 
@@ -105,9 +97,6 @@ class TestSetupLogging:
 
     def test_setup_logging_with_error_level(self, tmp_path: Path) -> None:
         """Test that _setup_logging correctly configures ERROR level."""
-        # pylint: disable=import-outside-toplevel
-        import os
-
         logger = logging.getLogger()
         logger.handlers.clear()
 
@@ -147,9 +136,6 @@ class TestSetupLogging:
 
     def test_setup_logging_clears_existing_handlers(self, tmp_path: Path) -> None:
         """Test that _setup_logging clears existing handlers to prevent duplicates."""
-        # pylint: disable=import-outside-toplevel
-        import os
-
         logger = logging.getLogger()
         # Start fresh
         logger.handlers.clear()
@@ -185,7 +171,6 @@ class TestSetupLogging:
 
     def test_setup_logging_creates_log_directory(self, tmp_path: Path) -> None:
         """Test that _setup_logging creates the logs directory."""
-        # pylint: disable=import-outside-toplevel
         logger = logging.getLogger()
         logger.handlers.clear()
 
@@ -194,8 +179,6 @@ class TestSetupLogging:
         assert not log_dir.exists(), "Log directory should not exist initially"
 
         # Change working directory temporarily to tmp_path
-        import os
-
         original_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
@@ -228,9 +211,6 @@ class TestSetupLogging:
 
     def test_setup_logging_handlers_have_formatters(self, tmp_path: Path) -> None:
         """Test that all handlers have formatters configured."""
-        # pylint: disable=import-outside-toplevel
-        import os
-
         logger = logging.getLogger()
         logger.handlers.clear()
 
@@ -252,13 +232,10 @@ class TestSetupLogging:
 
     def test_setup_logging_with_file_handler_configuration(self, tmp_path: Path) -> None:
         """Test that file handler is configured with correct settings."""
-        # pylint: disable=import-outside-toplevel
         logger = logging.getLogger()
         logger.handlers.clear()
 
         # Create actual logs directory for this test
-        import os
-
         original_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
