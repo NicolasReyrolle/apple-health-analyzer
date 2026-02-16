@@ -6,6 +6,7 @@ import os
 import runpy
 import sys
 from pathlib import Path
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -419,9 +420,8 @@ class TestCLIArgumentParsing:
         ):
             try:
                 apple_health_analyzer.cli_main()
-                assert apple_health_analyzer.app.storage.general.get("_dev_file_path", None) == str(
-                    dev_file
-                )
+                storage_general = cast(dict[str, str], apple_health_analyzer.app.storage.general)
+                assert storage_general.get("_dev_file_path") == str(dev_file)
                 mock_setup_logging.assert_called_once()
                 assert mock_setup_logging.call_args[1]["enable_file_logging"] is False
                 mock_ui_run.assert_called_once()
