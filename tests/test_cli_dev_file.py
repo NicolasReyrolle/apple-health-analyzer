@@ -11,9 +11,7 @@ def test_dev_file_help() -> None:
     result = subprocess.run(
         [
             sys.executable,
-            "-m",
-            "nicegui",
-            "src.apple_health_analyzer",
+            "src/apple_health_analyzer.py",
             "--help",
         ],
         capture_output=True,
@@ -33,9 +31,7 @@ def test_dev_file_invalid_path() -> None:
     result = subprocess.run(
         [
             sys.executable,
-            "-m",
-            "nicegui",
-            "src.apple_health_analyzer",
+            "src/apple_health_analyzer.py",
             "--dev-file",
             invalid_path,
         ],
@@ -64,9 +60,7 @@ def test_dev_file_valid_path() -> None:
     process = subprocess.Popen(
         [
             sys.executable,
-            "-m",
-            "nicegui",
-            "src.apple_health_analyzer",
+            "src/apple_health_analyzer.py",
             "--dev-file",
             str(fixture_path),
         ],
