@@ -87,7 +87,13 @@ pytest --cov=src tests/
 
 ### Developer Mode: Quick UI Testing
 
-For rapid UI development and testing, you can launch the app with a pre-loaded Apple Health export file:
+For rapid UI development and testing, you can launch the app with a pre-loaded Apple Health export file using the installed entry point (preferred):
+
+```bash
+apple-health-analyzer --dev-file tests/fixtures/export_sample.zip
+```
+
+Alternatively, during development you can run the module directly:
 
 ```bash
 python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip
@@ -104,6 +110,12 @@ The app will automatically load the specified file on startup, skipping the file
 #### Enable Debug Logging
 
 To see detailed debug information about the dev file loading process:
+
+```bash
+apple-health-analyzer --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
+```
+
+Or during development:
 
 ```bash
 python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
