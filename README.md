@@ -109,11 +109,12 @@ To see detailed debug information about the dev file loading process:
 python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
 ```
 
-Debug logs are written to:
+In normal (non-`--dev-file`) mode, debug logs are written to:
 
 - **Console**: Printed to stdout
 - **File**: `logs/apple_health_analyzer.log` (size-based rotation: 10MB max per file, 3 backup files)
 
+When running with `--dev-file`, logs are only written to the console; file logging is disabled to prevent reload loops.
 **Note**: When running with `--dev-file`, file logging is disabled to prevent reload loops. Logs are only written to the console in dev mode.
 
 Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`)
