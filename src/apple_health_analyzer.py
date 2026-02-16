@@ -114,7 +114,7 @@ if __name__ in {"__main__", "__mp_main__"}:
         default="INFO",
         help="Set the logging level",
     )
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
     # Validate dev file if provided
     if args.dev_file is not None:
