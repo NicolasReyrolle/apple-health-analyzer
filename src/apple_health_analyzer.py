@@ -21,6 +21,13 @@ from ui.layout import load_file, render_body, render_header, render_left_drawer
 
 # Module-level variable to store dev file path from command-line arguments
 _dev_file_path: str | None = None
+
+# Configure basic logging at module level to ensure logger has handlers
+# This will be reconfigured by _setup_logging() when the application starts
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 _logger = logging.getLogger(__name__)
 
 
@@ -134,8 +141,8 @@ def cli_main() -> None:
             _logger.error("File not found: %s", resolved_path)
             sys.exit(1)
         _logger.info("Dev mode: file logging disabled to prevent reload loops")
-        _logger.info("Dev file specified: %s", resolved_path)
-        _dev_file_path = str(resolved_path)
+        _logger.info("Dev file specified: %s", dev_file_path)
+        DEV_FILE_PATH = str(dev_file_path)
     else:
         # Enable file logging in normal mode
         _setup_logging(args.log_level, enable_file_logging=True)
@@ -145,9 +152,9 @@ def cli_main() -> None:
     secret = uuid.uuid4().hex if "pytest" in sys.modules else os.getenv("STORAGE_SECRET", "secret")
 
     # Pass dev file path through app storage so it's accessible in main()
-    if _dev_file_path is not None:
-        app.storage.general["_dev_file_path"] = _dev_file_path
-        _logger.debug("Stored dev file path in app storage: %s", _dev_file_path)
+    if args.dev_file is not None:
+        app.storage.general["_dev_file_path"] = args.dev_file
+        _logger.debug("Stored dev file path in app storage: %s", args.dev_file)
 
     _logger.debug("Initializing NiceGUI app")
     ui.run(  # type: ignore[misc]
@@ -156,6 +163,7 @@ def cli_main() -> None:
         favicon=APP_ICON_BASE64,
         storage_secret=secret,
         uvicorn_reload_dirs="src,resources",  # Only include needed dirs for the reload
+        show=False,
     )
 
 
