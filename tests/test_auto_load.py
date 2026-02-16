@@ -183,7 +183,7 @@ class TestAutoLoadFunctionality:
         app.storage.general["_dev_file_path"] = zip_path
 
         # Open the page multiple times in sequence
-        for i in range(3):
+        for _ in range(3):
             await user.open("/")
             await asyncio.sleep(2.0)
 
