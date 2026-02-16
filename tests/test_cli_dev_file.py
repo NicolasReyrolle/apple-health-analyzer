@@ -6,8 +6,6 @@ import sys
 import time
 from pathlib import Path
 
-import pytest
-
 
 def test_dev_file_help() -> None:
     """Test that --help shows the --dev-file option on the real CLI."""
