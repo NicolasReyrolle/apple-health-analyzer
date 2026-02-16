@@ -38,9 +38,14 @@ class TestSetupLogging:
         for handler in logger.handlers:
             assert handler.level == logging.DEBUG
 
-        # Verify one handler is StreamHandler (console)
-        console_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler)]
-        assert len(console_handlers) >= 1
+        # Verify one handler is StreamHandler (console) but not RotatingFileHandler
+        console_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
+        assert len(console_handlers) == 1
 
         # Cleanup
         logger.handlers.clear()
@@ -253,106 +258,152 @@ class TestSetupLogging:
 class TestCLIArgumentParsing:
     """Tests for CLI argument parsing logic."""
 
+    @staticmethod
+    def _extract_log_level_from_mock(mock_setup_logging) -> str:
+        """Helper to extract log_level from _setup_logging mock calls.
+
+        Args:
+            mock_setup_logging: The mock for _setup_logging
+
+        Returns:
+            The log level string passed to _setup_logging
+        """
+        # Ensure at least one call was made
+        assert len(mock_setup_logging.call_args_list) > 0, "Expected _setup_logging to be called"
+        # Get the most recent call
+        call_args = mock_setup_logging.call_args
+        # Extract log_level from either positional or keyword arguments
+        log_level = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
+        return log_level
+
     def test_log_level_argument_default(self) -> None:
-        """Test that --log-level defaults to INFO."""
-        # pylint: disable=import-outside-toplevel
-        with patch("sys.argv", ["apple_health_analyzer.py"]):
-            import argparse
+        """Test that --log-level defaults to INFO in the real CLI."""
+        with (
+            patch("sys.argv", ["apple_health_analyzer.py"]),
+            patch("apple_health_analyzer._setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            apple_health_analyzer.cli_main()
 
-            parser = argparse.ArgumentParser()
-            parser.add_argument(
-                "--log-level",
-                type=str,
-                choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-                default="INFO",
-            )
-            args, _ = parser.parse_known_args()
-
-            assert args.log_level == "INFO"
+        mock_setup_logging.assert_called()
+        log_level = self._extract_log_level_from_mock(mock_setup_logging)
+        assert log_level == "INFO"
+        assert mock_ui_run.called
 
     def test_log_level_argument_accepts_debug(self) -> None:
-        """Test that --log-level accepts DEBUG."""
-        # pylint: disable=import-outside-toplevel
-        with patch("sys.argv", ["apple_health_analyzer.py", "--log-level", "DEBUG"]):
-            import argparse
+        """Test that --log-level DEBUG is accepted by the real CLI."""
+        with (
+            patch(
+                "sys.argv",
+                ["apple_health_analyzer.py", "--log-level", "DEBUG"],
+            ),
+            patch("apple_health_analyzer._setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            apple_health_analyzer.cli_main()
 
-            parser = argparse.ArgumentParser()
-            parser.add_argument(
-                "--log-level",
-                type=str,
-                choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-                default="INFO",
-            )
-            args, _ = parser.parse_known_args()
-
-            assert args.log_level == "DEBUG"
+        mock_setup_logging.assert_called()
+        log_level = self._extract_log_level_from_mock(mock_setup_logging)
+        assert log_level == "DEBUG"
+        assert mock_ui_run.called
 
     def test_log_level_argument_accepts_warning(self) -> None:
-        """Test that --log-level accepts WARNING."""
-        # pylint: disable=import-outside-toplevel
-        with patch("sys.argv", ["apple_health_analyzer.py", "--log-level", "WARNING"]):
-            import argparse
+        """Test that --log-level WARNING is accepted by the real CLI."""
+        with (
+            patch(
+                "sys.argv",
+                ["apple_health_analyzer.py", "--log-level", "WARNING"],
+            ),
+            patch("apple_health_analyzer._setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            apple_health_analyzer.cli_main()
 
-            parser = argparse.ArgumentParser()
-            parser.add_argument(
-                "--log-level",
-                type=str,
-                choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-                default="INFO",
-            )
-            args, _ = parser.parse_known_args()
-
-            assert args.log_level == "WARNING"
+        mock_setup_logging.assert_called()
+        log_level = self._extract_log_level_from_mock(mock_setup_logging)
+        assert log_level == "WARNING"
+        assert mock_ui_run.called
 
     def test_log_level_argument_accepts_error(self) -> None:
-        """Test that --log-level accepts ERROR."""
-        # pylint: disable=import-outside-toplevel
-        with patch("sys.argv", ["apple_health_analyzer.py", "--log-level", "ERROR"]):
-            import argparse
-
-            parser = argparse.ArgumentParser()
-            parser.add_argument(
-                "--log-level",
-                type=str,
-                choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-                default="INFO",
-            )
-            args, _ = parser.parse_known_args()
-
-            assert args.log_level == "ERROR"
-
-    def test_dev_file_argument_parsing(self) -> None:
-        """Test that --dev-file argument is parsed correctly."""
-        # pylint: disable=import-outside-toplevel
-        test_path = "/path/to/export.zip"
-        with patch("sys.argv", ["apple_health_analyzer.py", "--dev-file", test_path]):
-            import argparse
-
-            parser = argparse.ArgumentParser()
-            parser.add_argument("--dev-file", type=str)
-            args, _ = parser.parse_known_args()
-
-            assert args.dev_file == test_path
-
-    def test_combined_arguments_parsing(self) -> None:
-        """Test that both --dev-file and --log-level can be used together."""
-        # pylint: disable=import-outside-toplevel
-        test_path = "/path/to/export.zip"
-        with patch(
-            "sys.argv",
-            ["apple_health_analyzer.py", "--dev-file", test_path, "--log-level", "DEBUG"],
+        """Test that --log-level ERROR is accepted by the real CLI."""
+        with (
+            patch(
+                "sys.argv",
+                ["apple_health_analyzer.py", "--log-level", "ERROR"],
+            ),
+            patch("apple_health_analyzer._setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
         ):
-            import argparse
+            apple_health_analyzer.cli_main()
 
-            parser = argparse.ArgumentParser()
-            parser.add_argument("--dev-file", type=str)
-            parser.add_argument(
-                "--log-level",
-                type=str,
-                choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-                default="INFO",
-            )
-            args, _ = parser.parse_known_args()
+        mock_setup_logging.assert_called()
+        log_level = self._extract_log_level_from_mock(mock_setup_logging)
+        assert log_level == "ERROR"
+        assert mock_ui_run.called
 
-            assert args.dev_file == test_path
-            assert args.log_level == "DEBUG"
+    def test_dev_file_argument_parsing(self, tmp_path: Path) -> None:
+        """Test that --dev-file argument is parsed correctly."""
+        # Create a temporary file to use as dev file
+        test_file = tmp_path / "export.zip"
+        test_file.write_text("test content")
+
+        with (
+            patch("sys.argv", ["apple_health_analyzer.py", "--dev-file", str(test_file)]),
+            patch("apple_health_analyzer._setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+            patch("apple_health_analyzer.app.storage"),
+        ):
+            apple_health_analyzer.cli_main()
+
+        # Verify setup_logging was called with file logging disabled
+        mock_setup_logging.assert_called_once_with("INFO", enable_file_logging=False)
+        assert mock_ui_run.called
+
+    def test_combined_arguments_parsing(self, tmp_path: Path) -> None:
+        """Test that both --dev-file and --log-level can be used together."""
+        # Create a temporary file to use as dev file
+        test_file = tmp_path / "export.zip"
+        test_file.write_text("test content")
+
+        with (
+            patch(
+                "sys.argv",
+                ["apple_health_analyzer.py", "--dev-file", str(test_file), "--log-level", "DEBUG"],
+            ),
+            patch("apple_health_analyzer._setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+            patch("apple_health_analyzer.app.storage"),
+        ):
+            apple_health_analyzer.cli_main()
+
+        # Verify both arguments are processed correctly
+        mock_setup_logging.assert_called_once_with("DEBUG", enable_file_logging=False)
+        assert mock_ui_run.called
+
+    def test_no_browser_argument_default(self) -> None:
+        """Test that browser opens by default (show=True)."""
+        with (
+            patch("sys.argv", ["apple_health_analyzer.py"]),
+            patch("apple_health_analyzer._setup_logging"),
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            apple_health_analyzer.cli_main()
+
+        # Verify ui.run was called with show=True (default)
+        mock_ui_run.assert_called_once()
+        call_kwargs = mock_ui_run.call_args[1]
+        assert call_kwargs.get("show") is True
+
+    def test_no_browser_argument_prevents_browser_open(self) -> None:
+        """Test that --no-browser prevents browser from opening (show=False)."""
+        with (
+            patch("sys.argv", ["apple_health_analyzer.py", "--no-browser"]),
+            patch("apple_health_analyzer._setup_logging"),
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            apple_health_analyzer.cli_main()
+
+        # Verify ui.run was called with show=False
+        mock_ui_run.assert_called_once()
+        call_kwargs = mock_ui_run.call_args[1]
+        assert call_kwargs.get("show") is False

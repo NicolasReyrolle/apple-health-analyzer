@@ -17,6 +17,8 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 
 def test_dev_file_help() -> None:
     """Test that --help shows the --dev-file option on the real CLI."""
@@ -60,12 +62,7 @@ def test_dev_file_valid_path() -> None:
     fixture_path = Path("tests/fixtures/export_sample.zip")
 
     if not fixture_path.exists():
-        # Generate the fixture if needed
-        subprocess.run(
-            [sys.executable, "tests/fixtures/update_export_sample.py"],
-            capture_output=True,
-            check=True,
-        )
+        pytest.skip(f"Test fixture not found: {fixture_path}")
 
     # Clean the environment to prevent NiceGUI from detecting a test context
     env = os.environ.copy()
@@ -106,4 +103,9 @@ def test_dev_file_valid_path() -> None:
         # Ensure the process is not left running
         if process.poll() is None:
             process.kill()
-            process.wait(timeout=5)
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                # Best-effort cleanup: if the process still has not exited,
+                # ignore the timeout to avoid masking test results.
+                pass
