@@ -65,7 +65,11 @@ def _setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
 
 
 def main() -> None:
-    """Main entry point for the application."""
+    """Main NiceGUI page setup function.
+    
+    This function is called by NiceGUI for each page render.
+    It should not contain CLI argument parsing or app initialization logic.
+    """
 
     render_header()
     render_left_drawer()
@@ -95,7 +99,12 @@ def main() -> None:
         ui.timer(1.0, _auto_load, once=True)
 
 
-if __name__ in {"__main__", "__mp_main__"}:
+def cli_main() -> None:
+    """CLI entry point that handles argument parsing and starts the application.
+    
+    This function should be called from the command line or the entry point.
+    It parses CLI arguments, sets up logging, and starts the NiceGUI server.
+    """
     # Parse command-line arguments for developer mode
     parser = argparse.ArgumentParser(
         description="Apple Health Analyzer - Analyze your Apple Health data",
@@ -140,9 +149,9 @@ if __name__ in {"__main__", "__mp_main__"}:
     secret = uuid.uuid4().hex if "pytest" in sys.modules else os.getenv("STORAGE_SECRET", "secret")
 
     # Pass dev file path through app storage so it's accessible in main()
-    if _dev_file_path is not None:
-        app.storage.general["_dev_file_path"] = _dev_file_path
-        _logger.debug("Stored dev file path in app storage: %s", _dev_file_path)
+    if args.dev_file is not None:
+        app.storage.general["_dev_file_path"] = str(dev_file_path)
+        _logger.debug("Stored dev file path in app storage: %s", dev_file_path)
 
     _logger.debug("Initializing NiceGUI app")
     ui.run(  # type: ignore[misc]
@@ -152,3 +161,7 @@ if __name__ in {"__main__", "__mp_main__"}:
         storage_secret=secret,
         uvicorn_reload_dirs="src,resources",  # Only include needed dirs for the reload
     )
+
+
+if __name__ in {"__main__", "__mp_main__"}:
+    cli_main()
