@@ -51,9 +51,7 @@ class LocalFilePicker(ui.dialog):
                 ui.aggrid(
                     {
                         "columnDefs": [{"field": "name", "headerName": "File"}],
-                        "rowSelection": {
-                            "mode": "multiRow" if multiple else "singleRow"
-                        },
+                        "rowSelection": {"mode": "multiRow" if multiple else "singleRow"},
                     },
                     html_columns=[0],
                 )
@@ -71,10 +69,10 @@ class LocalFilePicker(ui.dialog):
             try:
                 import win32api  # type: ignore[import-not-found]  # pylint: disable=import-outside-toplevel
 
-                drives = win32api.GetLogicalDriveStrings().split("\000")[:-1]  # pylint: disable=no-member
-                self.drives_toggle = ui.toggle(
-                    drives, value=drives[0], on_change=self.update_drive
-                )
+                drives = win32api.GetLogicalDriveStrings().split("\000")[
+                    :-1
+                ]  # pylint: disable=no-member
+                self.drives_toggle = ui.toggle(drives, value=drives[0], on_change=self.update_drive)
             except ImportError:
                 # win32api not available, skip drives toggle
                 pass
@@ -94,9 +92,7 @@ class LocalFilePicker(ui.dialog):
         # Filter files by extension, but keep all directories
         if self.file_filter:
             paths = [
-                p
-                for p in paths
-                if p.is_dir() or p.name.lower().endswith(self.file_filter.lower())
+                p for p in paths if p.is_dir() or p.name.lower().endswith(self.file_filter.lower())
             ]
         paths.sort(key=lambda p: p.name.lower())
         paths.sort(key=lambda p: not p.is_dir())

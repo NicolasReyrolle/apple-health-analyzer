@@ -18,9 +18,7 @@ def create_test_zip(zip_path: Path, xml_content: bytes) -> None:
         zf.writestr("apple_health_export/export.xml", xml_content)
 
 
-def parse_and_export_json(
-    zip_path: Path, exclude_columns: Optional[set[str]] = None
-) -> str:
+def parse_and_export_json(zip_path: Path, exclude_columns: Optional[set[str]] = None) -> str:
     """Helper to parse ZIP and export to JSON."""
     parser = ep.ExportParser()
     with parser:
@@ -28,9 +26,7 @@ def parse_and_export_json(
         return workouts.export_to_json(exclude_columns=exclude_columns)
 
 
-def parse_and_export_csv(
-    zip_path: Path, exclude_columns: Optional[set[str]] = None
-) -> str:
+def parse_and_export_csv(zip_path: Path, exclude_columns: Optional[set[str]] = None) -> str:
     """Helper to parse ZIP and export to CSV."""
     parser = ep.ExportParser()
     with parser:
@@ -252,9 +248,7 @@ class TestColumnExclusion:
         create_test_zip(zip_path, xml_content)
 
         json_content = StringIO(
-            parse_and_export_json(
-                zip_path, exclude_columns={"duration", "durationUnit"}
-            )
+            parse_and_export_json(zip_path, exclude_columns={"duration", "durationUnit"})
         )
 
         data = json.load(json_content)
@@ -276,9 +270,7 @@ class TestColumnExclusion:
 """
         create_test_zip(zip_path, xml_content)
 
-        csv_content = StringIO(
-            parse_and_export_csv(zip_path, exclude_columns={"startDate"})
-        )
+        csv_content = StringIO(parse_and_export_csv(zip_path, exclude_columns={"startDate"}))
 
         df = pd.read_csv(csv_content)  # type: ignore[misc]
         assert "startDate" not in df.columns
@@ -323,9 +315,7 @@ class TestColumnExclusion:
 class TestDataTypeConversion:
     """Test data type conversions during parsing and export."""
 
-    def test_indoor_workout_field_exported_as_boolean_json(
-        self, tmp_path: Path
-    ) -> None:
+    def test_indoor_workout_field_exported_as_boolean_json(self, tmp_path: Path) -> None:
         """Test that IndoorWorkout field (0 or 1) is exported as boolean in JSON."""
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -347,9 +337,9 @@ class TestDataTypeConversion:
         for record in data["data"]:
             if "IndoorWorkout" in record:
                 value = record["IndoorWorkout"]
-                assert isinstance(value, bool), (
-                    f"IndoorWorkout should be boolean, got {type(value).__name__}"
-                )
+                assert isinstance(
+                    value, bool
+                ), f"IndoorWorkout should be boolean, got {type(value).__name__}"
                 assert value in [True, False]
 
     def test_indoor_workout_field_exported_as_boolean_csv(self, tmp_path: Path) -> None:
@@ -376,17 +366,18 @@ class TestDataTypeConversion:
         # CSV exports booleans as True/False (not as floats like 0.0 or 1.0)
         for val in values:
             # In CSV, pandas represents booleans as 1 (True) or 0 (False) when read
-            assert val in [True, False, 1, 0], (
-                f"IndoorWorkout should be boolean (1 or 0), got {val} of type {type(val).__name__}"
-            )
+            assert val in [
+                True,
+                False,
+                1,
+                0,
+            ], f"IndoorWorkout should be boolean (1 or 0), got {val} of type {type(val).__name__}"
             # Ensure no float values like 1.0 or 0.0
-            assert not (isinstance(val, float) and val in [0.0, 1.0]), (
-                f"IndoorWorkout should not be float (0.0 or 1.0), got {val}"
-            )
+            assert not (
+                isinstance(val, float) and val in [0.0, 1.0]
+            ), f"IndoorWorkout should not be float (0.0 or 1.0), got {val}"
 
-    def test_zero_value_without_unit_becomes_boolean_false(
-        self, tmp_path: Path
-    ) -> None:
+    def test_zero_value_without_unit_becomes_boolean_false(self, tmp_path: Path) -> None:
         """Test that value '0' without unit is converted to boolean False."""
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -473,14 +464,12 @@ class TestDataTypeConversion:
             if "IndoorWorkout" in record:
                 value = record["IndoorWorkout"]
                 # Must be boolean True or False, not float 0.0 or 1.0
-                assert isinstance(value, bool), (
-                    f"IndoorWorkout must be boolean, got {type(value).__name__}: {value}"
-                )
+                assert isinstance(
+                    value, bool
+                ), f"IndoorWorkout must be boolean, got {type(value).__name__}: {value}"
                 assert value in [True, False]
                 # Explicitly reject floats
-                assert not isinstance(value, float), (
-                    f"IndoorWorkout must not be float, got {value}"
-                )
+                assert not isinstance(value, float), f"IndoorWorkout must not be float, got {value}"
 
 
 class TestStartDateTimezoneHandling:
@@ -614,10 +603,7 @@ class TestExportToCsvActivityFilter:
             )
         )
 
-        csv_output = workouts.export_to_csv(
-            activity_type="Running",
-            exclude_columns={"routeFile"}
-        )
+        csv_output = workouts.export_to_csv(activity_type="Running", exclude_columns={"routeFile"})
 
         lines = csv_output.strip().split("\n")
         # Header + 2 Running rows

@@ -1,6 +1,7 @@
 """Test suite for WorkoutManager.get_activity_types method."""
 
 import pandas as pd
+
 import logic.workout_manager as wm
 
 

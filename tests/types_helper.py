@@ -1,9 +1,13 @@
 """Protocol for UI state assertion functions."""
-from typing import Protocol, Optional, Any
+
+from typing import Any, Optional, Protocol
+
 from nicegui.testing import UserInteraction
+
 
 class StateAssertion(Protocol):
     """Protocol for UI state assertion functions."""
+
     def __call__(
         self,
         interaction: UserInteraction[Any],
