@@ -6,6 +6,7 @@ various scenarios like page refreshes, multiple connections, and error handling.
 """
 
 import asyncio
+import logging
 from typing import Callable
 from unittest.mock import patch
 
@@ -153,8 +154,6 @@ class TestAutoLoadFunctionality:
         zip_path = create_health_zip()
         app.storage.general["_dev_file_path"] = zip_path
 
-        import logging
-
         with caplog.at_level(logging.INFO):
             await user.open("/")
             await asyncio.sleep(2.5)
@@ -215,14 +214,19 @@ class TestAutoLoadFunctionality:
         await asyncio.sleep(0.2)
 
     async def test_auto_load_with_empty_string(self, user: User) -> None:
-        """Test that auto-load does not occur when _dev_file_path is an empty string."""
+        """Test behavior when _dev_file_path is an empty string.
+
+        Note: The implementation checks 'if dev_file is not None:', so an empty
+        string will pass this check and attempt to set the input field to "".
+        This test verifies that this edge case is handled gracefully without errors.
+        """
         # Set the value to empty string
         app.storage.general["_dev_file_path"] = ""
 
         await user.open("/")
         await asyncio.sleep(2.0)
 
-        # Empty string is falsy in Python, so no auto-load should occur
+        # Empty string passes the 'is not None' check, so input field is set to ""
         input_elements = list(user.find("Apple Health export file").elements)
         assert len(input_elements) > 0
         input_field = input_elements[0]
