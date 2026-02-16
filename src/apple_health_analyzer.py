@@ -82,6 +82,9 @@ def main() -> None:
     ui.add_head_html('<link rel="stylesheet" href="/resources/style.css">', shared=True)
 
     # Check if dev file was passed through app storage
+    # Note: This auto-load mechanism intentionally triggers on every page render
+    # (e.g., browser refresh or new tab). This is useful for development as it
+    # allows quickly testing changes by simply refreshing the browser.
     dev_file: str | None = app.storage.general.get(  # type: ignore[no-untyped-call]
         "_dev_file_path"
     )
