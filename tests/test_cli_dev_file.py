@@ -105,13 +105,26 @@ def test_dev_file_valid_path() -> None:
     )
 
     try:
-        # Give the server a small amount of time to start up
-        time.sleep(3)
-        exit_code = process.poll()
-        if exit_code is not None:
-            # Process has already exited, which indicates a startup failure
-            _, stderr = process.communicate()
-            assert exit_code == 0, f"Startup failed with error: {stderr}"
+        # Poll for early process exit within a bounded startup window instead of
+        # relying on a fixed sleep, which can be flaky on slower CI machines.
+        startup_timeout = 30.0
+        poll_interval = 0.5
+        start_time = time.monotonic()
+        exit_code = None
+        while True:
+            exit_code = process.poll()
+            if exit_code is not None:
+                # Process has already exited, which indicates a startup failure
+                _, stderr = process.communicate()
+                assert exit_code == 0, f"Startup failed with error: {stderr}"
+                break
+
+            if time.monotonic() - start_time >= startup_timeout:
+                # The process is still running after the startup timeout window;
+                # treat this as a successful startup (no fast failure detected).
+                break
+
+            time.sleep(poll_interval)
 
         process.terminate()
         try:
@@ -194,13 +207,26 @@ def test_dev_file_combined_with_log_level() -> None:
     )
 
     try:
-        # Give the server a small amount of time to start up
-        time.sleep(3)
-        exit_code = process.poll()
-        if exit_code is not None:
-            # Process has already exited, which indicates a startup failure
-            _, stderr = process.communicate()
-            assert exit_code == 0, f"Startup failed with error: {stderr}"
+        # Poll for early process exit within a bounded startup window instead of
+        # relying on a fixed sleep, which can be flaky on slower CI machines.
+        startup_timeout = 30.0
+        poll_interval = 0.5
+        start_time = time.monotonic()
+        exit_code = None
+        while True:
+            exit_code = process.poll()
+            if exit_code is not None:
+                # Process has already exited, which indicates a startup failure
+                _, stderr = process.communicate()
+                assert exit_code == 0, f"Startup failed with error: {stderr}"
+                break
+
+            if time.monotonic() - start_time >= startup_timeout:
+                # The process is still running after the startup timeout window;
+                # treat this as a successful startup (no fast failure detected).
+                break
+
+            time.sleep(poll_interval)
 
         process.terminate()
         try:
