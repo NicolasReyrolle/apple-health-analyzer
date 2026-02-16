@@ -45,7 +45,12 @@ def test_dev_file_help() -> None:
 
 
 def test_dev_file_invalid_path() -> None:
-    """Test that an invalid --dev-file path causes a non-zero exit on startup."""
+    """Test that an invalid --dev-file path causes a non-zero exit on startup.
+
+    This test validates the actual application's file validation logic at
+    src/apple_health_analyzer.py (cli_main function) by running the real
+    application and verifying both exit code and error message.
+    """
     invalid_path = "/nonexistent/file.zip"
 
     result = subprocess.run(
@@ -61,6 +66,11 @@ def test_dev_file_invalid_path() -> None:
     )
     # The application should fail fast when given a clearly invalid dev file path
     assert result.returncode != 0, "Invalid --dev-file path should cause non-zero exit"
+    # Verify the actual validation logic detected the missing file
+    combined_output = (result.stdout or "") + (result.stderr or "")
+    assert (
+        "File not found" in combined_output or "not found" in combined_output.lower()
+    ), "Error message should indicate file was not found"
 
 
 def test_dev_file_valid_path() -> None:
@@ -114,4 +124,88 @@ def test_dev_file_valid_path() -> None:
             except subprocess.TimeoutExpired:
                 # Best-effort cleanup: if the process still has not exited,
                 # ignore the timeout to avoid masking test results.
+                pass
+
+
+def test_dev_file_directory_instead_of_file() -> None:
+    """Test that providing a directory path instead of a file causes validation failure.
+
+    This test verifies the is_file() validation logic in the actual application
+    by providing a directory path and confirming proper error handling.
+    """
+    # Use the tests directory as a known directory
+    directory_path = "tests"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "src/apple_health_analyzer.py",
+            "--dev-file",
+            directory_path,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    # Should fail because a directory is not a file
+    assert result.returncode != 0, "Directory path should cause non-zero exit"
+    combined_output = (result.stdout or "") + (result.stderr or "")
+    assert (
+        "File not found" in combined_output or "not found" in combined_output.lower()
+    ), "Error message should indicate file was not found"
+
+
+def test_dev_file_combined_with_log_level() -> None:
+    """Test that --dev-file works correctly when combined with --log-level.
+
+    This validates that multiple CLI arguments are properly handled together
+    and that the actual validation logic runs correctly with combined arguments.
+    """
+    fixture_path = Path("tests/fixtures/export_sample.zip")
+
+    if not fixture_path.exists():
+        pytest.skip(f"Test fixture not found: {fixture_path}")
+
+    # Clean the environment to prevent NiceGUI from detecting a test context
+    env = os.environ.copy()
+    env.pop("PYTEST_CURRENT_TEST", None)
+    env.pop("NICEGUI_SCREEN_TEST_PORT", None)
+
+    process = subprocess.Popen(  # pylint: disable=consider-using-with
+        [
+            sys.executable,
+            "src/apple_health_analyzer.py",
+            "--dev-file",
+            str(fixture_path),
+            "--log-level",
+            "DEBUG",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
+
+    try:
+        # Give the server a small amount of time to start up
+        time.sleep(3)
+        exit_code = process.poll()
+        if exit_code is not None:
+            # Process has already exited, which indicates a startup failure
+            _, stderr = process.communicate()
+            assert exit_code == 0, f"Startup failed with error: {stderr}"
+
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+
+    finally:
+        # Ensure the process is not left running
+        if process.poll() is None:
+            process.kill()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
                 pass

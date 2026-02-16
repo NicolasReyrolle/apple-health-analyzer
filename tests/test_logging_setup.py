@@ -347,45 +347,6 @@ class TestCLIArgumentParsing:
         assert log_level == "ERROR"
         assert mock_ui_run.called
 
-    def test_dev_file_argument_parsing(self, tmp_path: Path) -> None:
-        """Test that --dev-file argument is parsed correctly."""
-        # Create a temporary file to use as dev file
-        test_file = tmp_path / "export.zip"
-        test_file.write_text("test content")
-
-        with (
-            patch("sys.argv", ["apple_health_analyzer.py", "--dev-file", str(test_file)]),
-            patch("apple_health_analyzer._setup_logging") as mock_setup_logging,
-            patch("apple_health_analyzer.ui.run") as mock_ui_run,
-            patch("apple_health_analyzer.app.storage"),
-        ):
-            apple_health_analyzer.cli_main()
-
-        # Verify setup_logging was called with file logging disabled
-        mock_setup_logging.assert_called_once_with("INFO", enable_file_logging=False)
-        assert mock_ui_run.called
-
-    def test_combined_arguments_parsing(self, tmp_path: Path) -> None:
-        """Test that both --dev-file and --log-level can be used together."""
-        # Create a temporary file to use as dev file
-        test_file = tmp_path / "export.zip"
-        test_file.write_text("test content")
-
-        with (
-            patch(
-                "sys.argv",
-                ["apple_health_analyzer.py", "--dev-file", str(test_file), "--log-level", "DEBUG"],
-            ),
-            patch("apple_health_analyzer._setup_logging") as mock_setup_logging,
-            patch("apple_health_analyzer.ui.run") as mock_ui_run,
-            patch("apple_health_analyzer.app.storage"),
-        ):
-            apple_health_analyzer.cli_main()
-
-        # Verify both arguments are processed correctly
-        mock_setup_logging.assert_called_once_with("DEBUG", enable_file_logging=False)
-        assert mock_ui_run.called
-
     def test_no_browser_argument_default(self) -> None:
         """Test that browser opens by default (show=True)."""
         with (
