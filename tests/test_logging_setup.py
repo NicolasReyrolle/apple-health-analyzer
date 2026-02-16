@@ -238,6 +238,25 @@ class TestSetupLogging:
         finally:
             os.chdir(original_cwd)
 
+    def test_setup_logging_handles_file_handler_error(
+        self,
+        clean_logger: logging.Logger,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Test that setup_logging logs a warning when file handler fails."""
+        assert clean_logger is logging.getLogger()
+        monkeypatch.setenv("APPLE_HEALTH_ANALYZER_LOG_DIR", str(tmp_path / "logs"))
+
+        with patch("pathlib.Path.mkdir", side_effect=OSError("no permission")):
+            with caplog.at_level(logging.WARNING):
+                apple_health_analyzer.setup_logging("INFO", enable_file_logging=True)
+
+        assert any(
+            "File logging disabled" in record.message for record in caplog.records
+        ), "Expected a warning when file logging cannot be initialized"
+
 
 class TestCLIArgumentParsing:
     """Tests for CLI argument parsing logic."""
@@ -356,6 +375,46 @@ class TestCLIArgumentParsing:
         mock_ui_run.assert_called_once()
         call_kwargs = mock_ui_run.call_args[1]
         assert call_kwargs.get("show") is False
+
+    def test_cli_main_invalid_dev_file_path_exits(self) -> None:
+        """Test that invalid dev file paths cause an early exit with an error."""
+        with (
+            patch("sys.argv", ["apple_health_analyzer.py", "--dev-file", "~/bad/path.zip"]),
+            patch("pathlib.Path.resolve", side_effect=OSError("bad path")),
+            patch("apple_health_analyzer.setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                apple_health_analyzer.cli_main()
+
+        assert exc_info.value.code == 1
+        mock_setup_logging.assert_called_once()
+        mock_ui_run.assert_not_called()
+
+    def test_cli_main_stores_dev_file_and_disables_file_logging(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that a valid dev file sets storage and disables file logging."""
+        dev_file = tmp_path / "export.zip"
+        dev_file.write_text("data", encoding="utf-8")
+
+        monkeypatch.setattr(sys, "argv", ["apple_health_analyzer.py", "--dev-file", str(dev_file)])
+
+        with (
+            patch("apple_health_analyzer.setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            try:
+                apple_health_analyzer.cli_main()
+                assert (
+                    apple_health_analyzer.app.storage.general.get("_dev_file_path")
+                    == str(dev_file)
+                )
+                mock_setup_logging.assert_called_once()
+                assert mock_setup_logging.call_args[1]["enable_file_logging"] is False
+                mock_ui_run.assert_called_once()
+            finally:
+                apple_health_analyzer.app.storage.general.pop("_dev_file_path", None)
 
     def test_module_entrypoint_invokes_cli_main(
         self,
