@@ -12,6 +12,7 @@ import os
 import sys
 import uuid
 from pathlib import Path
+from typing import cast
 
 from nicegui import app, ui
 
@@ -88,8 +89,9 @@ def main() -> None:
     # Note: This auto-load mechanism intentionally triggers on every page render
     # (e.g., browser refresh or new tab). This is useful for development as it
     # allows quickly testing changes by simply refreshing the browser.
-    dev_file: str | None = app.storage.general.get(  # type: ignore[no-untyped-call]
-        "_dev_file_path"
+    dev_file = cast(
+        str | None,
+        app.storage.general.get("_dev_file_path"),  # type: ignore[no-untyped-call]
     )
     if dev_file:
         _logger.info("Dev file will be auto-loaded: %s", dev_file)
@@ -136,24 +138,32 @@ def cli_main() -> None:
     )
     args, _ = parser.parse_known_args()
 
-    # Validate dev file if provided
+    # Validate dev file if provided (before setting up logging)
     resolved_path: Path | None = None
+    dev_file_error: str | None = None
+
     if args.dev_file is not None:
-        # Disable file logging in dev mode to avoid reload loops from log file changes
-        _setup_logging(args.log_level, enable_file_logging=False)
         try:
             resolved_path = Path(args.dev_file).expanduser().resolve()
         except OSError as exc:
-            _logger.error("Invalid dev file path '%s': %s", args.dev_file, exc)
-            sys.exit(1)
-        if not resolved_path.is_file():
-            _logger.error("File not found: %s", resolved_path)
-            sys.exit(1)
+            dev_file_error = f"Invalid dev file path '{args.dev_file}': {exc}"
+
+        if not dev_file_error and resolved_path is not None and not resolved_path.is_file():
+            dev_file_error = f"File not found: {resolved_path}"
+
+    # Set up logging (after dev file validation)
+    # Disable file logging in dev mode to avoid reload loops from log file changes
+    _setup_logging(args.log_level, enable_file_logging=resolved_path is None)
+
+    # Exit early if dev file validation failed
+    if dev_file_error:
+        _logger.error(dev_file_error)
+        sys.exit(1)
+
+    # Log dev mode information if applicable
+    if resolved_path is not None:
         _logger.info("Dev mode: file logging disabled to prevent reload loops")
         _logger.info("Dev file specified: %s", resolved_path)
-    else:
-        # Enable file logging in normal mode
-        _setup_logging(args.log_level, enable_file_logging=True)
 
     _logger.info("Starting Apple Health Analyzer with log level: %s", args.log_level)
 
