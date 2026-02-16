@@ -145,9 +145,9 @@ def cli_main() -> None:
     secret = uuid.uuid4().hex if "pytest" in sys.modules else os.getenv("STORAGE_SECRET", "secret")
 
     # Pass dev file path through app storage so it's accessible in main()
-    if args.dev_file is not None:
-        app.storage.general["_dev_file_path"] = str(dev_file_path)
-        _logger.debug("Stored dev file path in app storage: %s", dev_file_path)
+    if _dev_file_path is not None:
+        app.storage.general["_dev_file_path"] = _dev_file_path
+        _logger.debug("Stored dev file path in app storage: %s", _dev_file_path)
 
     _logger.debug("Initializing NiceGUI app")
     ui.run(  # type: ignore[misc]
