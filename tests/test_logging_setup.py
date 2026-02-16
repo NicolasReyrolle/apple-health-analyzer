@@ -302,7 +302,7 @@ class TestCLIArgumentParsing:
         # Get the most recent call
         call_args = mock_setup_logging.call_args
         # Extract log_level from either positional or keyword arguments
-        log_level = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
+        log_level: str = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
         return log_level
 
     def test_log_level_argument_default(self) -> None:
