@@ -13,7 +13,7 @@
 
 ### Work In Progress / Disabled Features
 
-1. **"Health Data" tab** - Currently disabled ([src/ui/layout.py](src/ui/layout.py#L289))
+1. **"Health Data" tab** - Currently disabled ([src/ui/layout.py](src/ui/layout.py#L291))
 2. **Date Range filtering** - UI controls exist but are disabled ([src/ui/layout.py](src/ui/layout.py#L97-L102))
 3. **Visual Statistics marked as "WIP"** in README
 
