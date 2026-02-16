@@ -47,9 +47,7 @@ class TestDevFileAutoLoad:
             dev_file_in_storage = app.storage.general.get(  # type: ignore[no-untyped-call]
                 "_dev_file_path"
             )
-            assert (
-                dev_file_in_storage is None
-            ), "Dev file should be cleared from storage after load"
+            assert dev_file_in_storage is None, "Dev file should be cleared from storage after load"
 
         finally:
             # Clean up storage
@@ -160,9 +158,9 @@ class TestDevFileAutoLoad:
             dev_file_in_storage = app.storage.general.get(  # type: ignore[no-untyped-call]
                 "_dev_file_path"
             )
-            assert dev_file_in_storage == invalid_zip, (
-                "Dev file should remain in storage after failed load"
-            )
+            assert (
+                dev_file_in_storage == invalid_zip
+            ), "Dev file should remain in storage after failed load"
 
         finally:
             # Clean up storage
