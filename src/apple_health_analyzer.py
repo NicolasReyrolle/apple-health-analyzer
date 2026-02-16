@@ -128,7 +128,7 @@ if __name__ in {"__main__", "__mp_main__"}:
             sys.exit(1)
         _logger.info("Dev mode: file logging disabled to prevent reload loops")
         _logger.info("Dev file specified: %s", dev_file_path)
-        _dev_file_path = str(dev_file_path)
+        DEV_FILE_PATH = str(dev_file_path)
     else:
         # Enable file logging in normal mode
         _setup_logging(args.log_level, enable_file_logging=True)
