@@ -1,91 +1,100 @@
 """Tests for command-line dev file parameter."""
 
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
 
 
 def test_dev_file_help() -> None:
-    """Test that --help shows the --dev-file option."""
-    # Note: This test verifies the help message works
-    # Full integration test requires NiceGUI server which is beyond scope here
-
+    """Test that --help shows the --dev-file option on the real CLI."""
     result = subprocess.run(
         [
             sys.executable,
-            "-c",
-            "import argparse; "
-            "parser = argparse.ArgumentParser(); "
-            "parser.add_argument('--dev-file', type=str, help='Test'); "
-            "args = parser.parse_args(['--help'])",
+            "src/apple_health_analyzer.py",
+            "--help",
         ],
         capture_output=True,
         text=True,
         check=False,
     )
-    # argparse prints help and exits with code 0
-    assert result.returncode == 0, "Help command should succeed"
+    # Help should succeed and mention the --dev-file option
+    assert result.returncode == 0, "Help command should succeed on real CLI"
+    combined_output = (result.stdout or "") + (result.stderr or "")
+    assert "--dev-file" in combined_output, "Help output should mention --dev-file option"
 
 
 def test_dev_file_invalid_path() -> None:
-    """Test that invalid file path is caught at startup."""
-    test_code = """
-import sys
-sys.path.insert(0, 'src')
-import argparse
-import os
+    """Test that an invalid --dev-file path causes a non-zero exit on startup."""
+    invalid_path = "/nonexistent/file.zip"
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--dev-file', type=str)
-args = parser.parse_args(['--dev-file', '/nonexistent/file.zip'])
-
-if args.dev_file is not None:
-    if not os.path.isfile(args.dev_file):
-        print('Error: File not found:', args.dev_file)
-        sys.exit(1)
-"""
     result = subprocess.run(
-        [sys.executable, "-c", test_code],
+        [
+            sys.executable,
+            "src/apple_health_analyzer.py",
+            "--dev-file",
+            invalid_path,
+        ],
         capture_output=True,
         text=True,
         check=False,
     )
-    assert result.returncode == 1, "Should exit with error for invalid file"
-    assert "File not found" in result.stdout, "Should show error message"
+    # The application should fail fast when given a clearly invalid dev file path
+    assert result.returncode != 0, "Invalid --dev-file path should cause non-zero exit"
 
 
 def test_dev_file_valid_path() -> None:
-    """Test that valid file path is accepted."""
+    """Test that a valid --dev-file path does not cause immediate startup failure."""
     fixture_path = Path("tests/fixtures/export_sample.zip")
 
     if not fixture_path.exists():
-        pytest.skip(f"Fixture file not found: {fixture_path}")
+        # Generate the fixture if needed
+        subprocess.run(
+            [sys.executable, "tests/fixtures/update_export_sample.py"],
+            capture_output=True,
+            check=True,
+        )
 
-    test_code = f"""
-import sys
-sys.path.insert(0, 'src')
-import argparse
-import os
+    # Clean the environment to prevent NiceGUI from detecting a test context
+    env = os.environ.copy()
+    env.pop("PYTEST_CURRENT_TEST", None)
+    env.pop("NICEGUI_SCREEN_TEST_PORT", None)
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--dev-file', type=str)
-args = parser.parse_args(['--dev-file', r'{fixture_path}'])
-
-if args.dev_file is not None:
-    if not os.path.isfile(args.dev_file):
-        print('Error: File not found:', args.dev_file)
-        sys.exit(1)
-    else:
-        print('File found:', args.dev_file)
-        sys.exit(0)
-"""
-    result = subprocess.run(
-        [sys.executable, "-c", test_code],
-        capture_output=True,
+    # Start the real application with a valid dev file. We don't wait indefinitely;
+    # instead, allow a short startup window, then terminate if still running.
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "src/apple_health_analyzer.py",
+            "--dev-file",
+            str(fixture_path),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        check=False,
+        env=env,
     )
-    assert result.returncode == 0, "Should exit successfully with valid file"
-    assert "File found" in result.stdout, "Should confirm file found"
+
+    try:
+        # Give the server a small amount of time to start up
+        time.sleep(3)
+        exit_code = process.poll()
+        if exit_code is not None:
+            # Process has already exited, which indicates a startup failure
+            _, stderr = process.communicate()
+            assert exit_code == 0, f"Startup failed with error: {stderr}"
+
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+
+    finally:
+        # Ensure the process is not left running
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
