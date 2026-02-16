@@ -169,8 +169,7 @@ class TestAutoLoadFunctionality:
 
                 # Should log that dev file will be auto-loaded
                 assert any(
-                    "Dev file will be auto-loaded" in msg and zip_path in msg
-                    for msg in log_messages
+                    "Dev file will be auto-loaded" in msg and zip_path in msg for msg in log_messages
                 ), "Should log dev file auto-load intention"
 
                 # Should log the actual auto-loading
