@@ -55,17 +55,29 @@ def setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
 
     # File handler for persistence (in case console is captured)
     if enable_file_logging:
-        log_dir = Path("logs")
-        log_dir.mkdir(exist_ok=True)
-        file_handler = logging.handlers.RotatingFileHandler(
-            log_dir / "apple_health_analyzer.log",
-            maxBytes=10 * 1024 * 1024,  # 10MB
-            backupCount=3,
-        )
-        file_handler.setLevel(getattr(logging, log_level))
-        file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        file_handler.setFormatter(file_formatter)
-        logger.addHandler(file_handler)
+        # Allow overriding the log directory via environment variable
+        log_dir_env = os.getenv("APPLE_HEALTH_ANALYZER_LOG_DIR")
+        log_dir = Path(log_dir_env) if log_dir_env else Path("logs")
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.handlers.RotatingFileHandler(
+                log_dir / "apple_health_analyzer.log",
+                maxBytes=10 * 1024 * 1024,  # 10MB
+                backupCount=3,
+            )
+        except OSError as exc:
+            logger.warning(
+                "File logging disabled; failed to initialize log file in '%s': %s",
+                log_dir,
+                exc,
+            )
+        else:
+            file_handler.setLevel(getattr(logging, log_level))
+            file_formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+            file_handler.setFormatter(file_formatter)
+            logger.addHandler(file_handler)
 
 
 def main() -> None:
