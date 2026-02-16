@@ -9,19 +9,15 @@ import argparse
 import logging
 import logging.handlers
 import os
-import uuid
 import sys
+import uuid
 from pathlib import Path
 
-from nicegui import ui, app
+from nicegui import app, ui
 
 from app_state import state
 from assets import APP_ICON_BASE64
-
-from ui.layout import render_left_drawer
-from ui.layout import render_header
-from ui.layout import render_body
-from ui.layout import load_file
+from ui.layout import load_file, render_body, render_header, render_left_drawer
 
 # Module-level variable to store dev file path from command-line arguments
 _dev_file_path: str | None = None
@@ -66,7 +62,7 @@ def _setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
 
 def main() -> None:
     """Main NiceGUI page setup function.
-    
+
     This function is called by NiceGUI for each page render.
     It should not contain CLI argument parsing or app initialization logic.
     """
@@ -101,7 +97,7 @@ def main() -> None:
 
 def cli_main() -> None:
     """CLI entry point that handles argument parsing and starts the application.
-    
+
     This function should be called from the command line or the entry point.
     It parses CLI arguments, sets up logging, and starts the NiceGUI server.
     """
