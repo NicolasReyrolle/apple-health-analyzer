@@ -1,5 +1,6 @@
 """Tests for command-line dev file parameter."""
 
+import os
 import subprocess
 import sys
 import time
@@ -52,8 +53,13 @@ def test_dev_file_valid_path() -> None:
         subprocess.run(
             [sys.executable, "tests/fixtures/update_export_sample.py"],
             capture_output=True,
-            check=False,
+            check=True,
         )
+
+    # Clean the environment to prevent NiceGUI from detecting a test context
+    env = os.environ.copy()
+    env.pop("PYTEST_CURRENT_TEST", None)
+    env.pop("NICEGUI_SCREEN_TEST_PORT", None)
 
     # Start the real application with a valid dev file. We don't wait indefinitely;
     # instead, allow a short startup window, then terminate if still running.
@@ -67,18 +73,24 @@ def test_dev_file_valid_path() -> None:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        env=env,
     )
 
     try:
         # Give the server a small amount of time to start up
         time.sleep(3)
-        return_code = process.poll()
-        if return_code is None:
-            # Still running: terminate gracefully and ensure it did not fail immediately
-            process.terminate()
-            return_code = process.wait(timeout=10)
-        # A valid dev file should not cause an immediate error exit
-        assert return_code == 0, "Valid --dev-file path should not cause startup failure"
+        exit_code = process.poll()
+        if exit_code is not None:
+            # Process has already exited, which indicates a startup failure
+            _, stderr = process.communicate()
+            assert exit_code == 0, f"Startup failed with error: {stderr}"
+
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+
     finally:
         # Ensure the process is not left running
         if process.poll() is None:
