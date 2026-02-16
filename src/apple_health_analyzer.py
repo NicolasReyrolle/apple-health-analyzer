@@ -23,8 +23,6 @@ from ui.layout import render_header
 from ui.layout import render_body
 from ui.layout import load_file
 
-# Module-level variable to store dev file path from command-line arguments
-_dev_file_path: str | None = None
 _logger = logging.getLogger(__name__)
 
 
@@ -127,7 +125,6 @@ if __name__ in {"__main__", "__mp_main__"}:
         _setup_logging(args.log_level, enable_file_logging=False)
         _logger.info("Dev mode: file logging disabled to prevent reload loops")
         _logger.info("Dev file specified: %s", args.dev_file)
-        _dev_file_path = args.dev_file
     else:
         # Enable file logging in normal mode
         _setup_logging(args.log_level, enable_file_logging=True)
@@ -137,9 +134,9 @@ if __name__ in {"__main__", "__mp_main__"}:
     secret = uuid.uuid4().hex if "pytest" in sys.modules else os.getenv("STORAGE_SECRET", "secret")
 
     # Pass dev file path through app storage so it's accessible in main()
-    if _dev_file_path is not None:
-        app.storage.general["_dev_file_path"] = _dev_file_path
-        _logger.debug("Stored dev file path in app storage: %s", _dev_file_path)
+    if args.dev_file is not None:
+        app.storage.general["_dev_file_path"] = args.dev_file
+        _logger.debug("Stored dev file path in app storage: %s", args.dev_file)
 
     _logger.debug("Initializing NiceGUI app")
     ui.run(  # type: ignore[misc]
