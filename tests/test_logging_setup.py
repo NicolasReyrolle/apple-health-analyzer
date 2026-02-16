@@ -154,7 +154,7 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
     def test_setup_logging_creates_log_directory(
-        self, _clean_logger: logging.Logger, tmp_path: Path
+        self, clean_logger: logging.Logger, tmp_path: Path
     ) -> None:
         """Test that setup_logging creates the logs directory."""
         # Use a real path in tmp_path
