@@ -115,7 +115,6 @@ In normal (non-`--dev-file`) mode, debug logs are written to:
 - **File**: `logs/apple_health_analyzer.log` (size-based rotation: 10MB max per file, 3 backup files)
 
 When running with `--dev-file`, logs are only written to the console; file logging is disabled to prevent reload loops.
-**Note**: When running with `--dev-file`, file logging is disabled to prevent reload loops. Logs are only written to the console in dev mode.
 
 Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`)
 
