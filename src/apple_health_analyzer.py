@@ -118,16 +118,19 @@ if __name__ in {"__main__", "__mp_main__"}:
 
     # Validate dev file if provided
     if args.dev_file is not None:
-        if not os.path.isfile(args.dev_file):
-            # Need to setup logging first to report the error
-            _setup_logging(args.log_level, enable_file_logging=False)
-            _logger.error("File not found: %s", args.dev_file)
-            sys.exit(1)
         # Disable file logging in dev mode to avoid reload loops from log file changes
         _setup_logging(args.log_level, enable_file_logging=False)
+        try:
+            dev_file_path = Path(args.dev_file).expanduser().resolve()
+        except OSError as exc:
+            _logger.error("Invalid dev file path '%s': %s", args.dev_file, exc)
+            sys.exit(1)
+        if not dev_file_path.is_file():
+            _logger.error("File not found: %s", dev_file_path)
+            sys.exit(1)
         _logger.info("Dev mode: file logging disabled to prevent reload loops")
-        _logger.info("Dev file specified: %s", args.dev_file)
-        _dev_file_path = args.dev_file
+        _logger.info("Dev file specified: %s", dev_file_path)
+        _dev_file_path = str(dev_file_path)
     else:
         # Enable file logging in normal mode
         _setup_logging(args.log_level, enable_file_logging=True)
