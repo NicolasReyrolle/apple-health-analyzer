@@ -141,8 +141,7 @@ def cli_main() -> None:
             _logger.error("File not found: %s", resolved_path)
             sys.exit(1)
         _logger.info("Dev mode: file logging disabled to prevent reload loops")
-        _logger.info("Dev file specified: %s", dev_file_path)
-        DEV_FILE_PATH = str(dev_file_path)
+        _logger.info("Dev file specified: %s", _dev_file_path)
     else:
         # Enable file logging in normal mode
         _setup_logging(args.log_level, enable_file_logging=True)
