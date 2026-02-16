@@ -17,6 +17,15 @@ import apple_health_analyzer
 class TestSetupLogging:
     """Tests for the setup_logging function."""
 
+    @staticmethod
+    def _non_pytest_handlers(logger: logging.Logger) -> list[logging.Handler]:
+        """Return handlers excluding pytest log capture handlers."""
+        return [
+            handler
+            for handler in logger.handlers
+            if not handler.__class__.__module__.startswith("_pytest.")
+        ]
+
     def test_setup_logging_with_debug_level(
         self, clean_logger: logging.Logger, tmp_path: Path
     ) -> None:
@@ -33,16 +42,16 @@ class TestSetupLogging:
             assert logger.level == logging.DEBUG
 
             # Verify we have 2 handlers (console + file)
-            assert len(logger.handlers) == 2
+            assert len(self._non_pytest_handlers(logger)) == 2
 
             # Verify handlers are at DEBUG level
-            for handler in logger.handlers:
+            for handler in self._non_pytest_handlers(logger):
                 assert handler.level == logging.DEBUG
 
             # Verify one handler is StreamHandler (console) but not RotatingFileHandler
             console_handlers = [  # type: ignore[var-annotated]
                 h
-                for h in logger.handlers
+                for h in self._non_pytest_handlers(logger)
                 if isinstance(h, logging.StreamHandler)
                 and not isinstance(h, logging.handlers.RotatingFileHandler)
             ]
@@ -66,7 +75,7 @@ class TestSetupLogging:
             assert logger.level == logging.INFO
 
             # Verify handlers are at INFO level
-            for handler in logger.handlers:
+            for handler in self._non_pytest_handlers(logger):
                 assert handler.level == logging.INFO
         finally:
             os.chdir(original_cwd)
@@ -84,7 +93,7 @@ class TestSetupLogging:
             apple_health_analyzer.setup_logging("WARNING", enable_file_logging=True)
 
             assert logger.level == logging.WARNING
-            for handler in logger.handlers:
+            for handler in self._non_pytest_handlers(logger):
                 assert handler.level == logging.WARNING
         finally:
             os.chdir(original_cwd)
@@ -102,7 +111,7 @@ class TestSetupLogging:
             apple_health_analyzer.setup_logging("ERROR", enable_file_logging=True)
 
             assert logger.level == logging.ERROR
-            for handler in logger.handlers:
+            for handler in self._non_pytest_handlers(logger):
                 assert handler.level == logging.ERROR
         finally:
             os.chdir(original_cwd)
@@ -116,13 +125,15 @@ class TestSetupLogging:
         apple_health_analyzer.setup_logging("INFO", enable_file_logging=False)
 
         # Verify we have only 1 handler (console only, no file handler)
-        assert len(logger.handlers) == 1
+        assert len(self._non_pytest_handlers(logger)) == 1
 
         # Verify the handler is a StreamHandler (console)
-        assert isinstance(logger.handlers[0], logging.StreamHandler)
+        assert isinstance(self._non_pytest_handlers(logger)[0], logging.StreamHandler)
 
         # Verify it's not a RotatingFileHandler
-        assert not isinstance(logger.handlers[0], logging.handlers.RotatingFileHandler)
+        assert not isinstance(
+            self._non_pytest_handlers(logger)[0], logging.handlers.RotatingFileHandler
+        )
 
     def test_setup_logging_clears_existing_handlers(
         self, clean_logger: logging.Logger, tmp_path: Path
@@ -152,7 +163,9 @@ class TestSetupLogging:
             ), "Dummy handlers should have been removed by setup_logging"
 
             # Verify we have exactly 2 new handlers (console + file)
-            assert len(logger.handlers) == 2, f"Expected 2 handlers, got {len(logger.handlers)}"
+            assert (
+                len(self._non_pytest_handlers(logger)) == 2
+            ), f"Expected 2 handlers, got {len(self._non_pytest_handlers(logger))}"
         finally:
             os.chdir(original_cwd)
 
@@ -184,7 +197,7 @@ class TestSetupLogging:
 
         # Get the StreamHandler
         stream_handlers = [  # type: ignore[var-annotated]
-            h for h in logger.handlers if isinstance(h, logging.StreamHandler)
+            h for h in self._non_pytest_handlers(logger) if isinstance(h, logging.StreamHandler)
         ]
         assert len(stream_handlers) == 1  # type: ignore[arg-type]
 
@@ -204,7 +217,7 @@ class TestSetupLogging:
             apple_health_analyzer.setup_logging("INFO", enable_file_logging=True)
 
             # Verify all handlers have formatters
-            for handler in logger.handlers:
+            for handler in self._non_pytest_handlers(logger):
                 assert handler.formatter is not None
                 assert isinstance(handler.formatter, logging.Formatter)
         finally:
@@ -226,7 +239,7 @@ class TestSetupLogging:
             # Find the RotatingFileHandler in the handlers
             file_handlers = [
                 h
-                for h in clean_logger.handlers
+                for h in self._non_pytest_handlers(clean_logger)
                 if isinstance(h, logging.handlers.RotatingFileHandler)
             ]
             assert len(file_handlers) == 1, "Should have exactly one RotatingFileHandler"
@@ -360,7 +373,7 @@ class TestCLIArgumentParsing:
         # Verify ui.run was called with show=True (default)
         mock_ui_run.assert_called_once()
         call_kwargs = mock_ui_run.call_args[1]
-        assert call_kwargs.get("show") is True
+        assert call_kwargs.get("show") is True  # type: ignore[union-attr]
 
     def test_no_browser_argument_prevents_browser_open(self) -> None:
         """Test that --no-browser prevents browser from opening (show=False)."""
@@ -374,7 +387,7 @@ class TestCLIArgumentParsing:
         # Verify ui.run was called with show=False
         mock_ui_run.assert_called_once()
         call_kwargs = mock_ui_run.call_args[1]
-        assert call_kwargs.get("show") is False
+        assert call_kwargs.get("show") is False  # type: ignore[union-attr]
 
     def test_cli_main_invalid_dev_file_path_exits(self) -> None:
         """Test that invalid dev file paths cause an early exit with an error."""
@@ -406,9 +419,8 @@ class TestCLIArgumentParsing:
         ):
             try:
                 apple_health_analyzer.cli_main()
-                assert (
-                    apple_health_analyzer.app.storage.general.get("_dev_file_path")
-                    == str(dev_file)
+                assert apple_health_analyzer.app.storage.general.get("_dev_file_path", None) == str(
+                    dev_file
                 )
                 mock_setup_logging.assert_called_once()
                 assert mock_setup_logging.call_args[1]["enable_file_logging"] is False

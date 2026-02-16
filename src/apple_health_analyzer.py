@@ -39,8 +39,11 @@ def setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, log_level))
 
-    # Remove any existing handlers to prevent duplicates and close resources
+    # Remove any existing handlers to prevent duplicates and close resources.
+    # Keep pytest log capture handlers so caplog continues to work in tests.
     for handler in list(logger.handlers):
+        if handler.__class__.__module__.startswith("_pytest."):
+            continue
         try:
             handler.close()
         finally:
