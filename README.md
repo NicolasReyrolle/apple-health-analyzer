@@ -114,6 +114,8 @@ Debug logs are written to:
 - **Console**: Printed to stdout
 - **File**: `logs/apple_health_analyzer.log` (size-based rotation: 10MB max per file, 3 backup files)
 
+**Note**: When running with `--dev-file`, file logging is disabled to prevent reload loops. Logs are only written to the console in dev mode.
+
 Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`)
 
 **Note**: First, generate the test fixture with:
