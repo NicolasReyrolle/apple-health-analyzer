@@ -7,19 +7,19 @@ A modern, graphical tool to parse, analyze, and export your Apple Health data. O
 
 ## ✨ Features
 
-* **ZIP Parsing**: Directly select and parse your `export.zip` file from Apple Health.
-* **Workout Extraction**: Focused on running workouts with detailed metrics (distance, duration, METs, heart rate, power, etc.).
-* **Visual Statistics**: Real-time summary of total activities, distance, and time (WIP)
-* **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
-* All processing happens locally on your machine.
-* **Modern UI**: Dark/Light mode support with a responsive layout.
+- **ZIP Parsing**: Directly select and parse your `export.zip` file from Apple Health.
+- **Workout Extraction**: Focused on running workouts with detailed metrics (distance, duration, METs, heart rate, power, etc.).
+- **Visual Statistics**: Real-time summary of total activities, distance, and time (WIP)
+- **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
+- All processing happens locally on your machine.
+- **Modern UI**: Dark/Light mode support with a responsive layout.
 
 ## 🚀 Installation
 
 ### Prerequisites
 
-* Python 3.10 or higher.
-* An Apple Health export file (`export.zip`).
+- Python 3.10 or higher.
+- An Apple Health export file (`export.zip`).
 
 ### Setup
 
@@ -85,13 +85,64 @@ The project uses `pytest` with specific configurations for asynchronous NiceGUI 
 pytest --cov=src tests/
 ```
 
+### Developer Mode: Quick UI Testing
+
+For rapid UI development and testing, you can launch the app with a pre-loaded Apple Health export file using the installed entry point (preferred):
+
+```bash
+apple-health-analyzer --dev-file tests/fixtures/export_sample.zip
+```
+
+Alternatively, during development you can run the module directly:
+
+```bash
+python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip
+```
+
+This is especially useful for:
+
+- Testing UI rendering with actual data without manual file selection
+- Quick iteration on UI components
+- Verifying data visualization and metrics display
+
+The app will automatically load the specified file on startup, skipping the file picker dialog.
+
+#### Enable Debug Logging
+
+To see detailed debug information about the dev file loading process:
+
+```bash
+apple-health-analyzer --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
+```
+
+Or during development:
+
+```bash
+python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
+```
+
+In normal (non-`--dev-file`) mode, debug logs are written to:
+
+- **Console**: Printed to stdout
+- **File**: `logs/apple_health_analyzer.log` (size-based rotation: 10MB max per file, 3 backup files)
+
+When running with `--dev-file`, logs are only written to the console; file logging is disabled to prevent reload loops.
+
+Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`)
+
+**Note**: First, generate the test fixture with:
+
+```bash
+python tests/fixtures/update_export_sample.py
+```
+
 ### Code Quality
 
 We maintain strict coding standards. Before submitting a PR, ensure your code passes:
 
-* **Formatting**: `black` & `isort`.
-* **Linting**: `pylint` (configured for Windows compatibility).
-* **Typing**: `mypy` & `Pylance` (Strict mode).
+- **Formatting**: `black` & `isort`.
+- **Linting**: `pylint` (configured for Windows compatibility).
+- **Typing**: `mypy` & `Pylance` (Strict mode).
 
 ```bash
 # Run all checks

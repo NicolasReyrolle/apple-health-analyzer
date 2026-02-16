@@ -3,9 +3,8 @@
 from typing import Any
 from unittest.mock import patch
 
-from logic.workout_manager import WorkoutManager
-
 from app_state import state
+from logic.workout_manager import WorkoutManager
 from ui.helpers import format_integer
 from ui.layout import refresh_data
 

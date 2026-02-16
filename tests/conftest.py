@@ -96,6 +96,7 @@ def mock_file_picker_context() -> Callable[[Optional[str]], ContextManager[None]
         # Create an awaitable object that returns the result
         class AwaitableMock:
             """Mock class to simulate an awaitable LocalFilePicker."""
+
             def __await__(self):
                 future: asyncio.Future[List[str]] = asyncio.Future()
                 future.set_result(result_value)
@@ -254,3 +255,53 @@ def filter_nicegui_errors() -> Generator[None, None, None]:
 
     # Clean up: remove the filter to avoid side effects if we run other things later
     logger.removeFilter(error_filter)
+
+
+@pytest.fixture
+def clean_logger() -> Generator[logging.Logger, None, None]:
+    """
+    Fixture to provide a clean logger with all handlers properly closed and removed.
+
+    This fixture ensures file descriptors are not left open (especially critical on Windows
+    where RotatingFileHandler can prevent temp directory cleanup).
+
+    Yields:
+        logging.Logger: The root logger, cleaned of all handlers and ready for testing
+
+    Cleanup:
+        Automatically closes all handlers and removes them from the logger after the test
+    """
+    logger = logging.getLogger()
+
+    # Pre-cleanup: close and remove any existing handlers from previous tests
+    for handler in list(logger.handlers):
+        try:
+            handler.close()
+        except (OSError, ValueError):
+            pass
+        finally:
+            try:
+                logger.removeHandler(handler)
+            except ValueError:
+                pass
+
+    # Also reset logger level to ensure it's not affected by previous tests
+    original_level = logger.level
+    logger.setLevel(logging.NOTSET)
+
+    yield logger
+
+    # Post-cleanup: close and remove all handlers added during the test
+    for handler in list(logger.handlers):
+        try:
+            handler.close()
+        except (OSError, ValueError):
+            pass
+        finally:
+            try:
+                logger.removeHandler(handler)
+            except ValueError:
+                pass
+
+    # Restore original logger level
+    logger.setLevel(original_level)

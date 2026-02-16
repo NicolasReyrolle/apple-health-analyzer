@@ -2,16 +2,15 @@
 
 import asyncio
 import json
-from typing import Callable, Any, cast
+from typing import Any, Callable, cast
 from unittest.mock import patch
 
 from nicegui import ui
 from nicegui.client import Client  # Added for type hinting
 from nicegui.testing import User
 
-from tests.types_helper import StateAssertion
-
 from app_state import state
+from tests.types_helper import StateAssertion
 from ui.helpers import format_integer
 
 

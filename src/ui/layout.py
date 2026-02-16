@@ -1,6 +1,7 @@
 """UI layout components for Apple Health Analyzer application."""
 
 import asyncio
+import logging
 import time
 
 import pandas as pd
@@ -12,6 +13,9 @@ from logic.export_parser import ExportParser
 from logic.workout_manager import WorkoutManager
 from ui.helpers import format_integer
 from ui.local_file_picker import LocalFilePicker
+
+# Get logger for this module
+_logger = logging.getLogger(__name__)
 
 
 def handle_json_export() -> None:
@@ -172,13 +176,9 @@ def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list
     average for the initial points when there are fewer samples than ``window_size``.
     """
     # Use pandas rolling window to calculate the moving average consistently
-    return (
-        pd.Series(y_values)
-        .rolling(window=window_size, min_periods=1)
-        .mean()
-        .round(2)
-        .tolist()
-    )
+    return pd.Series(y_values).rolling(window=window_size, min_periods=1).mean().round(2).tolist()
+
+
 def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None:
     """Render bar graphs for the given values."""
 
@@ -241,10 +241,17 @@ async def load_file() -> None:
         ui.notify("Please select an Apple Health export file first.")
         return
 
+    # Guard against concurrent invocations (e.g., from auto-load timer + manual click)
+    if state.loading:
+        _logger.debug("File loading already in progress, skipping concurrent invocation")
+        return
+
     state.loading = True
     start_time = time.perf_counter()
 
     try:
+        _logger.info("Starting to load file: %s", state.input_file.value)
+
         await asyncio.to_thread(load_workouts_from_file, state.input_file.value)
 
         elapsed = time.perf_counter() - start_time

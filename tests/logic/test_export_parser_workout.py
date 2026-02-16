@@ -37,9 +37,7 @@ class TestCreateWorkoutRecord:
 
     def test_create_workout_record_with_missing_attributes(self):
         """Test creating a workout record with missing attributes."""
-        elem = Element(
-            "Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeRunning"}
-        )
+        elem = Element("Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeRunning"})
         parser = ep.ExportParser()
         record = parser._create_workout_record(elem, "Running")  # type: ignore[misc]
 
@@ -228,6 +226,7 @@ class TestProcessMetadataEntry:
         # Should be skipped, so record remains unchanged
         assert record == {"activityType": "Running"}
 
+
 class TestProcessWorkoutChildren:
     """Test the _process_workout_children method."""
 
@@ -322,9 +321,7 @@ class TestProcessWorkoutChildren:
         assert record.get("distance") == 5000
         assert record.get("MetadataKeyTimeZone") == "UTC"
 
-    def test_process_workout_children_with_unknown_element(
-        self, tmp_path: Path
-    ) -> None:
+    def test_process_workout_children_with_unknown_element(self, tmp_path: Path) -> None:
         """Test processing workout with unknown child element (should be ignored)."""
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>

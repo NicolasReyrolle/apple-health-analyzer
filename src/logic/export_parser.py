@@ -1,15 +1,14 @@
 """Export processor for Apple Health data."""
 
 import logging
-
 from datetime import datetime
 from types import TracebackType
 from typing import Any, List, Optional, Tuple, Type, TypedDict
 from xml.etree.ElementTree import Element, iterparse
 from zipfile import ZipFile
 
-from nicegui import ui
 import pandas as pd
+from nicegui import ui
 
 # Configuration constants
 WORKOUT_PROGRESS_INTERVAL = 100  # Report progress every N workouts

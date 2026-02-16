@@ -1,6 +1,7 @@
 """Tests for parsing and value conversion functionality."""
 
 from xml.etree.ElementTree import Element
+
 import pytest
 
 import logic.export_parser as ep
@@ -37,9 +38,7 @@ class TestParseValue:
             ("10 km", 10.0, "km"),  # Unknown unit passthrough
         ],
     )
-    def test_parse_value_logic_rules(
-        self, input_str: str, expected_val: str, expected_unit: str
-    ):
+    def test_parse_value_logic_rules(self, input_str: str, expected_val: str, expected_unit: str):
         """
         Tests the routing logic: Booleans, Strings, Numbers, and Unit conversion.
         """
@@ -113,18 +112,14 @@ class TestExtractActivityType:
 
     def test_extract_activity_type_running(self):
         """Test extracting running activity type."""
-        elem = Element(
-            "Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeRunning"}
-        )
+        elem = Element("Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeRunning"})
         parser = ep.ExportParser()
         result = parser._extract_activity_type(elem)  # type: ignore[misc]
         assert result == "Running"
 
     def test_extract_activity_type_cycling(self):
         """Test extracting cycling activity type."""
-        elem = Element(
-            "Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeCycling"}
-        )
+        elem = Element("Workout", attrib={"workoutActivityType": "HKWorkoutActivityTypeCycling"})
         parser = ep.ExportParser()
         result = parser._extract_activity_type(elem)  # type: ignore[misc]
         assert result == "Cycling"
