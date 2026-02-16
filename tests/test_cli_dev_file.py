@@ -21,7 +21,13 @@ import pytest
 
 
 def test_dev_file_help() -> None:
-    """Test that --help shows the --dev-file option on the real CLI."""
+    """Test that --help shows the --dev-file option on the real CLI.
+
+    This test invokes the actual application module (src/apple_health_analyzer.py)
+    as a subprocess, ensuring we test the real CLI argument parser, not a mock.
+    This guarantees that --dev-file will be detected here if and only if it exists
+    in the actual argparse setup in cli_main().
+    """
     result = subprocess.run(
         [
             sys.executable,
