@@ -11,6 +11,15 @@ from unittest.mock import patch
 import apple_health_analyzer
 
 
+def _clear_handlers(logger: logging.Logger) -> None:
+    """Close and remove all handlers from a logger."""
+    for handler in list(logger.handlers):
+        try:
+            handler.close()
+        finally:
+            logger.removeHandler(handler)
+
+
 class TestSetupLogging:
     """Tests for the _setup_logging function."""
 
@@ -20,7 +29,7 @@ class TestSetupLogging:
         """Test that _setup_logging correctly configures DEBUG level."""
         # Clear any existing handlers
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         # Change working directory temporarily to tmp_path
         original_cwd = os.getcwd()
@@ -50,12 +59,12 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_with_info_level(self, tmp_path: Path) -> None:
         """Test that _setup_logging correctly configures INFO level."""
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         # Change working directory temporarily to tmp_path
         original_cwd = os.getcwd()
@@ -73,12 +82,12 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_with_warning_level(self, tmp_path: Path) -> None:
         """Test that _setup_logging correctly configures WARNING level."""
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         # Change working directory temporarily to tmp_path
         original_cwd = os.getcwd()
@@ -93,12 +102,12 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_with_error_level(self, tmp_path: Path) -> None:
         """Test that _setup_logging correctly configures ERROR level."""
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         # Change working directory temporarily to tmp_path
         original_cwd = os.getcwd()
@@ -113,12 +122,12 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_disables_file_logging_in_dev_mode(self) -> None:
         """Test that file logging is disabled when enable_file_logging=False."""
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         apple_health_analyzer._setup_logging("INFO", enable_file_logging=False)
 
@@ -132,13 +141,13 @@ class TestSetupLogging:
         assert not isinstance(logger.handlers[0], logging.handlers.RotatingFileHandler)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_clears_existing_handlers(self, tmp_path: Path) -> None:
         """Test that _setup_logging clears existing handlers to prevent duplicates."""
         logger = logging.getLogger()
         # Start fresh
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         # Add some dummy handlers
         dummy_handler1 = logging.StreamHandler(sys.stdout)
@@ -167,12 +176,12 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_creates_log_directory(self, tmp_path: Path) -> None:
         """Test that _setup_logging creates the logs directory."""
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         # Use a real path in tmp_path
         log_dir = tmp_path / "logs"
@@ -190,12 +199,12 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_console_handler_uses_stdout(self) -> None:
         """Test that the console handler writes to stdout."""
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         apple_health_analyzer._setup_logging("INFO", enable_file_logging=False)
 
@@ -207,12 +216,12 @@ class TestSetupLogging:
         assert stream_handlers[0].stream == sys.stdout
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_handlers_have_formatters(self, tmp_path: Path) -> None:
         """Test that all handlers have formatters configured."""
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         # Change working directory temporarily to tmp_path
         original_cwd = os.getcwd()
@@ -228,12 +237,12 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
     def test_setup_logging_with_file_handler_configuration(self, tmp_path: Path) -> None:
         """Test that file handler is configured with correct settings."""
         logger = logging.getLogger()
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
         # Create actual logs directory for this test
         original_cwd = os.getcwd()
@@ -258,7 +267,7 @@ class TestSetupLogging:
             os.chdir(original_cwd)
 
         # Cleanup
-        logger.handlers.clear()
+        _clear_handlers(logger)
 
 
 class TestCLIArgumentParsing:

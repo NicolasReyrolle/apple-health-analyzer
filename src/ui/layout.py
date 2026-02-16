@@ -241,6 +241,10 @@ async def load_file() -> None:
         ui.notify("Please select an Apple Health export file first.")
         return
 
+    # Prevent concurrent invocations
+    if state.loading:
+        return
+
     state.loading = True
     start_time = time.perf_counter()
 
