@@ -216,9 +216,8 @@ class TestAutoLoadFunctionality:
     async def test_auto_load_with_empty_string(self, user: User) -> None:
         """Test behavior when _dev_file_path is an empty string.
 
-        Note: The implementation checks 'if dev_file is not None:', so an empty
-        string will pass this check and attempt to set the input field to "".
-        This test verifies that this edge case is handled gracefully without errors.
+        Note: The implementation checks 'if dev_file:', so an empty string
+        will NOT trigger the auto-load logic. The input field should remain empty.
         """
         # Set the value to empty string
         app.storage.general["_dev_file_path"] = ""
@@ -226,10 +225,11 @@ class TestAutoLoadFunctionality:
         await user.open("/")
         await asyncio.sleep(2.0)
 
-        # Empty string passes the 'is not None' check, so input field is set to ""
+        # Empty string is falsy, so auto-load does not run
         input_elements = list(user.find("Apple Health export file").elements)
         assert len(input_elements) > 0
         input_field = input_elements[0]
+        # The input field should be empty since auto-load didn't run
         assert input_field.value == ""  # type: ignore[attr-defined]
 
         # Cleanup

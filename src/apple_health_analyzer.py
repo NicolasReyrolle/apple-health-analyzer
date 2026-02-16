@@ -39,8 +39,12 @@ def _setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, log_level))
 
-    # Remove any existing handlers to prevent duplicates
-    logger.handlers.clear()
+    # Remove any existing handlers to prevent duplicates and close resources
+    for handler in list(logger.handlers):
+        try:
+            handler.close()
+        finally:
+            logger.removeHandler(handler)
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
