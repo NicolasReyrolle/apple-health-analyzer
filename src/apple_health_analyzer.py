@@ -138,6 +138,7 @@ def cli_main() -> None:
     args, _ = parser.parse_known_args()
 
     # Validate dev file if provided
+    resolved_path: Path | None = None
     if args.dev_file is not None:
         # Disable file logging in dev mode to avoid reload loops from log file changes
         _setup_logging(args.log_level, enable_file_logging=False)
@@ -160,7 +161,7 @@ def cli_main() -> None:
     secret = uuid.uuid4().hex if "pytest" in sys.modules else os.getenv("STORAGE_SECRET", "secret")
 
     # Pass dev file path through app storage so it's accessible in main()
-    if args.dev_file is not None:
+    if resolved_path is not None:
         app.storage.general["_dev_file_path"] = str(resolved_path)
         _logger.debug("Stored dev file path in app storage: %s", resolved_path)
 
