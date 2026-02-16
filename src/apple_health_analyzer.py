@@ -88,7 +88,7 @@ def main() -> None:
     dev_file: str | None = app.storage.general.get(  # type: ignore[no-untyped-call]
         "_dev_file_path"
     )
-    if dev_file is not None:
+    if dev_file:
         _logger.info("Dev file will be auto-loaded: %s", dev_file)
         state.input_file.value = dev_file
 
