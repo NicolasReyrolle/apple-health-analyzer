@@ -87,12 +87,14 @@ def test_dev_file_valid_path() -> None:
 
     # Start the real application with a valid dev file. We don't wait indefinitely;
     # instead, allow a short startup window, then terminate if still running.
+    # Use --no-browser to prevent opening a browser window in CI/headless environments.
     process = subprocess.Popen(  # pylint: disable=consider-using-with
         [
             sys.executable,
             "src/apple_health_analyzer.py",
             "--dev-file",
             str(fixture_path),
+            "--no-browser",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
