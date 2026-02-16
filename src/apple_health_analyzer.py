@@ -68,7 +68,11 @@ def _setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
 
 
 def main() -> None:
-    """Main entry point for the application."""
+    """Main NiceGUI page setup function.
+
+    This function is called by NiceGUI for each page render.
+    It should not contain CLI argument parsing or app initialization logic.
+    """
 
     render_header()
     render_left_drawer()
@@ -98,7 +102,12 @@ def main() -> None:
         ui.timer(1.0, _auto_load, once=True)
 
 
-if __name__ in {"__main__", "__mp_main__"}:
+def cli_main() -> None:
+    """CLI entry point that handles argument parsing and starts the application.
+
+    This function should be called from the command line or the entry point.
+    It parses CLI arguments, sets up logging, and starts the NiceGUI server.
+    """
     # Parse command-line arguments for developer mode
     parser = argparse.ArgumentParser(
         description="Apple Health Analyzer - Analyze your Apple Health data",
@@ -124,16 +133,15 @@ if __name__ in {"__main__", "__mp_main__"}:
         # Disable file logging in dev mode to avoid reload loops from log file changes
         _setup_logging(args.log_level, enable_file_logging=False)
         try:
-            dev_file_path = Path(args.dev_file).expanduser().resolve()
+            resolved_path = Path(args.dev_file).expanduser().resolve()
         except OSError as exc:
             _logger.error("Invalid dev file path '%s': %s", args.dev_file, exc)
             sys.exit(1)
-        if not dev_file_path.is_file():
-            _logger.error("File not found: %s", dev_file_path)
+        if not resolved_path.is_file():
+            _logger.error("File not found: %s", resolved_path)
             sys.exit(1)
         _logger.info("Dev mode: file logging disabled to prevent reload loops")
-        _logger.info("Dev file specified: %s", dev_file_path)
-        DEV_FILE_PATH = str(dev_file_path)
+        _logger.info("Dev file specified: %s", _dev_file_path)
     else:
         # Enable file logging in normal mode
         _setup_logging(args.log_level, enable_file_logging=True)
@@ -156,3 +164,7 @@ if __name__ in {"__main__", "__mp_main__"}:
         uvicorn_reload_dirs="src,resources",  # Only include needed dirs for the reload
         show=False,
     )
+
+
+if __name__ in {"__main__", "__mp_main__"}:
+    cli_main()
