@@ -84,6 +84,7 @@ def test_dev_file_valid_path() -> None:
     env = os.environ.copy()
     env.pop("PYTEST_CURRENT_TEST", None)
     env.pop("NICEGUI_SCREEN_TEST_PORT", None)
+    env["BROWSER"] = "none"
 
     # Start the real application with a valid dev file. We don't wait indefinitely;
     # instead, allow a short startup window, then terminate if still running.
@@ -172,6 +173,7 @@ def test_dev_file_combined_with_log_level() -> None:
     env = os.environ.copy()
     env.pop("PYTEST_CURRENT_TEST", None)
     env.pop("NICEGUI_SCREEN_TEST_PORT", None)
+    env["BROWSER"] = "none"
 
     process = subprocess.Popen(  # pylint: disable=consider-using-with
         [
