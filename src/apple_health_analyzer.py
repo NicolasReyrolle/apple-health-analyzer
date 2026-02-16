@@ -144,5 +144,5 @@ if __name__ in {"__main__", "__mp_main__"}:
         title="Apple Health Analyzer",
         favicon=APP_ICON_BASE64,
         storage_secret=secret,
-        uvicorn_reload_dirs="src,resources",
+        uvicorn_reload_dirs="src,resources",  # Only include needed dirs for the reload
     )
