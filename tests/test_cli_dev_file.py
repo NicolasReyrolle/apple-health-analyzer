@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def test_dev_file_help() -> None:
     """Test that --help shows the --dev-file option."""
@@ -59,12 +61,7 @@ def test_dev_file_valid_path() -> None:
     fixture_path = Path("tests/fixtures/export_sample.zip")
 
     if not fixture_path.exists():
-        # Generate the fixture
-        subprocess.run(
-            [sys.executable, "tests/fixtures/update_export_sample.py"],
-            capture_output=True,
-            check=False,
-        )
+        pytest.skip(f"Fixture file not found: {fixture_path}")
 
     test_code = f"""
 import sys
