@@ -147,6 +147,5 @@ if __name__ in {"__main__", "__mp_main__"}:
         title="Apple Health Analyzer",
         favicon=APP_ICON_BASE64,
         storage_secret=secret,
-        uvicorn_reload_includes="resources/**,src/**",
-        uvicorn_reload_excludes="tests/**",
+        uvicorn_reload_dirs="src,resources",
     )
