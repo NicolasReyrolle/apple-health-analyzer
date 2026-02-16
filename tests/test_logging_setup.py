@@ -1,11 +1,10 @@
 """Tests for the _setup_logging function in apple_health_analyzer.py."""
 
 import logging
+import logging.handlers
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 # Import the module to test
 import apple_health_analyzer
@@ -13,6 +12,8 @@ import apple_health_analyzer
 
 class TestSetupLogging:
     """Tests for the _setup_logging function."""
+
+    # pylint: disable=protected-access
 
     def test_setup_logging_with_debug_level(self, tmp_path: Path) -> None:
         """Test that _setup_logging correctly configures DEBUG level."""
@@ -155,6 +156,7 @@ class TestSetupLogging:
 
     def test_setup_logging_creates_log_directory(self, tmp_path: Path) -> None:
         """Test that _setup_logging creates the logs directory."""
+        # pylint: disable=import-outside-toplevel
         logger = logging.getLogger()
         logger.handlers.clear()
 
@@ -216,6 +218,7 @@ class TestSetupLogging:
 
     def test_setup_logging_with_file_handler_configuration(self, tmp_path: Path) -> None:
         """Test that file handler is configured with correct settings."""
+        # pylint: disable=import-outside-toplevel
         logger = logging.getLogger()
         logger.handlers.clear()
 
@@ -232,9 +235,7 @@ class TestSetupLogging:
 
             # Find the RotatingFileHandler in the handlers
             file_handlers = [
-                h
-                for h in logger.handlers
-                if isinstance(h, logging.handlers.RotatingFileHandler)
+                h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)
             ]
             assert len(file_handlers) == 1, "Should have exactly one RotatingFileHandler"
 
@@ -254,6 +255,7 @@ class TestCLIArgumentParsing:
 
     def test_log_level_argument_default(self) -> None:
         """Test that --log-level defaults to INFO."""
+        # pylint: disable=import-outside-toplevel
         with patch("sys.argv", ["apple_health_analyzer.py"]):
             import argparse
 
@@ -270,6 +272,7 @@ class TestCLIArgumentParsing:
 
     def test_log_level_argument_accepts_debug(self) -> None:
         """Test that --log-level accepts DEBUG."""
+        # pylint: disable=import-outside-toplevel
         with patch("sys.argv", ["apple_health_analyzer.py", "--log-level", "DEBUG"]):
             import argparse
 
@@ -286,6 +289,7 @@ class TestCLIArgumentParsing:
 
     def test_log_level_argument_accepts_warning(self) -> None:
         """Test that --log-level accepts WARNING."""
+        # pylint: disable=import-outside-toplevel
         with patch("sys.argv", ["apple_health_analyzer.py", "--log-level", "WARNING"]):
             import argparse
 
@@ -302,6 +306,7 @@ class TestCLIArgumentParsing:
 
     def test_log_level_argument_accepts_error(self) -> None:
         """Test that --log-level accepts ERROR."""
+        # pylint: disable=import-outside-toplevel
         with patch("sys.argv", ["apple_health_analyzer.py", "--log-level", "ERROR"]):
             import argparse
 
@@ -318,6 +323,7 @@ class TestCLIArgumentParsing:
 
     def test_dev_file_argument_parsing(self) -> None:
         """Test that --dev-file argument is parsed correctly."""
+        # pylint: disable=import-outside-toplevel
         test_path = "/path/to/export.zip"
         with patch("sys.argv", ["apple_health_analyzer.py", "--dev-file", test_path]):
             import argparse
@@ -330,9 +336,11 @@ class TestCLIArgumentParsing:
 
     def test_combined_arguments_parsing(self) -> None:
         """Test that both --dev-file and --log-level can be used together."""
+        # pylint: disable=import-outside-toplevel
         test_path = "/path/to/export.zip"
         with patch(
-            "sys.argv", ["apple_health_analyzer.py", "--dev-file", test_path, "--log-level", "DEBUG"]
+            "sys.argv",
+            ["apple_health_analyzer.py", "--dev-file", test_path, "--log-level", "DEBUG"],
         ):
             import argparse
 
