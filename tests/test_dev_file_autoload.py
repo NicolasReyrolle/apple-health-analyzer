@@ -11,6 +11,7 @@ The tests verify:
 """
 
 import asyncio
+from pathlib import Path
 from typing import Callable
 
 from nicegui import app
@@ -139,7 +140,7 @@ class TestDevFileAutoLoad:
     async def test_auto_load_clears_storage_only_on_success(self, user: User) -> None:
         """Test that dev file path is only cleared from storage after successful load."""
         # Use a non-existent file to force a load failure
-        invalid_zip = "/tmp/nonexistent_file.zip"
+        invalid_zip = str(Path.cwd() / "nonexistent_file.zip")
 
         # Set dev file in storage
         app.storage.general["_dev_file_path"] = invalid_zip  # type: ignore[index]
