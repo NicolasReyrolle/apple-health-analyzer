@@ -225,22 +225,18 @@ class TestAutoLoadFunctionality:
     async def test_auto_load_with_empty_string(self, user: User) -> None:
         """Test behavior when _dev_file_path is an empty string.
 
-        Note: The implementation checks 'if dev_file:', so an empty string
-        will NOT trigger the auto-load logic. The input field should remain empty.
+        The implementation checks 'if dev_file:' so an empty string is falsy
+        and will NOT trigger the auto-load logic. The ui.timer should not be called.
         """
-        # Set the value to empty string
         app.storage.general["_dev_file_path"] = ""
 
         try:
-            await user.open("/")
-            await asyncio.sleep(2.0)
+            with patch("apple_health_analyzer.ui.timer") as mock_timer:
+                await user.open("/")
+                await asyncio.sleep(0.5)
 
-            # Empty string is falsy, so auto-load does not run
-            input_elements = list(user.find("Apple Health export file").elements)
-            assert len(input_elements) > 0
-            input_field = input_elements[0]
-            # The input field should be empty since auto-load didn't run
-            assert input_field.value == ""  # type: ignore[attr-defined]
+                # Empty string is falsy, so the timer should NOT be set
+                mock_timer.assert_not_called()
         finally:
             # Cleanup
             app.storage.general.pop("_dev_file_path", None)
