@@ -2,6 +2,7 @@
 
 import logging
 import logging.handlers
+import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -21,31 +22,32 @@ class TestSetupLogging:
         logger = logging.getLogger()
         logger.handlers.clear()
 
-        # Change to tmp_path to avoid creating logs directory in project root
-        with patch("apple_health_analyzer.Path") as mock_path_class:
-            mock_log_dir = tmp_path / "logs"
-            mock_path_class.return_value = mock_log_dir
-
+        # Change working directory temporarily to tmp_path
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
             apple_health_analyzer._setup_logging("DEBUG", enable_file_logging=True)
 
-        # Verify logger is configured at DEBUG level
-        assert logger.level == logging.DEBUG
+            # Verify logger is configured at DEBUG level
+            assert logger.level == logging.DEBUG
 
-        # Verify we have 2 handlers (console + file)
-        assert len(logger.handlers) == 2
+            # Verify we have 2 handlers (console + file)
+            assert len(logger.handlers) == 2
 
-        # Verify handlers are at DEBUG level
-        for handler in logger.handlers:
-            assert handler.level == logging.DEBUG
+            # Verify handlers are at DEBUG level
+            for handler in logger.handlers:
+                assert handler.level == logging.DEBUG
 
-        # Verify one handler is StreamHandler (console) but not RotatingFileHandler
-        console_handlers = [
-            h
-            for h in logger.handlers
-            if isinstance(h, logging.StreamHandler)
-            and not isinstance(h, logging.handlers.RotatingFileHandler)
-        ]
-        assert len(console_handlers) == 1
+            # Verify one handler is StreamHandler (console) but not RotatingFileHandler
+            console_handlers = [
+                h
+                for h in logger.handlers
+                if isinstance(h, logging.StreamHandler)
+                and not isinstance(h, logging.handlers.RotatingFileHandler)
+            ]
+            assert len(console_handlers) == 1
+        finally:
+            os.chdir(original_cwd)
 
         # Cleanup
         logger.handlers.clear()
@@ -55,18 +57,20 @@ class TestSetupLogging:
         logger = logging.getLogger()
         logger.handlers.clear()
 
-        with patch("apple_health_analyzer.Path") as mock_path_class:
-            mock_log_dir = tmp_path / "logs"
-            mock_path_class.return_value = mock_log_dir
-
+        # Change working directory temporarily to tmp_path
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
             apple_health_analyzer._setup_logging("INFO", enable_file_logging=True)
 
-        # Verify logger is configured at INFO level
-        assert logger.level == logging.INFO
+            # Verify logger is configured at INFO level
+            assert logger.level == logging.INFO
 
-        # Verify handlers are at INFO level
-        for handler in logger.handlers:
-            assert handler.level == logging.INFO
+            # Verify handlers are at INFO level
+            for handler in logger.handlers:
+                assert handler.level == logging.INFO
+        finally:
+            os.chdir(original_cwd)
 
         # Cleanup
         logger.handlers.clear()
@@ -76,15 +80,17 @@ class TestSetupLogging:
         logger = logging.getLogger()
         logger.handlers.clear()
 
-        with patch("apple_health_analyzer.Path") as mock_path_class:
-            mock_log_dir = tmp_path / "logs"
-            mock_path_class.return_value = mock_log_dir
-
+        # Change working directory temporarily to tmp_path
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
             apple_health_analyzer._setup_logging("WARNING", enable_file_logging=True)
 
-        assert logger.level == logging.WARNING
-        for handler in logger.handlers:
-            assert handler.level == logging.WARNING
+            assert logger.level == logging.WARNING
+            for handler in logger.handlers:
+                assert handler.level == logging.WARNING
+        finally:
+            os.chdir(original_cwd)
 
         # Cleanup
         logger.handlers.clear()
@@ -94,15 +100,17 @@ class TestSetupLogging:
         logger = logging.getLogger()
         logger.handlers.clear()
 
-        with patch("apple_health_analyzer.Path") as mock_path_class:
-            mock_log_dir = tmp_path / "logs"
-            mock_path_class.return_value = mock_log_dir
-
+        # Change working directory temporarily to tmp_path
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
             apple_health_analyzer._setup_logging("ERROR", enable_file_logging=True)
 
-        assert logger.level == logging.ERROR
-        for handler in logger.handlers:
-            assert handler.level == logging.ERROR
+            assert logger.level == logging.ERROR
+            for handler in logger.handlers:
+                assert handler.level == logging.ERROR
+        finally:
+            os.chdir(original_cwd)
 
         # Cleanup
         logger.handlers.clear()
@@ -142,26 +150,27 @@ class TestSetupLogging:
         handler_count_before = len(logger.handlers)
         assert handler_count_before == 2
 
-        with patch("apple_health_analyzer.Path") as mock_path_class:
-            mock_log_dir = tmp_path / "logs"
-            mock_path_class.return_value = mock_log_dir
-
+        # Change working directory temporarily to tmp_path
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
             apple_health_analyzer._setup_logging("INFO", enable_file_logging=True)
 
-        # After calling _setup_logging, we should have exactly 2 new handlers (console + file)
-        # The old handlers should be cleared
-        assert len(logger.handlers) == 2
+            # After calling _setup_logging, we should have exactly 2 new handlers (console + file)
+            # The old handlers should be cleared
+            assert len(logger.handlers) == 2
 
-        # Verify none of the handlers are the dummy ones we added
-        assert dummy_handler1 not in logger.handlers
-        assert dummy_handler2 not in logger.handlers
+            # Verify none of the handlers are the dummy ones we added
+            assert dummy_handler1 not in logger.handlers
+            assert dummy_handler2 not in logger.handlers
+        finally:
+            os.chdir(original_cwd)
 
         # Cleanup
         logger.handlers.clear()
 
     def test_setup_logging_creates_log_directory(self, tmp_path: Path) -> None:
         """Test that _setup_logging creates the logs directory."""
-        # pylint: disable=import-outside-toplevel
         logger = logging.getLogger()
         logger.handlers.clear()
 
@@ -170,8 +179,6 @@ class TestSetupLogging:
         assert not log_dir.exists(), "Log directory should not exist initially"
 
         # Change working directory temporarily to tmp_path
-        import os
-
         original_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
@@ -207,29 +214,28 @@ class TestSetupLogging:
         logger = logging.getLogger()
         logger.handlers.clear()
 
-        with patch("apple_health_analyzer.Path") as mock_path_class:
-            mock_log_dir = tmp_path / "logs"
-            mock_path_class.return_value = mock_log_dir
-
+        # Change working directory temporarily to tmp_path
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
             apple_health_analyzer._setup_logging("INFO", enable_file_logging=True)
 
-        # Verify all handlers have formatters
-        for handler in logger.handlers:
-            assert handler.formatter is not None
-            assert isinstance(handler.formatter, logging.Formatter)
+            # Verify all handlers have formatters
+            for handler in logger.handlers:
+                assert handler.formatter is not None
+                assert isinstance(handler.formatter, logging.Formatter)
+        finally:
+            os.chdir(original_cwd)
 
         # Cleanup
         logger.handlers.clear()
 
     def test_setup_logging_with_file_handler_configuration(self, tmp_path: Path) -> None:
         """Test that file handler is configured with correct settings."""
-        # pylint: disable=import-outside-toplevel
         logger = logging.getLogger()
         logger.handlers.clear()
 
         # Create actual logs directory for this test
-        import os
-
         original_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
@@ -273,7 +279,7 @@ class TestCLIArgumentParsing:
         # Get the most recent call
         call_args = mock_setup_logging.call_args
         # Extract log_level from either positional or keyword arguments
-        log_level = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
+        log_level: str = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
         return log_level
 
     def test_log_level_argument_default(self) -> None:
