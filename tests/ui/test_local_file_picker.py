@@ -325,7 +325,7 @@ class TestAddDrivesToggle:
         assert callable(getattr(local_file_picker, "add_drives_toggle"))
 
     def test_add_drives_toggle_mocked(self) -> None:
-        """Test that add_drives_toggle adds the drives_toggle attribute 
+        """Test that add_drives_toggle adds the drives_toggle attribute
         by mocking Windows and the module."""
         # Create a mock for the picker instance (acts as 'self')
         picker = MagicMock()
@@ -390,9 +390,7 @@ class TestFileFilter:
         # Directories should always be shown
         assert any("subdir" in name for name in file_names)
 
-    def test_update_grid_with_file_filter_case_insensitive(
-        self, tmp_path: Path
-    ) -> None:
+    def test_update_grid_with_file_filter_case_insensitive(self, tmp_path: Path) -> None:
         """Test that file_filter is case-insensitive."""
         # Create test structure with mixed case
         (tmp_path / "file1.XML").touch()

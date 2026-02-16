@@ -241,8 +241,9 @@ async def load_file() -> None:
         ui.notify("Please select an Apple Health export file first.")
         return
 
-    # Prevent concurrent invocations
+    # Guard against concurrent invocations (e.g., from auto-load timer + manual click)
     if state.loading:
+        _logger.debug("File loading already in progress, skipping concurrent invocation")
         return
 
     state.loading = True

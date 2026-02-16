@@ -96,6 +96,7 @@ def mock_file_picker_context() -> Callable[[Optional[str]], ContextManager[None]
         # Create an awaitable object that returns the result
         class AwaitableMock:
             """Mock class to simulate an awaitable LocalFilePicker."""
+
             def __await__(self):
                 future: asyncio.Future[List[str]] = asyncio.Future()
                 future.set_result(result_value)
