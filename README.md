@@ -112,7 +112,7 @@ python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip 
 Debug logs are written to:
 
 - **Console**: Printed to stdout
-- **File**: `logs/apple_health_analyzer.log` (rotated daily)
+- **File**: `logs/apple_health_analyzer.log` (size-based rotation: 10MB max per file, 3 backup files)
 
 Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`)
 
