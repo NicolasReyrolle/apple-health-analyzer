@@ -28,7 +28,7 @@ if not _logger.handlers:
     _logger.addHandler(logging.NullHandler())
 
 
-def _setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
+def setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
     """Configure logging with both console and file handlers.
 
     Args:
@@ -153,7 +153,7 @@ def cli_main() -> None:
 
     # Set up logging (after dev file validation)
     # Disable file logging in dev mode to avoid reload loops from log file changes
-    _setup_logging(args.log_level, enable_file_logging=resolved_path is None)
+    setup_logging(args.log_level, enable_file_logging=resolved_path is None)
 
     # Exit early if dev file validation failed
     if dev_file_error:

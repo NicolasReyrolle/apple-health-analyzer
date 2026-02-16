@@ -5,10 +5,8 @@
 import asyncio
 import contextlib
 import logging
-import logging.handlers
 import os
 import shutil
-import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -279,12 +277,12 @@ def clean_logger() -> Generator[logging.Logger, None, None]:
     for handler in list(logger.handlers):
         try:
             handler.close()
-        except Exception:  # Ignore errors during close
+        except Exception:  # pylint: disable=broad-except
             pass
         finally:
             try:
                 logger.removeHandler(handler)
-            except Exception:  # Ignore errors during remove
+            except Exception:  # pylint: disable=broad-except
                 pass
 
     # Also reset logger level to ensure it's not affected by previous tests
@@ -297,12 +295,12 @@ def clean_logger() -> Generator[logging.Logger, None, None]:
     for handler in list(logger.handlers):
         try:
             handler.close()
-        except Exception:  # Ignore errors during close
+        except Exception:  # pylint: disable=broad-except
             pass
         finally:
             try:
                 logger.removeHandler(handler)
-            except Exception:  # Ignore errors during remove
+            except Exception:  # pylint: disable=broad-except
                 pass
 
     # Restore original logger level
