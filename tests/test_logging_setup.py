@@ -258,6 +258,24 @@ class TestSetupLogging:
 class TestCLIArgumentParsing:
     """Tests for CLI argument parsing logic."""
 
+    @staticmethod
+    def _extract_log_level_from_mock(mock_setup_logging) -> str:
+        """Helper to extract log_level from _setup_logging mock calls.
+
+        Args:
+            mock_setup_logging: The mock for _setup_logging
+
+        Returns:
+            The log level string passed to _setup_logging
+        """
+        # Ensure at least one call was made
+        assert len(mock_setup_logging.call_args_list) > 0, "Expected _setup_logging to be called"
+        # Get the most recent call
+        call_args = mock_setup_logging.call_args
+        # Extract log_level from either positional or keyword arguments
+        log_level = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
+        return log_level
+
     def test_log_level_argument_default(self) -> None:
         """Test that --log-level defaults to INFO in the real CLI."""
         with (
@@ -268,9 +286,7 @@ class TestCLIArgumentParsing:
             apple_health_analyzer.cli_main()
 
         mock_setup_logging.assert_called()
-        # Get the log_level from the first call (which is always made)
-        call_args = mock_setup_logging.call_args_list[0]
-        log_level = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
+        log_level = self._extract_log_level_from_mock(mock_setup_logging)
         assert log_level == "INFO"
         assert mock_ui_run.called
 
@@ -287,8 +303,7 @@ class TestCLIArgumentParsing:
             apple_health_analyzer.cli_main()
 
         mock_setup_logging.assert_called()
-        call_args = mock_setup_logging.call_args_list[0]
-        log_level = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
+        log_level = self._extract_log_level_from_mock(mock_setup_logging)
         assert log_level == "DEBUG"
         assert mock_ui_run.called
 
@@ -305,8 +320,7 @@ class TestCLIArgumentParsing:
             apple_health_analyzer.cli_main()
 
         mock_setup_logging.assert_called()
-        call_args = mock_setup_logging.call_args_list[0]
-        log_level = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
+        log_level = self._extract_log_level_from_mock(mock_setup_logging)
         assert log_level == "WARNING"
         assert mock_ui_run.called
 
@@ -323,8 +337,7 @@ class TestCLIArgumentParsing:
             apple_health_analyzer.cli_main()
 
         mock_setup_logging.assert_called()
-        call_args = mock_setup_logging.call_args_list[0]
-        log_level = call_args[0][0] if call_args[0] else call_args[1].get("log_level")
+        log_level = self._extract_log_level_from_mock(mock_setup_logging)
         assert log_level == "ERROR"
         assert mock_ui_run.called
 
