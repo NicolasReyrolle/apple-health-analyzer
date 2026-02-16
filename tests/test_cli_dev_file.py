@@ -1,4 +1,15 @@
-"""Tests for command-line dev file parameter."""
+"""Tests for command-line dev file parameter.
+
+These tests invoke the actual application script (src/apple_health_analyzer.py) as a subprocess
+to validate the CLI argument parsing and application startup behavior. This approach tests the
+real application code path that users would experience when running the application, rather than
+testing argument parsing in isolation with mock implementations.
+
+The tests verify:
+1. Help output includes all expected CLI options
+2. Invalid file paths cause immediate failure with non-zero exit codes
+3. Valid file paths allow the application to start successfully
+"""
 
 import os
 import subprocess
@@ -63,7 +74,7 @@ def test_dev_file_valid_path() -> None:
 
     # Start the real application with a valid dev file. We don't wait indefinitely;
     # instead, allow a short startup window, then terminate if still running.
-    process = subprocess.Popen(
+    process = subprocess.Popen(  # pylint: disable=consider-using-with
         [
             sys.executable,
             "src/apple_health_analyzer.py",
