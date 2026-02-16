@@ -19,13 +19,12 @@ from app_state import state
 from assets import APP_ICON_BASE64
 from ui.layout import load_file, render_body, render_header, render_left_drawer
 
-# Configure basic logging at module level to ensure logger has handlers
-# This will be reconfigured by _setup_logging() when the application starts
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Module-level logger; avoid configuring global logging at import time.
+# A NullHandler prevents "No handler found" warnings if the application
+# importing this module has not configured logging yet.
 _logger = logging.getLogger(__name__)
+if not _logger.handlers:
+    _logger.addHandler(logging.NullHandler())
 
 
 def _setup_logging(log_level: str, enable_file_logging: bool = True) -> None:

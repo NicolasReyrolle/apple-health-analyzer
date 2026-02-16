@@ -181,6 +181,7 @@ def test_dev_file_combined_with_log_level() -> None:
             str(fixture_path),
             "--log-level",
             "DEBUG",
+            "--no-browser",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
