@@ -179,18 +179,20 @@ class TestRenderTrendsGraphs:
             render_graph_mock.assert_any_call("Elevation by month", {"2024-01": 50}, "m")
 
             # Verify that get_*_by_period was called with correct parameters
-            workouts_mock.get_count_by_period.assert_called_once_with("M", activity_type="Running")
+            workouts_mock.get_count_by_period.assert_called_once_with(
+                "M", activity_type="Running", start_date=None, end_date=None
+            )
             workouts_mock.get_distance_by_period.assert_called_once_with(
-                "M", activity_type="Running"
+                "M", activity_type="Running", start_date=None, end_date=None
             )
             workouts_mock.get_calories_by_period.assert_called_once_with(
-                "M", activity_type="Running"
+                "M", activity_type="Running", start_date=None, end_date=None
             )
             workouts_mock.get_duration_by_period.assert_called_once_with(
-                "M", activity_type="Running"
+                "M", activity_type="Running", start_date=None, end_date=None
             )
             workouts_mock.get_elevation_by_period.assert_called_once_with(
-                "M", activity_type="Running", unit="m"
+                "M", activity_type="Running", unit="m", start_date=None, end_date=None
             )
         finally:
             state.workouts = original_workouts
@@ -227,7 +229,7 @@ class TestLoadWorkoutsFromFile:
 
             # Verify state.workouts was updated
             assert state.workouts is not None
-            assert state.workouts.count() > 0
+            assert state.workouts.get_count() > 0
         finally:
             state.workouts = original_workouts
             if original_log is None and hasattr(state, "log"):

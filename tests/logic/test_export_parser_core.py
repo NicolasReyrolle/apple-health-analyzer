@@ -46,7 +46,7 @@ class TestLoadWorkouts:
         with parser:
             workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
-        assert workouts.count() == 3
+        assert workouts.get_count() == 3
         assert list(workouts.get_workouts()["startDate"]) == [
             pd.Timestamp("2024-01-01 00:00:00"),
             pd.Timestamp("2024-01-02 00:00:00"),
@@ -67,7 +67,7 @@ class TestLoadWorkouts:
         with parser:
             workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
-        assert workouts.count() == 0
+        assert workouts.get_count() == 0
 
     def test_load_multiple_workouts_accumulate(self, tmp_path: Path) -> None:
         """Test that multiple workouts are loaded into DataFrame."""
@@ -86,7 +86,7 @@ class TestLoadWorkouts:
             workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
 
         # First parse should have 2 workouts
-        assert workouts.count() == 2
+        assert workouts.get_count() == 2
         # Check duration values are captured in seconds
         assert list(workouts.get_workouts()["duration"]) == [1800, 1500]
 

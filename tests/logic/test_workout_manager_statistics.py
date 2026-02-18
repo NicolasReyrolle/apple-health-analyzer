@@ -122,9 +122,9 @@ class TestGetStatistics:
             )
         )
 
-        assert workouts.count() == 3
-        assert workouts.count("All") == 3
-        assert workouts.count("Running") == 2
+        assert workouts.get_count() == 3
+        assert workouts.get_count("All") == 3
+        assert workouts.get_count("Running") == 2
 
     def test_get_distance_workouts(self) -> None:
         """Test get_distance with workouts."""

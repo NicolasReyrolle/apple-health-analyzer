@@ -1,7 +1,8 @@
 """Module to manage workout data and metrics."""
 
 import json
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
 import pandas as pd
 
@@ -33,11 +34,36 @@ class WorkoutManager:
             return []
         return self.workouts["activityType"].dropna().unique().tolist()
 
-    def _filter_by_activity(self, activity_type: str = "All") -> pd.DataFrame:
-        """Filter workouts by activity type. Returns all workouts if activity_type is 'All'."""
+    def _filter_workouts(
+        self,
+        activity_type: str = "All",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> pd.DataFrame:
+        """Filter workouts by activity type and/or date range.
+
+        Args:
+            activity_type: Filter by activity type. "All" returns all activities.
+            start_date: Include workouts from this date onwards (inclusive).
+            end_date: Include workouts up to this date (inclusive).
+
+        Returns:
+            Filtered DataFrame of workouts.
+        """
+        workouts = self.workouts
+
+        # Filter by activity type
         if activity_type != "All":
-            return self.workouts[self.workouts["activityType"] == activity_type]
-        return self.workouts
+            workouts = workouts[workouts["activityType"] == activity_type]
+
+        # Filter by date range
+        if "startDate" in workouts.columns:
+            if start_date is not None:
+                workouts = workouts[workouts["startDate"] >= start_date]
+            if end_date is not None:
+                workouts = workouts[workouts["startDate"] <= end_date]
+
+        return workouts
 
     def _get_filtered_columns(self, exclude_columns: Optional[set[str]] = None) -> List[str]:
         """Return list of columns after applying exclusion filters."""
@@ -61,6 +87,8 @@ class WorkoutManager:
         column: str,
         divisor: float = 1.0,
         default: int = 0,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> int:
         """Generic method to calculate total for any column with optional unit conversion.
 
@@ -69,11 +97,13 @@ class WorkoutManager:
             column: Column name to aggregate
             divisor: Divide the sum by this value (for unit conversion)
             default: Value to return if column doesn't exist
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
 
         Returns:
             Rounded total in the specified unit
         """
-        workouts = self._filter_by_activity(activity_type)
+        workouts = self._filter_workouts(activity_type, start_date, end_date)
         if column not in workouts.columns:
             return default
         total = workouts[column].sum() / divisor
@@ -87,6 +117,8 @@ class WorkoutManager:
         column_check: Optional[str] = None,
         filter_zeros: bool = True,
         combination_threshold: float = 10.0,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
         """Generic method to aggregate metrics by activity type.
 
@@ -97,6 +129,8 @@ class WorkoutManager:
             column_check: Additional column to check exists (defaults to column)
             filter_zeros: Whether to filter out zero values
             combination_threshold: Threshold for grouping small values
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
 
         Returns:
             Dictionary mapping activity types to aggregated values
@@ -105,8 +139,11 @@ class WorkoutManager:
         if "activityType" not in self.workouts.columns or column_check not in self.workouts.columns:
             return {}
 
+        # Apply date filtering
+        workouts = self._filter_workouts("All", start_date, end_date)
+
         grouped = aggregation(
-            self.workouts.groupby("activityType")[column]  # type: ignore[reportUnknownMemberType]
+            workouts.groupby("activityType")[column]  # type: ignore[reportUnknownMemberType]
         )
         if grouped.empty:
             return {}
@@ -142,6 +179,8 @@ class WorkoutManager:
         filter_zeros: bool = True,
         activity_type: str = "All",
         fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
         """Generic method to aggregate metrics by period.
 
@@ -154,6 +193,8 @@ class WorkoutManager:
             filter_zeros: Whether to filter out zero values.
             activity_type: Type of activity to filter by.
             fill_missing_periods: Whether to fill missing periods with zero values.
+            start_date: Include workouts from this date onwards (inclusive).
+            end_date: Include workouts up to this date (inclusive).
 
         Returns:
             Dictionary mapping periods to aggregated values.
@@ -170,7 +211,7 @@ class WorkoutManager:
         if not pd.api.types.is_datetime64_any_dtype(self.workouts["startDate"]):
             return {}
 
-        workouts = self._filter_by_activity(activity_type)
+        workouts = self._filter_workouts(activity_type, start_date, end_date)
 
         # If there is no data after filtering, return empty dict as
         # dt.to_period would fail
@@ -213,47 +254,145 @@ class WorkoutManager:
 
         return result
 
-    def count(self, activity_type: str = "All") -> int:
-        """Return the number of workouts."""
-        return len(self._filter_by_activity(activity_type))
+    def get_count(
+        self,
+        activity_type: str = "All",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> int:
+        """Return the number of workouts.
 
-    def get_total_distance(self, activity_type: str = "All", unit: str = "km") -> int:
-        """Return the total distance optionally per activity_type, and in the given unit."""
+        Args:
+            activity_type: Filter by activity type ("All" for all activities)
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Number of workouts matching the filters
+        """
+        return len(self._filter_workouts(activity_type, start_date, end_date))
+
+    def get_total_distance(
+        self,
+        activity_type: str = "All",
+        unit: str = "km",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> int:
+        """Return the total distance optionally per activity_type, and in the given unit.
+
+        Args:
+            activity_type: Filter by activity type ("All" for all activities)
+            unit: Unit for distance ("km", "m", or "mi"). Defaults to "km".
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Total distance in the specified unit
+        """
         divisor = self._get_distance_divisor(unit)
-        return self._get_aggregate_total(activity_type, "distance", divisor=divisor)
+        return self._get_aggregate_total(
+            activity_type, "distance", divisor=divisor, start_date=start_date, end_date=end_date
+        )
 
     def convert_distance(self, unit: str, total_distance_meters: float) -> float:
         """Convert distance in meters to the specified unit."""
         divisor = self._get_distance_divisor(unit)
         return total_distance_meters / divisor
 
-    def get_total_duration(self, activity_type: str = "All") -> int:
-        """Return the total duration of workouts in hours rounded to the nearest integer"""
-        return self._get_aggregate_total(activity_type, "duration", divisor=3600)
+    def get_total_duration(
+        self,
+        activity_type: str = "All",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> int:
+        """Return the total duration of workouts in hours rounded to the nearest integer.
 
-    def get_total_elevation(self, activity_type: str = "All", unit: str = "km") -> int:
+        Args:
+            activity_type: Filter by activity type ("All" for all activities)
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Total duration in hours
+        """
+        return self._get_aggregate_total(
+            activity_type, "duration", divisor=3600, start_date=start_date, end_date=end_date
+        )
+
+    def get_total_elevation(
+        self,
+        activity_type: str = "All",
+        unit: str = "km",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> int:
         """Return the total elevation gain of workouts in the specified unit.
 
         Args:
             activity_type: Filter by activity type ("All" for all activities)
             unit: Unit for elevation ("km", "m", or "mi"). Defaults to "km".
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Total elevation in the specified unit
         """
         divisor = self._get_distance_divisor(unit)
-        return self._get_aggregate_total(activity_type, "ElevationAscended", divisor=divisor)
+        return self._get_aggregate_total(
+            activity_type,
+            "ElevationAscended",
+            divisor=divisor,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
-    def get_total_calories(self, activity_type: str = "All") -> int:
-        """Return the total calories burned of workouts"""
-        return self._get_aggregate_total(activity_type, "sumActiveEnergyBurned")
+    def get_total_calories(
+        self,
+        activity_type: str = "All",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> int:
+        """Return the total calories burned of workouts.
 
-    def get_calories_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+        Args:
+            activity_type: Filter by activity type ("All" for all activities)
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Total calories burned
+        """
+        return self._get_aggregate_total(
+            activity_type, "sumActiveEnergyBurned", start_date=start_date, end_date=end_date
+        )
+
+    def get_calories_by_activity(
+        self,
+        combination_threshold: float = 10.0,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total calories burned.
+
         Activities that represent less than the combination_threshold percentage of total calories
-        are grouped into an "Others" category."""
+        are grouped into an "Others" category.
+
+        Args:
+            combination_threshold: Percentage threshold for grouping small values
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping activity types to total calories
+        """
         return self._aggregate_by_activity(
             "sumActiveEnergyBurned",
             lambda x: x.sum(),
             lambda x: x,
             combination_threshold=combination_threshold,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def get_calories_by_period(
@@ -261,6 +400,8 @@ class WorkoutManager:
         period: str,
         activity_type: str = "All",
         fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
         """Return a dictionary mapping periods to total calories burned.
 
@@ -273,6 +414,8 @@ class WorkoutManager:
                 to "All".
             fill_missing_periods: If True, include periods with zero calories in the
                 result. If False, only periods with recorded workouts are returned.
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
 
         Returns:
             A dictionary mapping period labels (as strings) to total calories burned
@@ -285,19 +428,38 @@ class WorkoutManager:
             lambda x: x,
             activity_type=activity_type,
             fill_missing_periods=fill_missing_periods,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def get_distance_by_activity(
-        self, unit: str = "km", combination_threshold: float = 10.0
+        self,
+        unit: str = "km",
+        combination_threshold: float = 10.0,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total distance.
+
         Activities that represent less than the combination_threshold percentage of total distance
-        are grouped into an "Others" category."""
+        are grouped into an "Others" category.
+
+        Args:
+            unit: Unit for distance ("km", "m", or "mi"). Defaults to "km".
+            combination_threshold: Percentage threshold for grouping small values
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping activity types to total distance
+        """
         return self._aggregate_by_activity(
             "distance",
             lambda x: x.sum(),
             lambda x: x.div(self._get_distance_divisor(unit)),
             combination_threshold=combination_threshold,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def get_distance_by_period(
@@ -306,8 +468,22 @@ class WorkoutManager:
         activity_type: str = "All",
         unit: str = "km",
         fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
-        """Return a dictionary mapping periods to total distance."""
+        """Return a dictionary mapping periods to total distance.
+
+        Args:
+            period: Period to group by (e.g., 'Y' for year, 'M' for month, 'W' for week)
+            activity_type: Filter by activity type ("All" for all activities)
+            unit: Unit for distance ("km", "m", or "mi"). Defaults to "km".
+            fill_missing_periods: Whether to fill missing periods with zero values
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping periods to total distance
+        """
         return self._aggregate_by_period(
             "distance",
             period,
@@ -316,24 +492,59 @@ class WorkoutManager:
             filter_zeros=False,
             activity_type=activity_type,
             fill_missing_periods=fill_missing_periods,
+            start_date=start_date,
+            end_date=end_date,
         )
 
-    def get_count_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+    def get_count_by_activity(
+        self,
+        combination_threshold: float = 10.0,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> Dict[str, int]:
         """Return a dictionary mapping activity types to workout counts.
+
         Activities that represent less than the combination_threshold percentage of total count
-        are grouped into an "Others" category."""
+        are grouped into an "Others" category.
+
+        Args:
+            combination_threshold: Percentage threshold for grouping small values
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping activity types to workout counts
+        """
         return self._aggregate_by_activity(
             "activityType",
             lambda x: x.count(),
             lambda x: x,
             column_check="activityType",
             combination_threshold=combination_threshold,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def get_count_by_period(
-        self, period: str, activity_type: str = "All", fill_missing_periods: bool = True
+        self,
+        period: str,
+        activity_type: str = "All",
+        fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
-        """Return a dictionary mapping periods to workout counts."""
+        """Return a dictionary mapping periods to workout counts.
+
+        Args:
+            period: Period to group by (e.g., 'Y' for year, 'M' for month, 'W' for week)
+            activity_type: Filter by activity type ("All" for all activities)
+            fill_missing_periods: Whether to fill missing periods with zero values
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping periods to workout counts
+        """
         return self._aggregate_by_period(
             "activityType",
             period,
@@ -342,23 +553,58 @@ class WorkoutManager:
             column_check="activityType",
             activity_type=activity_type,
             fill_missing_periods=fill_missing_periods,
+            start_date=start_date,
+            end_date=end_date,
         )
 
-    def get_duration_by_activity(self, combination_threshold: float = 10.0) -> Dict[str, int]:
+    def get_duration_by_activity(
+        self,
+        combination_threshold: float = 10.0,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total duration.
+
         Activities that represent less than the combination_threshold percentage of total duration
-        are grouped into an "Others" category."""
+        are grouped into an "Others" category.
+
+        Args:
+            combination_threshold: Percentage threshold for grouping small values
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping activity types to total duration in hours
+        """
         return self._aggregate_by_activity(
             "duration",
             lambda x: x.sum(),
             lambda x: x.div(3600),
             combination_threshold=combination_threshold,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def get_duration_by_period(
-        self, period: str, activity_type: str = "All", fill_missing_periods: bool = True
+        self,
+        period: str,
+        activity_type: str = "All",
+        fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
-        """Return a dictionary mapping periods to total duration in hours."""
+        """Return a dictionary mapping periods to total duration in hours.
+
+        Args:
+            period: Period to group by (e.g., 'Y' for year, 'M' for month, 'W' for week)
+            activity_type: Filter by activity type ("All" for all activities)
+            fill_missing_periods: Whether to fill missing periods with zero values
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping periods to total duration in hours
+        """
         return self._aggregate_by_period(
             "duration",
             period,
@@ -366,20 +612,39 @@ class WorkoutManager:
             lambda x: x.div(3600),
             activity_type=activity_type,
             fill_missing_periods=fill_missing_periods,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def get_elevation_by_activity(
-        self, combination_threshold: float = 10.0, unit: str = "m"
+        self,
+        combination_threshold: float = 10.0,
+        unit: str = "m",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
         """Return a dictionary mapping activity types to total elevation gain.
+
         Activities that represent less than the combination_threshold percentage of total elevation
-        are grouped into an "Others" category."""
+        are grouped into an "Others" category.
+
+        Args:
+            combination_threshold: Percentage threshold for grouping small values
+            unit: Unit for elevation ("km", "m", or "mi"). Defaults to "m".
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping activity types to total elevation
+        """
         return self._aggregate_by_activity(
             "ElevationAscended",
             lambda x: x.sum(),
             lambda x: x.div(self._get_distance_divisor(unit)),
             filter_zeros=False,
             combination_threshold=combination_threshold,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def get_elevation_by_period(
@@ -388,10 +653,22 @@ class WorkoutManager:
         activity_type: str = "All",
         fill_missing_periods: bool = True,
         unit: str = "m",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Dict[str, int]:
         """Return a dictionary mapping periods to total elevation gain in the specified unit.
 
-        The `unit` parameter controls the unit of measurement ("m", "km", or "mi")."""
+        Args:
+            period: Period to group by (e.g., 'Y' for year, 'M' for month, 'W' for week)
+            activity_type: Filter by activity type ("All" for all activities)
+            fill_missing_periods: Whether to fill missing periods with zero values
+            unit: Unit for elevation ("km", "m", or "mi"). Defaults to "m".
+            start_date: Include workouts from this date onwards (inclusive)
+            end_date: Include workouts up to this date (inclusive)
+
+        Returns:
+            Dictionary mapping periods to total elevation in the specified unit
+        """
         return self._aggregate_by_period(
             "ElevationAscended",
             period,
@@ -400,6 +677,8 @@ class WorkoutManager:
             filter_zeros=False,
             activity_type=activity_type,
             fill_missing_periods=fill_missing_periods,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def group_small_values(
@@ -537,7 +816,7 @@ class WorkoutManager:
             exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
         """
         cols_to_keep = self._get_filtered_columns(exclude_columns)
-        filtered_workouts = self._filter_by_activity(activity_type)
+        filtered_workouts = self._filter_workouts(activity_type)
 
         result: str = ""
 

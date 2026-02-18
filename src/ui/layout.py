@@ -32,11 +32,21 @@ def handle_csv_export() -> None:
 
 def refresh_data() -> None:
     """Refresh the displayed data."""
-    state.metrics["count"] = state.workouts.count(state.selected_activity_type)
-    state.metrics["distance"] = state.workouts.get_total_distance(state.selected_activity_type)
-    state.metrics["duration"] = state.workouts.get_total_duration(state.selected_activity_type)
-    state.metrics["elevation"] = state.workouts.get_total_elevation(state.selected_activity_type)
-    state.metrics["calories"] = state.workouts.get_total_calories(state.selected_activity_type)
+    state.metrics["count"] = state.workouts.get_count(
+        state.selected_activity_type, state.start_date, state.end_date
+    )
+    state.metrics["distance"] = state.workouts.get_total_distance(
+        state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
+    )
+    state.metrics["duration"] = state.workouts.get_total_duration(
+        state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
+    )
+    state.metrics["elevation"] = state.workouts.get_total_elevation(
+        state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
+    )
+    state.metrics["calories"] = state.workouts.get_total_calories(
+        state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
+    )
 
     state.metrics_display["count"] = format_integer(state.metrics["count"])
     state.metrics_display["distance"] = format_integer(state.metrics["distance"])
@@ -308,22 +318,43 @@ def render_body() -> None:
 def render_activity_graphs() -> None:
     """Render graphs by activity type."""
     with ui.row().classes("w-full justify-center gap-4"):
-        render_pie_rose_graph("Count by activity", state.workouts.get_count_by_activity())
         render_pie_rose_graph(
-            "Distance by activity", state.workouts.get_distance_by_activity(), "km"
+            "Count by activity",
+            state.workouts.get_count_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+        )
+        render_pie_rose_graph(
+            "Distance by activity",
+            state.workouts.get_distance_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+            "km",
         )
     with ui.row().classes("w-full justify-center gap-4"):
         render_pie_rose_graph(
-            "Calories by activity", state.workouts.get_calories_by_activity(), "kcal"
+            "Calories by activity",
+            state.workouts.get_calories_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+            "kcal",
         )
         render_pie_rose_graph(
-            "Duration by activity", state.workouts.get_duration_by_activity(), "h"
+            "Duration by activity",
+            state.workouts.get_duration_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+            "h",
         )
     with ui.row().classes("w-full justify-center gap-4"):
         # Display elevation in meters (not km like the stat card) because per-activity
         # values can be small and would show as 0.0X km, making the chart less readable
         render_pie_rose_graph(
-            "Elevation by activity", state.workouts.get_elevation_by_activity(), "m"
+            "Elevation by activity",
+            state.workouts.get_elevation_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+            "m",
         )
 
 
@@ -333,22 +364,42 @@ def render_trends_graphs() -> None:
     with ui.row().classes("w-full justify-center gap-4"):
         render_bar_graph(
             "Count by month",
-            state.workouts.get_count_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_count_by_period(
+                "M",
+                activity_type=state.selected_activity_type,
+                start_date=state.start_date,
+                end_date=state.end_date,
+            ),
         )
         render_bar_graph(
             "Distance by month",
-            state.workouts.get_distance_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_distance_by_period(
+                "M",
+                activity_type=state.selected_activity_type,
+                start_date=state.start_date,
+                end_date=state.end_date,
+            ),
             "km",
         )
     with ui.row().classes("w-full justify-center gap-4"):
         render_bar_graph(
             "Calories by month",
-            state.workouts.get_calories_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_calories_by_period(
+                "M",
+                activity_type=state.selected_activity_type,
+                start_date=state.start_date,
+                end_date=state.end_date,
+            ),
             "kcal",
         )
         render_bar_graph(
             "Duration by month",
-            state.workouts.get_duration_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_duration_by_period(
+                "M",
+                activity_type=state.selected_activity_type,
+                start_date=state.start_date,
+                end_date=state.end_date,
+            ),
             "h",
         )
     with ui.row().classes("w-full justify-center gap-4"):
@@ -357,7 +408,11 @@ def render_trends_graphs() -> None:
         render_bar_graph(
             "Elevation by month",
             state.workouts.get_elevation_by_period(
-                "M", activity_type=state.selected_activity_type, unit="m"
+                "M",
+                activity_type=state.selected_activity_type,
+                unit="m",
+                start_date=state.start_date,
+                end_date=state.end_date,
             ),
             "m",
         )
