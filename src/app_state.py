@@ -44,7 +44,7 @@ class AppState:
         """Get the start date from the date range text."""
         if " - " in self.date_range_text:
             date_str = self.date_range_text.split(" - ", maxsplit=1)[0]
-            return datetime.strptime(date_str, "%Y/%m/%d")
+            return datetime.strptime(date_str, "%Y-%m-%d")
         return None
 
     @property
@@ -52,7 +52,7 @@ class AppState:
         """Get the end date from the date range text."""
         if " - " in self.date_range_text:
             date_str = self.date_range_text.split(" - ")[1]
-            return datetime.strptime(date_str, "%Y/%m/%d")
+            return datetime.strptime(date_str, "%Y-%m-%d")
         return None
 
 
