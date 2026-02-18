@@ -405,8 +405,8 @@ class TestCLIArgumentParsing:
         mock_setup_logging.assert_called_once()
         mock_ui_run.assert_not_called()
 
-    def test_cli_main_stores_dev_file_and_disables_file_logging(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    def test_cli_main_stores_dev_file_and_disables_file_logging(  # pylint: disable=unused-argument
+        self, clean_logger: logging.Logger, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test that a valid dev file sets storage and disables file logging."""
         dev_file = tmp_path / "export.zip"
@@ -430,12 +430,12 @@ class TestCLIArgumentParsing:
 
     def test_module_entrypoint_invokes_cli_main(
         self,
-        clean_logger: logging.Logger,
+        _clean_logger: logging.Logger,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
         """Test that running the module as __main__ triggers cli_main."""
-        assert clean_logger is logging.getLogger()
+        assert _clean_logger is logging.getLogger()
         called = {"run": False}
 
         def _fake_run(*_args: object, **_kwargs: object) -> None:

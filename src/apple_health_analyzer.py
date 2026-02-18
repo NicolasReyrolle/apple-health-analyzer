@@ -177,8 +177,10 @@ def cli_main() -> None:
             dev_file_error = f"File not found: {resolved_path}"
 
     # Set up logging (after dev file validation)
-    # File logging is now safe even in dev mode with the uvicorn_reload_dirs filter
-    setup_logging(args.log_level, enable_file_logging=True)
+    # File logging is disabled in dev mode (when dev file is specified) to avoid
+    # Uvicorn reload issues, but enabled in production mode for debugging
+    enable_file_logging = resolved_path is None
+    setup_logging(args.log_level, enable_file_logging=enable_file_logging)
 
     # Exit early if dev file validation failed
     if dev_file_error:
