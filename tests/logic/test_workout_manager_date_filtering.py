@@ -406,7 +406,7 @@ class TestGetByPeriodWithDateFiltering:
 class TestDateFilteringEdgeCases:
     """Test edge cases for date filtering."""
 
-    def test_date_filtering_without_startDate_column(self) -> None:
+    def test_date_filtering_without_start_date_column(self) -> None:
         """Test date filtering when startDate column is missing."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
