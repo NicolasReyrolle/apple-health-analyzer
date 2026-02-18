@@ -20,6 +20,16 @@ from app_state import state
 from assets import APP_ICON_BASE64
 from ui.layout import load_file, render_body, render_header, render_left_drawer
 
+
+class _ImmediateFlushHandler(logging.handlers.RotatingFileHandler):
+    """A RotatingFileHandler that flushes after every emit (for subprocess/reload scenarios)."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Emit a record and flush immediately."""
+        super().emit(record)
+        self.flush()
+
+
 # Module-level logger; avoid configuring global logging at import time.
 # A NullHandler prevents "No handler found" warnings if the application
 # importing this module has not configured logging yet.
@@ -63,7 +73,7 @@ def setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
         log_dir = Path(log_dir_env) if log_dir_env else Path("logs")
         try:
             log_dir.mkdir(parents=True, exist_ok=True)
-            file_handler = logging.handlers.RotatingFileHandler(
+            file_handler = _ImmediateFlushHandler(
                 log_dir / "apple_health_analyzer.log",
                 maxBytes=10 * 1024 * 1024,  # 10MB
                 backupCount=3,
@@ -167,8 +177,8 @@ def cli_main() -> None:
             dev_file_error = f"File not found: {resolved_path}"
 
     # Set up logging (after dev file validation)
-    # Disable file logging in dev mode to avoid reload loops from log file changes
-    setup_logging(args.log_level, enable_file_logging=resolved_path is None)
+    # File logging is now safe even in dev mode with the uvicorn_reload_dirs filter
+    setup_logging(args.log_level, enable_file_logging=True)
 
     # Exit early if dev file validation failed
     if dev_file_error:
@@ -177,7 +187,8 @@ def cli_main() -> None:
 
     # Log dev mode information if applicable
     if resolved_path is not None:
-        _logger.info("Dev mode: file logging disabled to prevent reload loops")
+        _logger.info("Dev mode enabled with auto-load")
+        _logger.info("Debug logs available in logs/apple_health_analyzer.log")
         _logger.info("Dev file specified: %s", resolved_path)
 
     _logger.info("Starting Apple Health Analyzer with log level: %s", args.log_level)

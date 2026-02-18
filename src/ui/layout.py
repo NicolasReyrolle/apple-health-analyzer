@@ -32,6 +32,13 @@ def handle_csv_export() -> None:
 
 def refresh_data() -> None:
     """Refresh the displayed data."""
+    _logger.info(
+        "Refreshing data: activity_type=%s, start_date=%s, end_date=%s",
+        state.selected_activity_type,
+        state.start_date,
+        state.end_date,
+    )
+
     state.metrics["count"] = state.workouts.get_count(
         state.selected_activity_type, state.start_date, state.end_date
     )
@@ -64,7 +71,7 @@ def render_activity_select() -> None:
 
     ui.select(
         options=state.activity_options,
-        on_change=lambda e: refresh_data(),
+        on_change=refresh_data,
         value=state.selected_activity_type,
         label="Activity Type",
     ).classes("w-40").bind_enabled_from(state, "file_loaded").bind_value(
@@ -81,31 +88,7 @@ def render_left_drawer() -> None:
 
         ui.separator()
 
-        with ui.row().classes("items-center gap-2"):
-            date_input = (
-                ui.input("Date range")
-                .classes("w-40")
-                .bind_enabled_from(state, "file_loaded")
-                .bind_value(state, "date_range_text")
-            )
-            ui.date(
-                on_change=lambda e: refresh_data(),
-            ).props("range").bind_value(
-                date_input,
-                forward=lambda x: (
-                    f'{x["from"]} - {x["to"]}'
-                    if isinstance(x, dict) and "from" in x
-                    else str(x or "")  # type: ignore[arg-type]
-                ),
-                backward=lambda x: (
-                    {
-                        "from": x.split(" - ")[0],
-                        "to": x.split(" - ")[1],
-                    }
-                    if " - " in (x or "")
-                    else None
-                ),
-            ).bind_enabled_from(state, "file_loaded")
+        render_date_range_selector()
 
         ui.separator()
         with ui.dropdown_button("Export data", icon="download").bind_enabled_from(
@@ -113,6 +96,36 @@ def render_left_drawer() -> None:
         ):
             ui.button("to JSON", on_click=handle_json_export).props("flat").classes("w-full")
             ui.button("to CSV", on_click=handle_csv_export).props("flat").classes("w-full")
+
+
+@ui.refreshable
+def render_date_range_selector() -> None:
+    """Render the date range selector with linked input and date picker."""
+    with ui.row().classes("items-center gap-2"):
+        date_input = (
+            ui.input("Date range")
+            .classes("w-40")
+            .bind_enabled_from(state, "file_loaded")
+            .bind_value(state, "date_range_text")
+        )
+        ui.date(
+            on_change=refresh_data,
+        ).props("range").bind_value(
+            date_input,
+            forward=lambda x: (
+                f'{x["from"]} - {x["to"]}'
+                if isinstance(x, dict) and "from" in x
+                else str(x or "")  # type: ignore[arg-type]
+            ),
+            backward=lambda x: (
+                {
+                    "from": x.split(" - ")[0],
+                    "to": x.split(" - ")[1],
+                }
+                if " - " in (x or "")
+                else None
+            ),
+        ).bind_enabled_from(state, "file_loaded")
 
 
 def render_header() -> None:
@@ -265,6 +278,7 @@ async def load_file() -> None:
         activity_types.sort()
         state.activity_options = ["All"] + activity_types
         render_activity_select.refresh()
+        render_date_range_selector.refresh()
         refresh_data()
     except Exception as e:  # pylint: disable=broad-except
         ui.notify(f"Error parsing file: {e}")
