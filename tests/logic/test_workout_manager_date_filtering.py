@@ -163,6 +163,36 @@ class TestGetTotalDistanceWithDateFiltering:
         )
         assert result == 5
 
+    def test_get_total_distance_includes_last_day_for_date_only_end_date(self) -> None:
+        """Test date-only end_date includes workouts throughout that day."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Running"],
+                    "distance": [1000, 2000, 3000],
+                    "startDate": pd.to_datetime(
+                        ["2024-02-01 08:00", "2024-02-01 23:59", "2024-02-02 00:00"]
+                    ),
+                }
+            )
+        )
+
+        assert workouts.get_total_distance(end_date=datetime(2024, 2, 1), unit="m") == 3000
+
+    def test_get_total_distance_respects_time_specific_end_date(self) -> None:
+        """Test time-specific end_date excludes later times in the day."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running"],
+                    "distance": [1000, 2000],
+                    "startDate": pd.to_datetime(["2024-02-01 08:00", "2024-02-01 13:00"]),
+                }
+            )
+        )
+
+        assert workouts.get_total_distance(end_date=datetime(2024, 2, 1, 12, 0), unit="m") == 1000
+
 
 class TestGetTotalDurationWithDateFiltering:
     """Test get_total_duration with date filtering."""
