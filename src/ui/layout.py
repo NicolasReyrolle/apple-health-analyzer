@@ -102,6 +102,8 @@ def render_left_drawer() -> None:
 def render_date_range_selector() -> None:
     """Render the date range selector with linked input and date picker."""
     with ui.row().classes("items-center gap-2"):
+        min_date, max_date = state.workouts.get_date_bounds()
+
         date_input = (
             ui.input("Date range")
             .classes("w-50")
@@ -111,7 +113,10 @@ def render_date_range_selector() -> None:
         )
         ui.date(
             on_change=refresh_data,
-        ).props("range").bind_value(
+        ).props(
+            f'''range default-year-month="{min_date[:7]}" "
+            f":options="date => date >= '{min_date}' && date <= '{max_date}'"'''
+        ).bind_value(
             date_input,
             forward=lambda x: (
                 f'{x["from"]} - {x["to"]}'

@@ -82,6 +82,34 @@ class TestGetCountWithDateFiltering:
 
         assert workouts.get_count(start_date=pd.Timestamp("2024-02-01")) == 2
 
+    def test_get_count_includes_last_day_for_date_only_end_date(self) -> None:
+        """Test date-only end_date includes workouts throughout that day."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Running"],
+                    "startDate": pd.to_datetime(
+                        ["2024-02-01 08:00", "2024-02-01 23:59", "2024-02-02 00:00"]
+                    ),
+                }
+            )
+        )
+
+        assert workouts.get_count(end_date=datetime(2024, 2, 1)) == 2
+
+    def test_get_count_respects_time_specific_end_date(self) -> None:
+        """Test time-specific end_date does not include later times in the day."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running"],
+                    "startDate": pd.to_datetime(["2024-02-01 08:00", "2024-02-01 13:00"]),
+                }
+            )
+        )
+
+        assert workouts.get_count(end_date=datetime(2024, 2, 1, 12, 0)) == 1
+
     def test_get_count_no_matching_dates(self) -> None:
         """Test get_count returns 0 when no dates match."""
         workouts = wm.WorkoutManager(

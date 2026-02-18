@@ -59,11 +59,22 @@ class WorkoutManager:
         # Filter by date range
         if "startDate" in workouts.columns:
             if start_date is not None:
-                workouts = workouts[workouts["startDate"] >= start_date]
+                workouts = workouts[workouts["startDate"] >= pd.Timestamp(start_date)]
             if end_date is not None:
-                workouts = workouts[workouts["startDate"] <= end_date]
+                end_timestamp = pd.Timestamp(end_date)
+                if self._is_date_only(end_date):
+                    next_day = end_timestamp + pd.Timedelta(days=1)
+                    workouts = workouts[workouts["startDate"] < next_day]
+                else:
+                    workouts = workouts[workouts["startDate"] <= end_timestamp]
 
         return workouts
+
+    @staticmethod
+    def _is_date_only(value: Union[datetime, pd.Timestamp]) -> bool:
+        """Return True when the value represents a date without time-of-day information."""
+        timestamp = pd.Timestamp(value)
+        return timestamp == timestamp.normalize()
 
     def _get_filtered_columns(self, exclude_columns: Optional[set[str]] = None) -> List[str]:
         """Return list of columns after applying exclusion filters."""
@@ -840,3 +851,18 @@ class WorkoutManager:
             result = filtered_workouts[cols_to_keep].to_csv(index=False)
 
         return result
+
+    def get_date_bounds(self) -> tuple[str, str]:
+        """Return the minimum and maximum start dates of the workouts as
+        strings in "YYYY/MM/DD" format."""
+        if self.workouts.empty or "startDate" not in self.workouts.columns:
+            # Default bounds if no file is loaded
+            return "2000/01/01", datetime.now().strftime("%Y/%m/%d")
+
+        # Extract all start dates
+        start_dates = [w.startDate for w in self.workouts.itertuples()]
+
+        return (
+            min(start_dates).strftime("%Y/%m/%d"),  # type: ignore[arg-type,union-attr]
+            max(start_dates).strftime("%Y/%m/%d"),  # type: ignore[arg-type,union-attr]
+        )
