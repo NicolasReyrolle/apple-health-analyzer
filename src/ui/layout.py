@@ -48,62 +48,54 @@ def refresh_data() -> None:
     render_trends_graphs.refresh()
 
 
-def update_activity_filter(new_value: str) -> None:
-    """Update the selected activity type filter and refresh derived metrics.
-
-    Args:
-        new_value: The activity type selected from the UI dropdown.
-    """
-    state.selected_activity_type = new_value
-    refresh_data()
-
-
 @ui.refreshable
 def render_activity_select() -> None:
     """Render the activity type selection dropdown."""
 
     ui.select(
         options=state.activity_options,
-        on_change=lambda e: update_activity_filter(e.value),
+        on_change=lambda e: refresh_data(),
         value=state.selected_activity_type,
         label="Activity Type",
-    ).classes("w-40").bind_enabled_from(state, "file_loaded")
+    ).classes("w-40").bind_enabled_from(state, "file_loaded").bind_value(
+        state, "selected_activity_type"
+    )
 
 
 def render_left_drawer() -> None:
     """Generate the left drawer with filters."""
 
-    with ui.left_drawer():
+    with ui.left_drawer().props("width=330"):
         ui.label("Activities")
         render_activity_select()
 
         ui.separator()
 
-        ui.label("Date Range")
-
-        months = [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-        ]
-        years = [2024, 2025, 2026]
         with ui.row().classes("items-center gap-2"):
-            ui.label("From").classes("text-sm text-muted")
-            ui.select(months, value="Jan").classes("w-20").props("dense flat").props("disable")
-            ui.select(years, value=2025).classes("w-24").props("dense flat").props("disable")
-
-            ui.label("to").classes("text-sm text-muted")
-            ui.select(months, value="Dec").classes("w-20").props("dense flat").props("disable")
-            ui.select(years, value=2025).classes("w-24").props("dense flat").props("disable")
+            date_input = (
+                ui.input("Date range")
+                .classes("w-40")
+                .bind_enabled_from(state, "file_loaded")
+                .bind_value(state, "date_range_text")
+            )
+            ui.date(
+                on_change=lambda e: refresh_data(),
+            ).props("range").bind_value(
+                date_input,
+                forward=lambda x: (
+                    f'{x["from"]} - {x["to"]}'
+                    if isinstance(x, dict) and "from" in x
+                    else str(x or "")  # type: ignore[arg-type]
+                ),
+                backward=lambda x: (
+                    {
+                        "from": x.split(" - ")[0],
+                        "to": x.split(" - ")[1],
+                    }
+                    if " - " in (x or "")
+                    else None
+                ),
+            ).bind_enabled_from(state, "file_loaded")
 
         ui.separator()
         with ui.dropdown_button("Export data", icon="download").bind_enabled_from(

@@ -56,25 +56,6 @@ class TestExportHandlers:
             state.workouts = original_workouts
 
 
-class TestActivityFilter:
-    """Tests for activity filter update functionality."""
-
-    def test_update_activity_filter_updates_state_and_refreshes(self) -> None:
-        """Test that update_activity_filter updates state and calls refresh_data."""
-        original_activity = state.selected_activity_type
-
-        try:
-            state.selected_activity_type = "All"
-
-            with patch("ui.layout.refresh_data") as refresh_mock:
-                layout.update_activity_filter("Running")
-
-            assert state.selected_activity_type == "Running"
-            refresh_mock.assert_called_once()
-        finally:
-            state.selected_activity_type = original_activity
-
-
 class TestCalculateMovingAverage:
     """Tests for calculate_moving_average function."""
 
