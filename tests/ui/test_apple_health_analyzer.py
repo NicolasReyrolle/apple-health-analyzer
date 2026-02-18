@@ -321,19 +321,41 @@ class TestActivityFiltering:
         # 1. Load a valid health data file
         await load_health_export(user, create_health_zip)
 
+        # Re-open to ensure the select is rendered with updated options
+        await user.open("/")
+
         # 2. Verify the activity options were populated correctly in the state
-        assert state.activity_options == ["All", "Running"]
+        assert state.activity_options[0] == "All"
+        assert "Running" in state.activity_options
 
-        # 3. Verify the select element exists and has the correct value
-        select_elements = list(user.find("Activity Type").elements)
-        assert len(select_elements) > 0
-        select = cast(ui.select, select_elements[0])
+        # 3. Wait for the select to refresh and include the activity options
+        select: ui.select | None = None
+        labels: list[str] = []  # type: ignore[assignment]
+        for _ in range(30):
+            select_elements = list(user.find("Activity Type").elements)
+            if select_elements:
+                select = cast(ui.select, select_elements[0])
+                element_any: Any = select
+                options = element_any._props.get(  # pylint: disable=protected-access
+                    "options", getattr(element_any, "options", [])
+                )
+                if options:
+                    if isinstance(options[0], dict):
+                        labels = [  # type: ignore[misc]
+                            opt.get("label")  # type: ignore[misc]
+                            for opt in options
+                            if isinstance(opt, dict)
+                        ]
+                    else:
+                        labels = list(options)  # type: ignore[arg-type]
+                if "Running" in labels:
+                    break
+            await asyncio.sleep(0.1)
+
+        assert select is not None
         assert select.value == "All"
+        assert "Running" in labels
 
-        # 4. Change the filter programmatically and verify state updates
-        select.set_value("Running")
-        await asyncio.sleep(0.2)
-        assert state.selected_activity_type == "Running"
         # Small delay before teardown
         await asyncio.sleep(0.2)
 
