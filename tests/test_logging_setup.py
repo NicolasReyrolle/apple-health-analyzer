@@ -430,12 +430,12 @@ class TestCLIArgumentParsing:
 
     def test_module_entrypoint_invokes_cli_main(
         self,
-        _clean_logger: logging.Logger,
+        clean_logger: logging.Logger,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
         """Test that running the module as __main__ triggers cli_main."""
-        assert _clean_logger is logging.getLogger()
+        assert clean_logger is logging.getLogger()
         called = {"run": False}
 
         def _fake_run(*_args: object, **_kwargs: object) -> None:
