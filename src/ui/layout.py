@@ -114,7 +114,7 @@ def render_date_range_selector() -> None:
         ui.date(
             on_change=refresh_data,
         ).props(
-            f'''range default-year-month="{min_date[:7]}" "
+            f'''range default-year-month="{max_date[:7]}" "
             f":options="date => date >= '{min_date}' && date <= '{max_date}'"'''
         ).bind_value(
             date_input,
