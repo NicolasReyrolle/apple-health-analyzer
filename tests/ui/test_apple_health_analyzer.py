@@ -310,11 +310,11 @@ class TestActivityFiltering:
     async def test_activity_filter_checkbox_rendering(
         self, user: User, create_health_zip: Callable[..., str]
     ) -> None:
-        """Test that activity filter options are populated after loading data.
+        """Test that activity filter options are populated after loading data."""
 
-        Note: This test may fail when run with many other tests in the suite due to
-        state cumulative effects, but passes when run individually or in small batches.
-        """
+        # Ensure a clean application state so this test is independent of others.
+        if hasattr(state, "reset") and callable(getattr(state, "reset")):
+            state.reset()  # type: ignore[call-arg]
 
         await user.open("/")
 

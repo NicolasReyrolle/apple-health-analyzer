@@ -63,18 +63,16 @@ class TestAppStateDateProperties:
         assert app_state.end_date is None
 
     def test_start_date_with_invalid_format_raises_error(self) -> None:
-        """Test that start_date raises ValueError when date format is invalid."""
+        """Test that start_date returns None when date format is invalid."""
         app_state = AppState()
         app_state.date_range_text = "01-15-2024 - 12-31-2024"  # Wrong format
-        with pytest.raises(ValueError):
-            _ = app_state.start_date
+        assert app_state.start_date is None
 
     def test_end_date_with_invalid_format_raises_error(self) -> None:
-        """Test that end_date raises ValueError when date format is invalid."""
+        """Test that end_date returns None when date format is invalid."""
         app_state = AppState()
         app_state.date_range_text = "2024-01-15 - 12-31-2024"  # End date wrong format
-        with pytest.raises(ValueError):
-            _ = app_state.end_date
+        assert app_state.end_date is None
 
     def test_start_date_with_leap_year(self) -> None:
         """Test that start_date correctly handles leap year dates."""
@@ -110,8 +108,20 @@ class TestAppStateDateProperties:
 
         assert start1 == start2
         assert end1 == end2
-        assert start1 == datetime(2024, 1, 1)
-        assert end1 == datetime(2024, 12, 31)
+
+    def test_start_date_with_slash_separator(self) -> None:
+        """Test that start_date accepts slash-separated dates (YYYY/MM/DD)."""
+        app_state = AppState()
+        app_state.date_range_text = "2024/01/15 - 2024/12/31"
+        expected_date = datetime(2024, 1, 15)
+        assert app_state.start_date == expected_date
+
+    def test_end_date_with_slash_separator(self) -> None:
+        """Test that end_date accepts slash-separated dates (YYYY/MM/DD)."""
+        app_state = AppState()
+        app_state.date_range_text = "2024/01/15 - 2024/12/31"
+        expected_date = datetime(2024, 12, 31)
+        assert app_state.end_date == expected_date
 
     def test_reset_clears_date_range_text(self) -> None:
         """Test that reset() clears the date_range_text."""

@@ -1,7 +1,7 @@
 """Test suite for missing coverage in WorkoutManager methods."""
 
-from datetime import datetime
 import math
+from datetime import datetime
 
 import pandas as pd
 import pytest
