@@ -330,24 +330,21 @@ class TestActivityFiltering:
 
         # 3. Wait for the select to refresh and include the activity options
         select: ui.select | None = None
-        labels: list[str] = []  # type: ignore[assignment]
+        labels: list[str] = []
         for _ in range(30):
             select_elements = list(user.find("Activity Type").elements)
             if select_elements:
                 select = cast(ui.select, select_elements[0])
-                element_any: Any = select
-                options = element_any._props.get(  # pylint: disable=protected-access
-                    "options", getattr(element_any, "options", [])
-                )
+                options: list[Any] | dict[Any, Any] = select.options  # type: ignore[assignment]
                 if options:
-                    if isinstance(options[0], dict):
+                    if isinstance(options, list) and options and isinstance(options[0], dict):
                         labels = [  # type: ignore[misc]
-                            opt.get("label")  # type: ignore[misc]
+                            opt.get("label")  # type: ignore[union-attr]
                             for opt in options
                             if isinstance(opt, dict)
                         ]
-                    else:
-                        labels = list(options)  # type: ignore[arg-type]
+                    elif isinstance(options, list):
+                        labels = [str(opt) for opt in options]
                 if "Running" in labels:
                     break
             await asyncio.sleep(0.1)
