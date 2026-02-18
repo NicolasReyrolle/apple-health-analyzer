@@ -12,6 +12,8 @@ class WorkoutManager:
 
     # Columns to exclude from exports by default
     DEFAULT_EXCLUDED_COLUMNS = {"routeFile", "route"}
+    # Date format for string representations
+    DATE_FORMAT = "%Y/%m/%d"
 
     def __init__(self, pd_workouts: Optional[pd.DataFrame] = None) -> None:
         if pd_workouts is None:
@@ -761,7 +763,7 @@ class WorkoutManager:
         if not self.workouts.empty:
             result = f"Total workouts: {len(self.workouts)}\n"
             if "distance" in self.workouts.columns:
-                result += f"Total distance of " f"{self.get_total_distance()} km.\n"
+                result += f"Total distance of {self.get_total_distance()} km.\n"
             if "duration" in self.workouts.columns:
                 total_duration_sec = self.workouts["duration"].sum()
                 hours, remainder = divmod(total_duration_sec, 3600)
@@ -857,12 +859,12 @@ class WorkoutManager:
         strings in "YYYY/MM/DD" format."""
         if self.workouts.empty or "startDate" not in self.workouts.columns:
             # Default bounds if no file is loaded
-            return "2000/01/01", datetime.now().strftime("%Y/%m/%d")
+            return "2000/01/01", datetime.now().strftime(self.DATE_FORMAT)
 
         # Extract all start dates
         start_dates = [w.startDate for w in self.workouts.itertuples()]
 
         return (
-            min(start_dates).strftime("%Y/%m/%d"),  # type: ignore[arg-type,union-attr]
-            max(start_dates).strftime("%Y/%m/%d"),  # type: ignore[arg-type,union-attr]
+            min(start_dates).strftime(self.DATE_FORMAT),  # type: ignore[arg-type,union-attr]
+            max(start_dates).strftime(self.DATE_FORMAT),  # type: ignore[arg-type,union-attr]
         )
