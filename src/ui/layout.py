@@ -104,9 +104,10 @@ def render_date_range_selector() -> None:
     with ui.row().classes("items-center gap-2"):
         date_input = (
             ui.input("Date range")
-            .classes("w-40")
+            .classes("w-50")
             .bind_enabled_from(state, "file_loaded")
             .bind_value(state, "date_range_text")
+            .props("clearable")
         )
         ui.date(
             on_change=refresh_data,
