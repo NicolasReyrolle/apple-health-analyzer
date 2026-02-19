@@ -99,7 +99,6 @@ class TestExportToJson:
         create_test_zip(zip_path, xml_content)
         json_content = StringIO(parse_and_export_json(zip_path))
 
-        assert json_content is not None
         data = json.load(json_content)
         assert data["data"] == []
 
