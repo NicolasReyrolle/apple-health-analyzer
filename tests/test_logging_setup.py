@@ -428,6 +428,26 @@ class TestCLIArgumentParsing:
             finally:
                 apple_health_analyzer.app.storage.general.pop("_dev_file_path", None)
 
+    def test_cli_main_dev_file_not_found_exits(
+        self, clean_logger: logging.Logger, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that a non-existent dev file causes an early exit with an error."""
+        dev_file = tmp_path / "nonexistent.zip"
+        # File does not exist
+
+        monkeypatch.setattr(sys, "argv", ["apple_health_analyzer.py", "--dev-file", str(dev_file)])
+
+        with (
+            patch("apple_health_analyzer.setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                apple_health_analyzer.cli_main()
+
+        assert exc_info.value.code == 1
+        mock_setup_logging.assert_called_once()
+        mock_ui_run.assert_not_called()
+
     def test_module_entrypoint_invokes_cli_main(
         self,
         clean_logger: logging.Logger,

@@ -5,6 +5,7 @@ import json
 from typing import Any, Callable, cast
 from unittest.mock import patch
 
+import pytest
 from nicegui import ui
 from nicegui.client import Client  # Added for type hinting
 from nicegui.testing import User
@@ -474,3 +475,32 @@ class TestLoadingState:
         assert_ui_state(load_button, enabled=True)
         # Small delay before teardown
         await asyncio.sleep(0.2)
+
+    async def test_concurrent_load_file_calls_are_prevented(
+        self, user: User, create_health_zip: Callable[..., str], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that concurrent load_file invocations are prevented by the loading guard."""
+        import logging
+
+        await user.open("/")
+
+        # Create a valid health zip
+        zip_path = create_health_zip()
+        user.find("Apple Health export file").type(zip_path)
+
+        # Manually set loading to True to simulate concurrent invocation
+        state.loading = True
+
+        with caplog.at_level(logging.DEBUG):
+            # Try to load file while loading is already in progress
+            from ui.layout import load_file
+
+            await load_file()
+
+            # Verify the debug log was emitted
+            assert any(
+                "File loading already in progress" in record.message for record in caplog.records
+            ), "Expected debug log about concurrent invocation"
+
+        # Reset loading state
+        state.loading = False

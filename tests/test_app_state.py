@@ -133,3 +133,15 @@ class TestAppStateDateProperties:
         assert app_state.date_range_text == ""
         assert app_state.start_date is None
         assert app_state.end_date is None
+
+    def test_start_date_with_whitespace_only_date(self) -> None:
+        """Test that start_date returns None when date part is only whitespace."""
+        app_state = AppState()
+        app_state.date_range_text = "   - 2024-12-31"
+        assert app_state.start_date is None
+
+    def test_end_date_with_whitespace_only_date(self) -> None:
+        """Test that end_date returns None when date part is only whitespace."""
+        app_state = AppState()
+        app_state.date_range_text = "2024-01-01 -    "
+        assert app_state.end_date is None

@@ -190,12 +190,9 @@ def cli_main() -> None:
     # Log dev mode information if applicable
     if resolved_path is not None:
         _logger.info("Dev mode enabled with auto-load")
-        if enable_file_logging:
-            _logger.info("Debug logs available in logs/apple_health_analyzer.log")
-        else:
-            _logger.info(
-                "File logging is disabled in dev mode; debug logs are available in console output"
-            )
+        _logger.info(
+            "File logging is disabled in dev mode; debug logs are available in console output"
+        )
         _logger.info("Dev file specified: %s", resolved_path)
 
     _logger.info("Starting Apple Health Analyzer with log level: %s", args.log_level)
