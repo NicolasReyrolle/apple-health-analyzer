@@ -428,7 +428,7 @@ class TestCLIArgumentParsing:
             finally:
                 apple_health_analyzer.app.storage.general.pop("_dev_file_path", None)
 
-    def test_cli_main_dev_file_not_found_exits(
+    def test_cli_main_dev_file_not_found_exits(  # pylint: disable=unused-argument
         self, clean_logger: logging.Logger, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test that a non-existent dev file causes an early exit with an error."""
