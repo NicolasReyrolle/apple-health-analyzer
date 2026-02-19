@@ -11,7 +11,7 @@ from app_state import state
 from assets import APP_ICON_BASE64
 from logic.export_parser import ExportParser
 from logic.workout_manager import WorkoutManager
-from ui.helpers import format_integer
+from ui.helpers import format_integer, period_code_to_label
 from ui.local_file_picker import LocalFilePicker
 
 # Get logger for this module
@@ -333,7 +333,7 @@ def render_body() -> None:
             render_activity_graphs()
 
         with ui.tab_panel(tab_trends):
-            render_trends_graphs()
+            render_trends_tab()
 
 
 @ui.refreshable
@@ -380,23 +380,35 @@ def render_activity_graphs() -> None:
         )
 
 
+def render_trends_tab() -> None:
+    """Render the trends tab with period selection and graphs."""
+    with ui.row().classes("w-full justify-center gap-4"):
+        ui.label("Aggregate by:").classes("text-sm text-gray-500 uppercase self-center")
+        ui.radio(
+            {"W": "Week", "M": "Month", "Q": "Quarter", "Y": "Year"},
+            on_change=render_trends_graphs.refresh,
+        ).bind_value(state, "trends_period").props("inline")
+
+    render_trends_graphs()
+
+
 @ui.refreshable
 def render_trends_graphs() -> None:
     """Render trend graphs."""
     with ui.row().classes("w-full justify-center gap-4"):
         render_bar_graph(
-            "Count by month",
+            f"Count by {period_code_to_label(state.trends_period)}",
             state.workouts.get_count_by_period(
-                "M",
+                state.trends_period,
                 activity_type=state.selected_activity_type,
                 start_date=state.start_date,
                 end_date=state.end_date,
             ),
         )
         render_bar_graph(
-            "Distance by month",
+            f"Distance by {period_code_to_label(state.trends_period)}",
             state.workouts.get_distance_by_period(
-                "M",
+                state.trends_period,
                 activity_type=state.selected_activity_type,
                 start_date=state.start_date,
                 end_date=state.end_date,
@@ -405,9 +417,9 @@ def render_trends_graphs() -> None:
         )
     with ui.row().classes("w-full justify-center gap-4"):
         render_bar_graph(
-            "Calories by month",
+            f"Calories by {period_code_to_label(state.trends_period)}",
             state.workouts.get_calories_by_period(
-                "M",
+                state.trends_period,
                 activity_type=state.selected_activity_type,
                 start_date=state.start_date,
                 end_date=state.end_date,
@@ -415,9 +427,9 @@ def render_trends_graphs() -> None:
             "kcal",
         )
         render_bar_graph(
-            "Duration by month",
+            f"Duration by {period_code_to_label(state.trends_period)}",
             state.workouts.get_duration_by_period(
-                "M",
+                state.trends_period,
                 activity_type=state.selected_activity_type,
                 start_date=state.start_date,
                 end_date=state.end_date,
@@ -425,12 +437,12 @@ def render_trends_graphs() -> None:
             "h",
         )
     with ui.row().classes("w-full justify-center gap-4"):
-        # Display elevation in meters (not km like the stat card) because monthly
-        # values can be small and would show as 0.0X km, making the chart less readable
+        # Display elevation in meters (not km like the stat card) because values for the
+        # selected period can be small and would show as 0.0X km, making the chart less readable
         render_bar_graph(
-            "Elevation by month",
+            f"Elevation by {period_code_to_label(state.trends_period)}",
             state.workouts.get_elevation_by_period(
-                "M",
+                state.trends_period,
                 activity_type=state.selected_activity_type,
                 unit="m",
                 start_date=state.start_date,

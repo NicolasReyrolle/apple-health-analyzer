@@ -14,6 +14,23 @@ from app_state import state
 from ui import layout
 
 
+class _DummyRow:
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> bool:
+        return False
+
+    def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
+        """Mock method to allow chaining."""
+        return self
+
+
 class TestExportHandlers:
     """Tests for export handler functions."""
 
@@ -145,22 +162,6 @@ class TestRenderTrendsGraphs:
         workouts_mock.get_duration_by_period.return_value = {"2024-01": 120}
         workouts_mock.get_elevation_by_period.return_value = {"2024-01": 50}
 
-        class _DummyRow:
-            def __enter__(self):
-                return self
-
-            def __exit__(
-                self,
-                exc_type: type[BaseException] | None,
-                exc: BaseException | None,
-                tb: TracebackType | None,
-            ) -> bool:
-                return False
-
-            def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-                """Mock method to allow chaining."""
-                return self
-
         try:
             state.workouts = workouts_mock
             state.selected_activity_type = "Running"
@@ -197,6 +198,114 @@ class TestRenderTrendsGraphs:
         finally:
             state.workouts = original_workouts
             state.selected_activity_type = original_activity
+
+    def test_render_trends_graphs_with_week_period(self) -> None:
+        """Test that render_trends_graphs uses correct period when set to week."""
+        original_workouts: Any = state.workouts
+        original_activity = state.selected_activity_type
+        original_period = state.trends_period
+
+        workouts_mock = MagicMock()
+        workouts_mock.get_count_by_period.return_value = {"2024-W01": 2}
+        workouts_mock.get_distance_by_period.return_value = {"2024-W01": 10}
+        workouts_mock.get_calories_by_period.return_value = {"2024-W01": 500}
+        workouts_mock.get_duration_by_period.return_value = {"2024-W01": 120}
+        workouts_mock.get_elevation_by_period.return_value = {"2024-W01": 50}
+
+        try:
+            state.workouts = workouts_mock
+            state.selected_activity_type = "Running"
+            state.trends_period = "W"
+
+            with patch("ui.layout.ui.row", return_value=_DummyRow()):
+                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                    layout.render_trends_graphs.func()
+
+            # Verify the period "W" was passed to get_*_by_period methods
+            workouts_mock.get_count_by_period.assert_called_once_with(
+                "W", activity_type="Running", start_date=None, end_date=None
+            )
+            workouts_mock.get_distance_by_period.assert_called_once_with(
+                "W", activity_type="Running", start_date=None, end_date=None
+            )
+
+            # Verify chart labels include "week"
+            called_labels = [call[0][0] for call in render_graph_mock.call_args_list]
+            assert any("week" in label.lower() for label in called_labels)
+        finally:
+            state.workouts = original_workouts
+            state.selected_activity_type = original_activity
+            state.trends_period = original_period
+
+    def test_render_trends_graphs_with_quarter_period(self) -> None:
+        """Test that render_trends_graphs uses correct period when set to quarter."""
+        original_workouts: Any = state.workouts
+        original_activity = state.selected_activity_type
+        original_period = state.trends_period
+
+        workouts_mock = MagicMock()
+        workouts_mock.get_count_by_period.return_value = {"2024-Q1": 15}
+        workouts_mock.get_distance_by_period.return_value = {"2024-Q1": 50}
+        workouts_mock.get_calories_by_period.return_value = {"2024-Q1": 2000}
+        workouts_mock.get_duration_by_period.return_value = {"2024-Q1": 600}
+        workouts_mock.get_elevation_by_period.return_value = {"2024-Q1": 250}
+
+        try:
+            state.workouts = workouts_mock
+            state.selected_activity_type = "Running"
+            state.trends_period = "Q"
+
+            with patch("ui.layout.ui.row", return_value=_DummyRow()):
+                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                    layout.render_trends_graphs.func()
+
+            # Verify the period "Q" was passed to get_*_by_period methods
+            workouts_mock.get_count_by_period.assert_called_once_with(
+                "Q", activity_type="Running", start_date=None, end_date=None
+            )
+
+            # Verify chart labels include "quarter"
+            called_labels = [call[0][0] for call in render_graph_mock.call_args_list]
+            assert any("quarter" in label.lower() for label in called_labels)
+        finally:
+            state.workouts = original_workouts
+            state.selected_activity_type = original_activity
+            state.trends_period = original_period
+
+    def test_render_trends_graphs_with_year_period(self) -> None:
+        """Test that render_trends_graphs uses correct period when set to year."""
+        original_workouts: Any = state.workouts
+        original_activity = state.selected_activity_type
+        original_period = state.trends_period
+
+        workouts_mock = MagicMock()
+        workouts_mock.get_count_by_period.return_value = {"2024": 60}
+        workouts_mock.get_distance_by_period.return_value = {"2024": 200}
+        workouts_mock.get_calories_by_period.return_value = {"2024": 8000}
+        workouts_mock.get_duration_by_period.return_value = {"2024": 2400}
+        workouts_mock.get_elevation_by_period.return_value = {"2024": 1000}
+
+        try:
+            state.workouts = workouts_mock
+            state.selected_activity_type = "Running"
+            state.trends_period = "Y"
+
+            with patch("ui.layout.ui.row", return_value=_DummyRow()):
+                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                    layout.render_trends_graphs.func()
+
+            # Verify the period "Y" was passed to get_*_by_period methods
+            workouts_mock.get_count_by_period.assert_called_once_with(
+                "Y", activity_type="Running", start_date=None, end_date=None
+            )
+
+            # Verify chart labels include "year"
+            called_labels = [call[0][0] for call in render_graph_mock.call_args_list]
+            assert any("year" in label.lower() for label in called_labels)
+        finally:
+            state.workouts = original_workouts
+            state.selected_activity_type = original_activity
+            state.trends_period = original_period
 
 
 class TestLoadWorkoutsFromFile:

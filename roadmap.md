@@ -10,6 +10,7 @@
 - ✅ Data export (JSON/CSV)
 - ✅ Activity filtering (dropdown with activity type selection)
 - ✅ **Date range filtering** (date picker with start/end dates)
+- ✅ **Trends period aggregation** (week/month/quarter/year selector)
 - ✅ Comprehensive test coverage for all metrics methods and filtering features
 
 ### Work In Progress / Disabled Features
@@ -18,37 +19,7 @@
 
 ## Recommended Next Steps
 
-### Priority 1: Configurable Period Aggregation for Trends
-
-**Why:** The Trends tab currently shows data aggregated by month only. Users analyzing their fitness progress would benefit from viewing trends across different time periods (weekly for short-term progress, quarterly for seasonal patterns, yearly for long-term trends).
-
-**Implementation:**
-
-1. Add period selection state to [src/app_state.py](src/app_state.py):
-   - `selected_period: str` (default: "M" for month)
-   - Period options: "W" (week), "M" (month), "Q" (quarter), "Y" (year)
-
-2. Update [src/ui/layout.py](src/ui/layout.py):
-   - Add period selector dropdown/toggle in Trends tab or left drawer
-   - Wire selector to `refresh_data()` to update charts
-   - Update `render_trends_graphs()` to use `state.selected_period`
-
-3. Update chart labels in [src/ui/layout.py](src/ui/layout.py):
-   - Dynamically set chart titles based on period: "Count by week", "Count by month", etc.
-   - Adjust x-axis formatting for different periods (week numbers, quarters like "2024-Q1")
-
-4. Add tests in [tests/ui/](tests/ui/):
-   - Test period selector interaction
-   - Test that different periods correctly call WorkoutManager methods with appropriate period parameter
-   - Verify chart labels update correctly
-
-**Note:** The underlying infrastructure already supports this through WorkoutManager's `get_*_by_period(period, ...)` methods which accept pandas period aliases ("W", "M", "Q", "Y").
-
-**Complexity:** Low-Medium | **Impact:** High | **Estimated effort:** 2-4 hours
-
----
-
-### Priority 2: Implement "Health Data" Tab
+### Priority 1: Implement "Health Data" Tab
 
 **Why:** This tab is present in the UI but completely disabled. Based on the data model, it could display raw health metrics (heart rate, steps, blood pressure, etc.) that aren't workouts.
 
@@ -74,7 +45,7 @@
 
 ---
 
-### Priority 3: Enhanced Visualizations
+### Priority 2: Enhanced Visualizations
 
 **Why:** Current charts are functional but basic - adding interactivity and more visualization types would enhance analysis capabilities.
 
@@ -97,7 +68,7 @@
 
 ---
 
-### Priority 4: Route Visualization
+### Priority 3: Route Visualization
 
 **Why:** The data model includes `routeFile` and `route` fields (currently excluded from exports). Visualizing GPS routes would be valuable for runners/cyclists.
 
@@ -120,7 +91,7 @@
 
 ---
 
-### Priority 5: Advanced Analytics
+### Priority 4: Advanced Analytics
 
 **Why:** Transform from data viewer to true analytics tool with actionable insights.
 
@@ -171,8 +142,8 @@ After implementing each priority:
 
 **Choose based on user needs:**
 
-- **For casual users:** Priority 1 (Period Aggregation) + Quick Wins
-- **For data enthusiasts:** Priority 1 (Period Aggregation) + Priority 2 (Health Data) + Priority 3 (Enhanced Visualizations)
-- **For athletes/coaches:** Priority 1 (Period Aggregation) + Priority 4 (Routes) + Priority 5 (Analytics)
+- **For casual users:** Priority 2 (Enhanced Visualizations) + Quick Wins
+- **For data enthusiasts:** Priority 1 (Health Data) + Priority 2 (Enhanced Visualizations)
+- **For athletes/coaches:** Priority 3 (Routes) + Priority 4 (Analytics)
 
-The most logical progression is **Priority 1 → Priority 2 → Priority 3**, as each builds on the foundation established by the previous one. Priority 1 is recommended for all users as it significantly enhances the existing Trends functionality with minimal effort.
+The most logical progression is **Priority 1 → Priority 2 → Priority 3**, as each builds on the foundation established by the previous one.
