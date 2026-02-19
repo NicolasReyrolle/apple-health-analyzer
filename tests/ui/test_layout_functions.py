@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from types import TracebackType
 from typing import Any
@@ -37,40 +38,64 @@ class TestExportHandlers:
     def test_handle_json_export_calls_export_and_download(self) -> None:
         """Test that handle_json_export calls the correct methods."""
         original_workouts: Any = state.workouts
+        original_activity = state.selected_activity_type
+        original_date_range = state.date_range_text
 
         workouts_mock = MagicMock()
         workouts_mock.export_to_json.return_value = '{"test": "data"}'
 
         try:
             state.workouts = workouts_mock
+            state.selected_activity_type = "Running"
+            state.date_range_text = "2024-02-01 - 2024-02-29"
+            expected_start = datetime(2024, 2, 1)
+            expected_end = datetime(2024, 2, 29)
 
             with patch("ui.layout.ui.download") as download_mock:
                 layout.handle_json_export()
 
-            workouts_mock.export_to_json.assert_called_once()
+            workouts_mock.export_to_json.assert_called_once_with(
+                activity_type="Running",
+                start_date=expected_start,
+                end_date=expected_end,
+            )
             download_mock.assert_called_once_with(b'{"test": "data"}', "apple_health_export.json")
         finally:
             state.workouts = original_workouts
+            state.selected_activity_type = original_activity
+            state.date_range_text = original_date_range
 
     def test_handle_csv_export_calls_export_and_download(self) -> None:
         """Test that handle_csv_export calls the correct methods."""
         original_workouts: Any = state.workouts
+        original_activity = state.selected_activity_type
+        original_date_range = state.date_range_text
 
         workouts_mock = MagicMock()
         workouts_mock.export_to_csv.return_value = "header1,header2\nvalue1,value2"
 
         try:
             state.workouts = workouts_mock
+            state.selected_activity_type = "Cycling"
+            state.date_range_text = "2024-03-01 - 2024-03-31"
+            expected_start = datetime(2024, 3, 1)
+            expected_end = datetime(2024, 3, 31)
 
             with patch("ui.layout.ui.download") as download_mock:
                 layout.handle_csv_export()
 
-            workouts_mock.export_to_csv.assert_called_once()
+            workouts_mock.export_to_csv.assert_called_once_with(
+                activity_type="Cycling",
+                start_date=expected_start,
+                end_date=expected_end,
+            )
             download_mock.assert_called_once_with(
                 b"header1,header2\nvalue1,value2", "apple_health_export.csv"
             )
         finally:
             state.workouts = original_workouts
+            state.selected_activity_type = original_activity
+            state.date_range_text = original_date_range
 
 
 class TestCalculateMovingAverage:

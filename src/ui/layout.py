@@ -17,16 +17,27 @@ from ui.local_file_picker import LocalFilePicker
 # Get logger for this module
 _logger = logging.getLogger(__name__)
 
+# CSS class constants
+ROW_CENTERED_CLASSES = "w-full justify-center gap-4"
+
 
 def handle_json_export() -> None:
     """Handle exporting data to JSON format."""
-    json_data = state.workouts.export_to_json()
+    json_data = state.workouts.export_to_json(
+        activity_type=state.selected_activity_type,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
     ui.download(json_data.encode("utf-8"), "apple_health_export.json")
 
 
 def handle_csv_export() -> None:
     """Handle exporting data to CSV format."""
-    csv_data = state.workouts.export_to_csv()
+    csv_data = state.workouts.export_to_csv(
+        activity_type=state.selected_activity_type,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
     ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
 
 
@@ -321,12 +332,12 @@ def render_body() -> None:
 
     with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
         with ui.tab_panel(tab_summary):
-            with ui.row().classes("w-full justify-center gap-4"):
+            with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card("Count", state.metrics_display, "count")
                 stat_card("Distance", state.metrics_display, "distance", "km")
                 stat_card("Duration", state.metrics_display, "duration", "h")
                 stat_card("Elevation", state.metrics_display, "elevation", "km")
-            with ui.row().classes("w-full justify-center gap-4"):
+            with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card("Calories", state.metrics_display, "calories", "kcal")
 
         with ui.tab_panel(tab_activities):
@@ -339,7 +350,7 @@ def render_body() -> None:
 @ui.refreshable
 def render_activity_graphs() -> None:
     """Render graphs by activity type."""
-    with ui.row().classes("w-full justify-center gap-4"):
+    with ui.row().classes(ROW_CENTERED_CLASSES):
         render_pie_rose_graph(
             "Count by activity",
             state.workouts.get_count_by_activity(
@@ -353,7 +364,7 @@ def render_activity_graphs() -> None:
             ),
             "km",
         )
-    with ui.row().classes("w-full justify-center gap-4"):
+    with ui.row().classes(ROW_CENTERED_CLASSES):
         render_pie_rose_graph(
             "Calories by activity",
             state.workouts.get_calories_by_activity(
@@ -368,7 +379,7 @@ def render_activity_graphs() -> None:
             ),
             "h",
         )
-    with ui.row().classes("w-full justify-center gap-4"):
+    with ui.row().classes(ROW_CENTERED_CLASSES):
         # Display elevation in meters (not km like the stat card) because per-activity
         # values can be small and would show as 0.0X km, making the chart less readable
         render_pie_rose_graph(
@@ -382,7 +393,7 @@ def render_activity_graphs() -> None:
 
 def render_trends_tab() -> None:
     """Render the trends tab with period selection and graphs."""
-    with ui.row().classes("w-full justify-center gap-4"):
+    with ui.row().classes(ROW_CENTERED_CLASSES):
         ui.label("Aggregate by:").classes("text-sm text-gray-500 uppercase self-center")
         ui.radio(
             {"W": "Week", "M": "Month", "Q": "Quarter", "Y": "Year"},
@@ -395,7 +406,7 @@ def render_trends_tab() -> None:
 @ui.refreshable
 def render_trends_graphs() -> None:
     """Render trend graphs."""
-    with ui.row().classes("w-full justify-center gap-4"):
+    with ui.row().classes(ROW_CENTERED_CLASSES):
         render_bar_graph(
             f"Count by {period_code_to_label(state.trends_period)}",
             state.workouts.get_count_by_period(
@@ -415,7 +426,7 @@ def render_trends_graphs() -> None:
             ),
             "km",
         )
-    with ui.row().classes("w-full justify-center gap-4"):
+    with ui.row().classes(ROW_CENTERED_CLASSES):
         render_bar_graph(
             f"Calories by {period_code_to_label(state.trends_period)}",
             state.workouts.get_calories_by_period(
@@ -436,7 +447,7 @@ def render_trends_graphs() -> None:
             ),
             "h",
         )
-    with ui.row().classes("w-full justify-center gap-4"):
+    with ui.row().classes(ROW_CENTERED_CLASSES):
         # Display elevation in meters (not km like the stat card) because values for the
         # selected period can be small and would show as 0.0X km, making the chart less readable
         render_bar_graph(
