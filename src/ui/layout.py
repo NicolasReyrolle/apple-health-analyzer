@@ -20,13 +20,21 @@ _logger = logging.getLogger(__name__)
 
 def handle_json_export() -> None:
     """Handle exporting data to JSON format."""
-    json_data = state.workouts.export_to_json()
+    json_data = state.workouts.export_to_json(
+        activity_type=state.selected_activity_type,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
     ui.download(json_data.encode("utf-8"), "apple_health_export.json")
 
 
 def handle_csv_export() -> None:
     """Handle exporting data to CSV format."""
-    csv_data = state.workouts.export_to_csv()
+    csv_data = state.workouts.export_to_csv(
+        activity_type=state.selected_activity_type,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
     ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
 
 

@@ -1,5 +1,6 @@
 """Tests for export functionality (JSON and CSV)."""
 
+from datetime import datetime
 import json
 from io import StringIO
 from pathlib import Path
@@ -612,3 +613,66 @@ class TestExportToCsvActivityFilter:
         assert "routeFile" not in csv_output
         # Verify Running activities are present
         assert csv_output.count("Running") == 2
+
+
+class TestExportWithActivityAndDateFilters:
+    """Test export methods with combined activity and date range filters."""
+
+    def test_export_to_json_with_activity_and_date_filters(self) -> None:
+        """JSON export should include only workouts matching both activity and date filters."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Cycling", "Running"],
+                    "duration": [30, 45, 60, 25],
+                    "startDate": pd.to_datetime(
+                        [
+                            "2024-01-10 08:00:00",
+                            "2024-02-10 09:00:00",
+                            "2024-02-12 10:00:00",
+                            "2024-03-05 07:30:00",
+                        ]
+                    ),
+                }
+            )
+        )
+
+        json_output = workouts.export_to_json(
+            activity_type="Running",
+            start_date=datetime(2024, 2, 1),
+            end_date=datetime(2024, 2, 29),
+        )
+
+        payload = json.loads(json_output)
+        assert "data" in payload
+        assert len(payload["data"]) == 1
+        assert payload["data"][0]["activityType"] == "Running"
+
+    def test_export_to_csv_with_activity_and_date_filters(self) -> None:
+        """CSV export should include only workouts matching both activity and date filters."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Cycling", "Running"],
+                    "duration": [30, 45, 60, 25],
+                    "startDate": pd.to_datetime(
+                        [
+                            "2024-01-10 08:00:00",
+                            "2024-02-10 09:00:00",
+                            "2024-02-12 10:00:00",
+                            "2024-03-05 07:30:00",
+                        ]
+                    ),
+                }
+            )
+        )
+
+        csv_output = workouts.export_to_csv(
+            activity_type="Running",
+            start_date=datetime(2024, 2, 1),
+            end_date=datetime(2024, 2, 29),
+        )
+
+        csv_df = pd.read_csv(StringIO(csv_output))
+        assert len(csv_df) == 1
+        assert set(csv_df["activityType"].tolist()) == {"Running"}

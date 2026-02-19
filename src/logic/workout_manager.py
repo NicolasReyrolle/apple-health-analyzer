@@ -774,14 +774,24 @@ class WorkoutManager:
 
         return result
 
-    def export_to_json(self, exclude_columns: Optional[set[str]] = None) -> str:
+    def export_to_json(
+        self,
+        activity_type: str = "All",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        exclude_columns: Optional[set[str]] = None,
+    ) -> str:
         """Export to JSON: Schema first, specific column order, no nulls. Return JSON string.
 
         Args:
+            activity_type: Filter by activity type. "All" returns all activities.
+            start_date: Include workouts from this date onwards (inclusive).
+            end_date: Include workouts up to this date (inclusive).
             exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
         """
         cols_to_keep = self._get_filtered_columns(exclude_columns)
-        df_filtered = self.workouts[cols_to_keep]
+        filtered_workouts = self._filter_workouts(activity_type, start_date, end_date)
+        df_filtered = filtered_workouts[cols_to_keep]
 
         # 1. Get the raw JSON string
         json_str = df_filtered.to_json(orient="table")  # type: ignore[misc]
@@ -820,16 +830,22 @@ class WorkoutManager:
         return json.dumps(final_obj, indent=2)
 
     def export_to_csv(
-        self, activity_type: str = "All", exclude_columns: Optional[set[str]] = None
+        self,
+        activity_type: str = "All",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        exclude_columns: Optional[set[str]] = None,
     ) -> str:
         """Export workouts to a CSV format, returns the CSV string.
 
         Args:
             activity_type: Filter by activity type. "All" returns all activities.
+            start_date: Include workouts from this date onwards (inclusive).
+            end_date: Include workouts up to this date (inclusive).
             exclude_columns: Set of column names to exclude. If None, uses DEFAULT_EXCLUDED_COLUMNS.
         """
         cols_to_keep = self._get_filtered_columns(exclude_columns)
-        filtered_workouts = self._filter_workouts(activity_type)
+        filtered_workouts = self._filter_workouts(activity_type, start_date, end_date)
 
         result: str = ""
 
