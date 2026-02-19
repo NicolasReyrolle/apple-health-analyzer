@@ -94,7 +94,7 @@ def test_refresh_data_passes_date_range_to_workouts() -> None:
     try:
         state.workouts = workouts_mock
         state.selected_activity_type = "Running"
-        state.date_range_text = "2024-02-01 - 2024-02-01"
+        state.date_range_text = "2024/02/01 - 2024/02/01"
 
         expected_start = datetime(2024, 2, 1)
         expected_end = datetime(2024, 2, 1)
