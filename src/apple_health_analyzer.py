@@ -203,6 +203,8 @@ def cli_main() -> None:
     if resolved_path is not None:
         app.storage.general["_dev_file_path"] = str(resolved_path)
         _logger.debug("Stored dev file path in app storage: %s", resolved_path)
+    else:
+        app.storage.general["_dev_file_path"] = None
 
     _logger.debug("Initializing NiceGUI app")
     ui.run(  # type: ignore[misc]
