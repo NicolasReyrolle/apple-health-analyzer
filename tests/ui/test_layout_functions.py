@@ -56,25 +56,6 @@ class TestExportHandlers:
             state.workouts = original_workouts
 
 
-class TestActivityFilter:
-    """Tests for activity filter update functionality."""
-
-    def test_update_activity_filter_updates_state_and_refreshes(self) -> None:
-        """Test that update_activity_filter updates state and calls refresh_data."""
-        original_activity = state.selected_activity_type
-
-        try:
-            state.selected_activity_type = "All"
-
-            with patch("ui.layout.refresh_data") as refresh_mock:
-                layout.update_activity_filter("Running")
-
-            assert state.selected_activity_type == "Running"
-            refresh_mock.assert_called_once()
-        finally:
-            state.selected_activity_type = original_activity
-
-
 class TestCalculateMovingAverage:
     """Tests for calculate_moving_average function."""
 
@@ -198,18 +179,20 @@ class TestRenderTrendsGraphs:
             render_graph_mock.assert_any_call("Elevation by month", {"2024-01": 50}, "m")
 
             # Verify that get_*_by_period was called with correct parameters
-            workouts_mock.get_count_by_period.assert_called_once_with("M", activity_type="Running")
+            workouts_mock.get_count_by_period.assert_called_once_with(
+                "M", activity_type="Running", start_date=None, end_date=None
+            )
             workouts_mock.get_distance_by_period.assert_called_once_with(
-                "M", activity_type="Running"
+                "M", activity_type="Running", start_date=None, end_date=None
             )
             workouts_mock.get_calories_by_period.assert_called_once_with(
-                "M", activity_type="Running"
+                "M", activity_type="Running", start_date=None, end_date=None
             )
             workouts_mock.get_duration_by_period.assert_called_once_with(
-                "M", activity_type="Running"
+                "M", activity_type="Running", start_date=None, end_date=None
             )
             workouts_mock.get_elevation_by_period.assert_called_once_with(
-                "M", activity_type="Running", unit="m"
+                "M", activity_type="Running", unit="m", start_date=None, end_date=None
             )
         finally:
             state.workouts = original_workouts
@@ -246,7 +229,7 @@ class TestLoadWorkoutsFromFile:
 
             # Verify state.workouts was updated
             assert state.workouts is not None
-            assert state.workouts.count() > 0
+            assert state.workouts.get_count() > 0
         finally:
             state.workouts = original_workouts
             if original_log is None and hasattr(state, "log"):

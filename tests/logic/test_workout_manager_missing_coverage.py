@@ -1,6 +1,7 @@
 """Test suite for missing coverage in WorkoutManager methods."""
 
 import math
+from datetime import datetime
 
 import pandas as pd
 import pytest
@@ -17,7 +18,7 @@ class TestConvertDistance:
 
         result = manager.convert_distance("km", 5000)
 
-        assert result == 5.0
+        assert result == 5
 
     def test_convert_distance_to_meters(self) -> None:
         """Test conversion from meters to meters (identity)."""
@@ -67,7 +68,7 @@ class TestConvertDistance:
         # 100 meters should be 0.1 km
         result = manager.convert_distance("km", 100)
 
-        assert result == 0.1
+        assert math.isclose(result, 0.1, rel_tol=1e-9)
 
     def test_convert_distance_invalid_unit(self) -> None:
         """Test conversion with invalid unit raises ValueError."""
@@ -496,3 +497,50 @@ class TestGroupSmallValuesEdgeCases:
         # Small (1) << 150.1, so it should be in "Others" or small group
         assert "Large1" in result
         assert "Large2" in result
+
+
+class TestGetDateBounds:
+    """Test suite for WorkoutManager.get_date_bounds method."""
+
+    def test_get_date_bounds_default_when_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test default bounds when no workouts are loaded."""
+
+        class _FixedDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None) -> datetime:  # type: ignore[override]
+                return cls(2024, 1, 2)
+
+        monkeypatch.setattr(wm, "datetime", _FixedDatetime)
+
+        manager = wm.WorkoutManager()
+
+        assert manager.get_date_bounds() == ("2000/01/01", "2024/01/02")
+
+    def test_get_date_bounds_default_when_missing_start_date(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test default bounds when startDate column is missing."""
+
+        class _FixedDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None) -> datetime:  # type: ignore[override]
+                return cls(2024, 1, 2)
+
+        monkeypatch.setattr(wm, "datetime", _FixedDatetime)
+
+        manager = wm.WorkoutManager(pd.DataFrame({"activityType": ["Running"]}))
+
+        assert manager.get_date_bounds() == ("2000/01/01", "2024/01/02")
+
+    def test_get_date_bounds_with_dates(self) -> None:
+        """Test min/max bounds with valid startDate values."""
+        manager = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Cycling", "Swimming"],
+                    "startDate": pd.to_datetime(["2024-03-15", "2024-01-01", "2024-02-10"]),
+                }
+            )
+        )
+
+        assert manager.get_date_bounds() == ("2024/01/01", "2024/03/15")

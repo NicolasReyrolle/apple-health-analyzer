@@ -32,11 +32,28 @@ def handle_csv_export() -> None:
 
 def refresh_data() -> None:
     """Refresh the displayed data."""
-    state.metrics["count"] = state.workouts.count(state.selected_activity_type)
-    state.metrics["distance"] = state.workouts.get_total_distance(state.selected_activity_type)
-    state.metrics["duration"] = state.workouts.get_total_duration(state.selected_activity_type)
-    state.metrics["elevation"] = state.workouts.get_total_elevation(state.selected_activity_type)
-    state.metrics["calories"] = state.workouts.get_total_calories(state.selected_activity_type)
+    _logger.info(
+        "Refreshing data: activity_type=%s, start_date=%s, end_date=%s",
+        state.selected_activity_type,
+        state.start_date,
+        state.end_date,
+    )
+
+    state.metrics["count"] = state.workouts.get_count(
+        state.selected_activity_type, state.start_date, state.end_date
+    )
+    state.metrics["distance"] = state.workouts.get_total_distance(
+        state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
+    )
+    state.metrics["duration"] = state.workouts.get_total_duration(
+        state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
+    )
+    state.metrics["elevation"] = state.workouts.get_total_elevation(
+        state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
+    )
+    state.metrics["calories"] = state.workouts.get_total_calories(
+        state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
+    )
 
     state.metrics_display["count"] = format_integer(state.metrics["count"])
     state.metrics_display["distance"] = format_integer(state.metrics["distance"])
@@ -48,62 +65,30 @@ def refresh_data() -> None:
     render_trends_graphs.refresh()
 
 
-def update_activity_filter(new_value: str) -> None:
-    """Update the selected activity type filter and refresh derived metrics.
-
-    Args:
-        new_value: The activity type selected from the UI dropdown.
-    """
-    state.selected_activity_type = new_value
-    refresh_data()
-
-
 @ui.refreshable
 def render_activity_select() -> None:
     """Render the activity type selection dropdown."""
 
     ui.select(
         options=state.activity_options,
-        on_change=lambda e: update_activity_filter(e.value),
+        on_change=refresh_data,
         value=state.selected_activity_type,
         label="Activity Type",
-    ).classes("w-40").bind_enabled_from(state, "file_loaded")
+    ).classes("w-40").bind_enabled_from(state, "file_loaded").bind_value(
+        state, "selected_activity_type"
+    )
 
 
 def render_left_drawer() -> None:
     """Generate the left drawer with filters."""
 
-    with ui.left_drawer():
+    with ui.left_drawer().props("width=330"):
         ui.label("Activities")
         render_activity_select()
 
         ui.separator()
 
-        ui.label("Date Range")
-
-        months = [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-        ]
-        years = [2024, 2025, 2026]
-        with ui.row().classes("items-center gap-2"):
-            ui.label("From").classes("text-sm text-muted")
-            ui.select(months, value="Jan").classes("w-20").props("dense flat").props("disable")
-            ui.select(years, value=2025).classes("w-24").props("dense flat").props("disable")
-
-            ui.label("to").classes("text-sm text-muted")
-            ui.select(months, value="Dec").classes("w-20").props("dense flat").props("disable")
-            ui.select(years, value=2025).classes("w-24").props("dense flat").props("disable")
+        render_date_range_selector()
 
         ui.separator()
         with ui.dropdown_button("Export data", icon="download").bind_enabled_from(
@@ -111,6 +96,44 @@ def render_left_drawer() -> None:
         ):
             ui.button("to JSON", on_click=handle_json_export).props("flat").classes("w-full")
             ui.button("to CSV", on_click=handle_csv_export).props("flat").classes("w-full")
+
+
+@ui.refreshable
+def render_date_range_selector() -> None:
+    """Render the date range selector with linked input and date picker."""
+    with ui.row().classes("items-center gap-2"):
+        min_date, max_date = state.workouts.get_date_bounds()
+
+        date_input = (
+            ui.input("Date range")
+            .classes("w-50")
+            .bind_enabled_from(state, "file_loaded")
+            .bind_value(state, "date_range_text")
+            .props("clearable")
+        )
+        ui.date(
+            on_change=refresh_data,
+        ).props(
+            f'range default-year-month="{max_date[:7]}" '
+            f''':options="date => date >= '{min_date}' && date <= '{max_date}'"'''
+        ).bind_value(
+            date_input,
+            forward=lambda x: (
+                f'{x["from"]} - {x["to"]}'
+                if isinstance(x, dict) and "from" in x
+                else str(x or "")  # type: ignore[arg-type]
+            ),
+            backward=lambda x: (
+                {
+                    "from": x.split(" - ")[0],
+                    "to": x.split(" - ")[1],
+                }
+                if " - " in (x or "")
+                else None
+            ),
+        ).bind_enabled_from(
+            state, "file_loaded"
+        )
 
 
 def render_header() -> None:
@@ -263,6 +286,7 @@ async def load_file() -> None:
         activity_types.sort()
         state.activity_options = ["All"] + activity_types
         render_activity_select.refresh()
+        render_date_range_selector.refresh()
         refresh_data()
     except Exception as e:  # pylint: disable=broad-except
         ui.notify(f"Error parsing file: {e}")
@@ -316,22 +340,43 @@ def render_body() -> None:
 def render_activity_graphs() -> None:
     """Render graphs by activity type."""
     with ui.row().classes("w-full justify-center gap-4"):
-        render_pie_rose_graph("Count by activity", state.workouts.get_count_by_activity())
         render_pie_rose_graph(
-            "Distance by activity", state.workouts.get_distance_by_activity(), "km"
+            "Count by activity",
+            state.workouts.get_count_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+        )
+        render_pie_rose_graph(
+            "Distance by activity",
+            state.workouts.get_distance_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+            "km",
         )
     with ui.row().classes("w-full justify-center gap-4"):
         render_pie_rose_graph(
-            "Calories by activity", state.workouts.get_calories_by_activity(), "kcal"
+            "Calories by activity",
+            state.workouts.get_calories_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+            "kcal",
         )
         render_pie_rose_graph(
-            "Duration by activity", state.workouts.get_duration_by_activity(), "h"
+            "Duration by activity",
+            state.workouts.get_duration_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+            "h",
         )
     with ui.row().classes("w-full justify-center gap-4"):
         # Display elevation in meters (not km like the stat card) because per-activity
         # values can be small and would show as 0.0X km, making the chart less readable
         render_pie_rose_graph(
-            "Elevation by activity", state.workouts.get_elevation_by_activity(), "m"
+            "Elevation by activity",
+            state.workouts.get_elevation_by_activity(
+                start_date=state.start_date, end_date=state.end_date
+            ),
+            "m",
         )
 
 
@@ -341,22 +386,42 @@ def render_trends_graphs() -> None:
     with ui.row().classes("w-full justify-center gap-4"):
         render_bar_graph(
             "Count by month",
-            state.workouts.get_count_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_count_by_period(
+                "M",
+                activity_type=state.selected_activity_type,
+                start_date=state.start_date,
+                end_date=state.end_date,
+            ),
         )
         render_bar_graph(
             "Distance by month",
-            state.workouts.get_distance_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_distance_by_period(
+                "M",
+                activity_type=state.selected_activity_type,
+                start_date=state.start_date,
+                end_date=state.end_date,
+            ),
             "km",
         )
     with ui.row().classes("w-full justify-center gap-4"):
         render_bar_graph(
             "Calories by month",
-            state.workouts.get_calories_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_calories_by_period(
+                "M",
+                activity_type=state.selected_activity_type,
+                start_date=state.start_date,
+                end_date=state.end_date,
+            ),
             "kcal",
         )
         render_bar_graph(
             "Duration by month",
-            state.workouts.get_duration_by_period("M", activity_type=state.selected_activity_type),
+            state.workouts.get_duration_by_period(
+                "M",
+                activity_type=state.selected_activity_type,
+                start_date=state.start_date,
+                end_date=state.end_date,
+            ),
             "h",
         )
     with ui.row().classes("w-full justify-center gap-4"):
@@ -365,7 +430,11 @@ def render_trends_graphs() -> None:
         render_bar_graph(
             "Elevation by month",
             state.workouts.get_elevation_by_period(
-                "M", activity_type=state.selected_activity_type, unit="m"
+                "M",
+                activity_type=state.selected_activity_type,
+                unit="m",
+                start_date=state.start_date,
+                end_date=state.end_date,
             ),
             "m",
         )

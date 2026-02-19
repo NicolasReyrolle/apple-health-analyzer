@@ -6,14 +6,14 @@ import logic.workout_manager as wm
 
 
 class TestCount:
-    """Test suite for WorkoutManager.count method."""
+    """Test suite for WorkoutManager.get_count method."""
 
     def test_count_empty(self) -> None:
         """Test count with empty DataFrame."""
         workouts = wm.WorkoutManager()
 
-        assert workouts.count() == 0
-        assert workouts.count("All") == 0
+        assert workouts.get_count() == 0
+        assert workouts.get_count("All") == 0
 
     def test_count_single_workout(self) -> None:
         """Test count with a single workout."""
@@ -25,7 +25,7 @@ class TestCount:
             )
         )
 
-        assert workouts.count() == 1
+        assert workouts.get_count() == 1
 
     def test_count_multiple_workouts(self) -> None:
         """Test count with multiple workouts."""
@@ -37,8 +37,8 @@ class TestCount:
             )
         )
 
-        assert workouts.count() == 3
-        assert workouts.count("All") == 3
+        assert workouts.get_count() == 3
+        assert workouts.get_count("All") == 3
 
     def test_count_filter_by_activity(self) -> None:
         """Test count filters by activity type."""
@@ -50,10 +50,10 @@ class TestCount:
             )
         )
 
-        assert workouts.count() == 4
-        assert workouts.count("Running") == 2
-        assert workouts.count("Cycling") == 1
-        assert workouts.count("Swimming") == 1
+        assert workouts.get_count() == 4
+        assert workouts.get_count("Running") == 2
+        assert workouts.get_count("Cycling") == 1
+        assert workouts.get_count("Swimming") == 1
 
     def test_count_nonexistent_activity(self) -> None:
         """Test count with non-existent activity type."""
@@ -65,7 +65,7 @@ class TestCount:
             )
         )
 
-        assert workouts.count("Walking") == 0
+        assert workouts.get_count("Walking") == 0
 
 
 class TestGetWorkouts:

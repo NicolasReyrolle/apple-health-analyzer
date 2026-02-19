@@ -8,39 +8,43 @@
 - ✅ WorkoutManager with comprehensive metrics aggregation (by_activity and by_period methods)
 - ✅ UI tabs: Overview, Activities (with pie/rose charts), and Trends (with bar charts + moving average)
 - ✅ Data export (JSON/CSV)
-- ✅ Activity filtering
-- ✅ Comprehensive test coverage for all metrics methods
+- ✅ Activity filtering (dropdown with activity type selection)
+- ✅ **Date range filtering** (date picker with start/end dates)
+- ✅ Comprehensive test coverage for all metrics methods and filtering features
 
 ### Work In Progress / Disabled Features
 
-1. **"Health Data" tab** - Currently disabled ([src/ui/layout.py](src/ui/layout.py#L291))
-2. **Date Range filtering** - UI controls exist but are disabled ([src/ui/layout.py](src/ui/layout.py#L97-L102))
-3. **Visual Statistics marked as "WIP"** in README
+1. **"Health Data" tab** - Currently disabled ([src/ui/layout.py](src/ui/layout.py#L331))
 
 ## Recommended Next Steps
 
-### Priority 1: Enable Date Range Filtering
+### Priority 1: Configurable Period Aggregation for Trends
 
-**Why:** The UI already has date range controls (month/year dropdowns from/to) but they're disabled. This would significantly enhance user experience by allowing focused analysis of specific time periods.
+**Why:** The Trends tab currently shows data aggregated by month only. Users analyzing their fitness progress would benefit from viewing trends across different time periods (weekly for short-term progress, quarterly for seasonal patterns, yearly for long-term trends).
 
 **Implementation:**
 
-1. Add date range state to [src/app_state.py](src/app_state.py):
-   - `date_range_from: datetime`
-   - `date_range_to: datetime`
-2. Update [src/ui/layout.py](src/ui/layout.py#L78-L102):
-   - Remove `.props("disable")` from the date range dropdowns
-   - Add event handlers to update state when dates change
-   - Wire handlers to `refresh_data()`
+1. Add period selection state to [src/app_state.py](src/app_state.py):
+   - `selected_period: str` (default: "M" for month)
+   - Period options: "W" (week), "M" (month), "Q" (quarter), "Y" (year)
 
-3. Modify [src/logic/workout_manager.py](src/logic/workout_manager.py):
-   - Update `_filter_by_activity()` to also filter by date range
-   - Add optional `date_from` and `date_to` parameters to all aggregation methods
+2. Update [src/ui/layout.py](src/ui/layout.py):
+   - Add period selector dropdown/toggle in Trends tab or left drawer
+   - Wire selector to `refresh_data()` to update charts
+   - Update `render_trends_graphs()` to use `state.selected_period`
 
-4. Add tests in [tests/logic/](tests/logic/):
-   - `test_workout_manager_date_filtering.py`
+3. Update chart labels in [src/ui/layout.py](src/ui/layout.py):
+   - Dynamically set chart titles based on period: "Count by week", "Count by month", etc.
+   - Adjust x-axis formatting for different periods (week numbers, quarters like "2024-Q1")
 
-**Complexity:** Medium | **Impact:** High | **Estimated effort:** 4-6 hours
+4. Add tests in [tests/ui/](tests/ui/):
+   - Test period selector interaction
+   - Test that different periods correctly call WorkoutManager methods with appropriate period parameter
+   - Verify chart labels update correctly
+
+**Note:** The underlying infrastructure already supports this through WorkoutManager's `get_*_by_period(period, ...)` methods which accept pandas period aliases ("W", "M", "Q", "Y").
+
+**Complexity:** Low-Medium | **Impact:** High | **Estimated effort:** 2-4 hours
 
 ---
 
@@ -59,7 +63,7 @@
    - Methods for aggregating health metrics by period
    - Support for different metric types
 
-3. Update [src/ui/layout.py](src/ui/layout.py#L289):
+3. Update [src/ui/layout.py](src/ui/layout.py#L331):
    - Remove `.props("disable")` from Health Data tab
    - Create `render_health_data_graphs()` function
    - Add health data visualizations (line charts for continuous metrics, bar charts for discrete)
@@ -72,7 +76,7 @@
 
 ### Priority 3: Enhanced Visualizations
 
-**Why:** The README mentions "Visual Statistics: Real-time summary (WIP)". Current charts are basic - adding interactivity and more chart types would enhance analysis.
+**Why:** Current charts are functional but basic - adding interactivity and more visualization types would enhance analysis capabilities.
 
 **Implementation:**
 
@@ -167,8 +171,8 @@ After implementing each priority:
 
 **Choose based on user needs:**
 
-- **For casual users:** Start with Priority 1 (Date Range) + Quick Wins
-- **For data enthusiasts:** Priority 2 (Health Data) + Priority 3 (Visualizations)
-- **For athletes/coaches:** Priority 4 (Routes) + Priority 5 (Analytics)
+- **For casual users:** Priority 1 (Period Aggregation) + Quick Wins
+- **For data enthusiasts:** Priority 1 (Period Aggregation) + Priority 2 (Health Data) + Priority 3 (Enhanced Visualizations)
+- **For athletes/coaches:** Priority 1 (Period Aggregation) + Priority 4 (Routes) + Priority 5 (Analytics)
 
-The most logical progression is **Priority 1 → Priority 2 → Priority 3**, as each builds on the foundation established by the previous one.
+The most logical progression is **Priority 1 → Priority 2 → Priority 3**, as each builds on the foundation established by the previous one. Priority 1 is recommended for all users as it significantly enhances the existing Trends functionality with minimal effort.

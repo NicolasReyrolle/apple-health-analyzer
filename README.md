@@ -9,7 +9,9 @@ A modern, graphical tool to parse, analyze, and export your Apple Health data. O
 
 - **ZIP Parsing**: Directly select and parse your `export.zip` file from Apple Health.
 - **Workout Extraction**: Focused on running workouts with detailed metrics (distance, duration, METs, heart rate, power, etc.).
-- **Visual Statistics**: Real-time summary of total activities, distance, and time (WIP)
+- **Visual Statistics**: Real-time summary of total activities, distance, duration, elevation, and calories with interactive charts (pie/rose charts for activity breakdown, bar charts with trend lines for time-based analysis).
+- **Activity Filtering**: Filter your workout data by activity type (Running, Cycling, Walking, etc.).
+- **Date Range Filtering**: Analyze specific time periods using the date range picker to focus on your desired date ranges.
 - **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
 - All processing happens locally on your machine.
 - **Modern UI**: Dark/Light mode support with a responsive layout.
@@ -59,7 +61,11 @@ python -m nicegui src.apple_health_analyzer
 1. Open your browser to `http://localhost:8080`.
 1. Click **Browse** to select your Apple Health `export.zip`.
 1. Click **Load** to parse the data.
-1. View the statistics and use the **Export data** menu to download your CSV or JSON files.
+1. View the statistics in the **Overview** tab.
+1. Explore your data in the **Activities** tab (pie/rose charts grouped by activity type) and **Trends** tab (monthly bar charts with moving average trend lines).
+1. Use the **Activity filter** in the left drawer to focus on specific workout types.
+1. Use the **Date range picker** to analyze specific time periods.
+1. Export your data using the **Export data** menu to download CSV or JSON files.
 
 > **Tip**: You can set a permanent storage secret for sessions by using an environment variable:
 > `set STORAGE_SECRET=your_custom_secret` (Windows)
