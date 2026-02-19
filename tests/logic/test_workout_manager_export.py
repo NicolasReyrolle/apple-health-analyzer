@@ -673,6 +673,6 @@ class TestExportWithActivityAndDateFilters:
             end_date=datetime(2024, 2, 29),
         )
 
-        csv_df = pd.read_csv(StringIO(csv_output))
+        csv_df = pd.read_csv(StringIO(csv_output))  # type: ignore[misc]
         assert len(csv_df) == 1
         assert set(csv_df["activityType"].tolist()) == {"Running"}
