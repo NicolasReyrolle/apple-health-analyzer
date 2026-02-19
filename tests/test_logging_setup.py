@@ -428,6 +428,30 @@ class TestCLIArgumentParsing:
             finally:
                 apple_health_analyzer.app.storage.general.pop("_dev_file_path", None)
 
+    def test_cli_main_sets_dev_file_path_to_none_without_dev_file(
+        self, clean_logger: logging.Logger, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that cli_main explicitly stores None when no dev file is provided."""
+        assert clean_logger is logging.getLogger()
+        monkeypatch.setattr(sys, "argv", ["apple_health_analyzer.py"])
+
+        with (
+            patch("apple_health_analyzer.setup_logging") as mock_setup_logging,
+            patch("apple_health_analyzer.ui.run") as mock_ui_run,
+        ):
+            try:
+                apple_health_analyzer.cli_main()
+                storage_general = cast(
+                    dict[str, str | None], apple_health_analyzer.app.storage.general
+                )
+                assert "_dev_file_path" in storage_general
+                assert storage_general["_dev_file_path"] is None
+                mock_setup_logging.assert_called_once()
+                assert mock_setup_logging.call_args[1]["enable_file_logging"] is True
+                mock_ui_run.assert_called_once()
+            finally:
+                apple_health_analyzer.app.storage.general.pop("_dev_file_path", None)
+
     def test_cli_main_dev_file_not_found_exits(  # pylint: disable=unused-argument
         self, clean_logger: logging.Logger, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
