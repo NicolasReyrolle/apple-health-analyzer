@@ -73,14 +73,17 @@ def test_render_trends_tab_renders_period_selector() -> None:
             return self
 
     class _DummyRadio:
-        def __init__(self, options: dict[str, str], on_change: Any = None):
-            self.options = options
+        def __init__(self, _options: dict[str, str], on_change: Any = None):
             self.on_change = on_change
+            self.target: Any | None = None
+            self.key: str | None = None
 
-        def bind_value(self, target: Any, key: str) -> "_DummyRadio":
+        def bind_value(
+            self, _target: Any, _key: str
+        ) -> "_DummyRadio":
             """Mock bind_value to enable chaining."""
-            self.target = target
-            self.key = key
+            self.target = _target
+            self.key = _key
             return self
 
         def props(self, *_args: Any, **_kwargs: Any) -> "_DummyRadio":
@@ -109,8 +112,6 @@ def test_render_trends_tab_renders_period_selector() -> None:
 def test_render_trends_tab_radio_bound_to_state() -> None:
     """Test that render_trends_tab radio button is bound to state.trends_period."""
 
-    radio_instances: list[_DummyRadio] = []
-
     class _DummyRow:
         def __enter__(self):
             return self
@@ -127,24 +128,29 @@ def test_render_trends_tab_radio_bound_to_state() -> None:
             """Mock method to allow chaining."""
             return self
 
-    class _DummyRadio:
-        def __init__(self, options: dict[str, str], on_change: Any = None):
-            self.options = options
+    class _DummyRadio:  # pylint: disable=attribute-defined-outside-init
+        def __init__(self, _options: dict[str, str], on_change: Any = None):
             self.on_change = on_change
+            self.target: Any | None = None
+            self.key: str | None = None
 
-        def bind_value(self, target: Any, key: str) -> "_DummyRadio":
+        def bind_value(
+            self, _target: Any, _key: str
+        ) -> "_DummyRadio":  # pylint: disable=attribute-defined-outside-init
             """Mock bind_value to capture binding information."""
-            self.target = target
-            self.key = key
+            self.target = _target
+            self.key = _key
             return self
 
         def props(self, *_args: Any, **_kwargs: Any) -> "_DummyRadio":
             """Mock props to enable chaining."""
             return self
 
-    def _radio_factory(options: dict[str, str], on_change: Any = None) -> _DummyRadio:
+    radio_instances: list[_DummyRadio] = []
+
+    def _radio_factory(_options: dict[str, str], on_change: Any = None) -> _DummyRadio:
         """Create and track radio instances for assertions."""
-        instance = _DummyRadio(options, on_change)
+        instance = _DummyRadio(_options, on_change)
         radio_instances.append(instance)
         return instance
 
@@ -166,8 +172,6 @@ def test_render_trends_tab_radio_bound_to_state() -> None:
 def test_render_trends_tab_radio_calls_refresh_on_change() -> None:
     """Test that render_trends_tab radio button triggers graphs refresh on change."""
 
-    radio_instances: list[_DummyRadio] = []
-
     class _DummyRow:
         def __enter__(self):
             return self
@@ -185,10 +189,10 @@ def test_render_trends_tab_radio_calls_refresh_on_change() -> None:
             return self
 
     class _DummyRadio:
-        def __init__(self, options: dict[str, str], on_change: Any = None):
+        def __init__(self, _options: dict[str, str], on_change: Any = None):
             self.on_change = on_change
 
-        def bind_value(self, target: Any, key: str) -> "_DummyRadio":
+        def bind_value(self, _target: Any, _key: str) -> "_DummyRadio":
             """Mock bind_value."""
             return self
 
@@ -196,9 +200,11 @@ def test_render_trends_tab_radio_calls_refresh_on_change() -> None:
             """Mock props."""
             return self
 
-    def _radio_factory(options: dict[str, str], on_change: Any = None) -> _DummyRadio:
+    radio_instances: list[_DummyRadio] = []
+
+    def _radio_factory(_options: dict[str, str], on_change: Any = None) -> _DummyRadio:
         """Create and track radio instances for assertions."""
-        instance = _DummyRadio(options, on_change)
+        instance = _DummyRadio(_options, on_change)
         radio_instances.append(instance)
         return instance
 
