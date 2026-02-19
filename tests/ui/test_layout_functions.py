@@ -14,6 +14,23 @@ from app_state import state
 from ui import layout
 
 
+class _DummyRow:
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> bool:
+        return False
+
+    def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
+        """Mock method to allow chaining."""
+        return self
+
+
 class TestExportHandlers:
     """Tests for export handler functions."""
 
@@ -145,22 +162,6 @@ class TestRenderTrendsGraphs:
         workouts_mock.get_duration_by_period.return_value = {"2024-01": 120}
         workouts_mock.get_elevation_by_period.return_value = {"2024-01": 50}
 
-        class _DummyRow:
-            def __enter__(self):
-                return self
-
-            def __exit__(
-                self,
-                exc_type: type[BaseException] | None,
-                exc: BaseException | None,
-                tb: TracebackType | None,
-            ) -> bool:
-                return False
-
-            def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-                """Mock method to allow chaining."""
-                return self
-
         try:
             state.workouts = workouts_mock
             state.selected_activity_type = "Running"
@@ -211,22 +212,6 @@ class TestRenderTrendsGraphs:
         workouts_mock.get_duration_by_period.return_value = {"2024-W01": 120}
         workouts_mock.get_elevation_by_period.return_value = {"2024-W01": 50}
 
-        class _DummyRow:
-            def __enter__(self):
-                return self
-
-            def __exit__(
-                self,
-                exc_type: type[BaseException] | None,
-                exc: BaseException | None,
-                tb: TracebackType | None,
-            ) -> bool:
-                return False
-
-            def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-                """Mock method to allow chaining."""
-                return self
-
         try:
             state.workouts = workouts_mock
             state.selected_activity_type = "Running"
@@ -265,22 +250,6 @@ class TestRenderTrendsGraphs:
         workouts_mock.get_duration_by_period.return_value = {"2024-Q1": 600}
         workouts_mock.get_elevation_by_period.return_value = {"2024-Q1": 250}
 
-        class _DummyRow:
-            def __enter__(self):
-                return self
-
-            def __exit__(
-                self,
-                exc_type: type[BaseException] | None,
-                exc: BaseException | None,
-                tb: TracebackType | None,
-            ) -> bool:
-                return False
-
-            def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-                """Mock method to allow chaining."""
-                return self
-
         try:
             state.workouts = workouts_mock
             state.selected_activity_type = "Running"
@@ -315,22 +284,6 @@ class TestRenderTrendsGraphs:
         workouts_mock.get_calories_by_period.return_value = {"2024": 8000}
         workouts_mock.get_duration_by_period.return_value = {"2024": 2400}
         workouts_mock.get_elevation_by_period.return_value = {"2024": 1000}
-
-        class _DummyRow:
-            def __enter__(self):
-                return self
-
-            def __exit__(
-                self,
-                exc_type: type[BaseException] | None,
-                exc: BaseException | None,
-                tb: TracebackType | None,
-            ) -> bool:
-                return False
-
-            def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-                """Mock method to allow chaining."""
-                return self
 
         try:
             state.workouts = workouts_mock

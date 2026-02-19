@@ -10,6 +10,40 @@ from app_state import state
 from ui import layout
 
 
+class _DummyRow:
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> bool:
+        return False
+
+    def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
+        """Mock method to allow chaining."""
+        return self
+
+
+class _DummyRadio:
+    def __init__(self, _options: dict[str, str], on_change: Any = None):
+        self.on_change = on_change
+        self.target: Any | None = None
+        self.key: str | None = None
+
+    def bind_value(self, _target: Any, _key: str) -> "_DummyRadio":
+        """Mock bind_value to capture binding information."""
+        self.target = _target
+        self.key = _key
+        return self
+
+    def props(self, *_args: Any, **_kwargs: Any) -> "_DummyRadio":
+        """Mock props to enable chaining."""
+        return self
+
+
 def test_render_activity_graphs_renders_all_charts() -> None:
     """Test that render_activity_graphs calls render_pie_rose_graph for all metrics."""
     original_workouts: Any = state.workouts
@@ -20,22 +54,6 @@ def test_render_activity_graphs_renders_all_charts() -> None:
     workouts_mock.get_calories_by_activity.return_value = {"Running": 200}
     workouts_mock.get_duration_by_activity.return_value = {"Running": 1}
     workouts_mock.get_elevation_by_activity.return_value = {"Running": 1}
-
-    class _DummyRow:
-        def __enter__(self):
-            return self
-
-        def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc: BaseException | None,
-            tb: TracebackType | None,
-        ) -> bool:
-            return False
-
-        def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-            """Mock method to allow chaining."""
-            return self
 
     try:
         state.workouts = workouts_mock
@@ -55,40 +73,6 @@ def test_render_activity_graphs_renders_all_charts() -> None:
 
 def test_render_trends_tab_renders_period_selector() -> None:
     """Test that render_trends_tab renders the period selector radio button."""
-
-    class _DummyRow:
-        def __enter__(self):
-            return self
-
-        def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc: BaseException | None,
-            tb: TracebackType | None,
-        ) -> bool:
-            return False
-
-        def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-            """Mock method to allow chaining."""
-            return self
-
-    class _DummyRadio:
-        def __init__(self, _options: dict[str, str], on_change: Any = None):
-            self.on_change = on_change
-            self.target: Any | None = None
-            self.key: str | None = None
-
-        def bind_value(
-            self, _target: Any, _key: str
-        ) -> "_DummyRadio":
-            """Mock bind_value to enable chaining."""
-            self.target = _target
-            self.key = _key
-            return self
-
-        def props(self, *_args: Any, **_kwargs: Any) -> "_DummyRadio":
-            """Mock props to enable chaining."""
-            return self
 
     with patch("ui.layout.ui.row", return_value=_DummyRow()):
         with patch("ui.layout.ui.label") as label_mock:
@@ -111,40 +95,6 @@ def test_render_trends_tab_renders_period_selector() -> None:
 
 def test_render_trends_tab_radio_bound_to_state() -> None:
     """Test that render_trends_tab radio button is bound to state.trends_period."""
-
-    class _DummyRow:
-        def __enter__(self):
-            return self
-
-        def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc: BaseException | None,
-            tb: TracebackType | None,
-        ) -> bool:
-            return False
-
-        def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-            """Mock method to allow chaining."""
-            return self
-
-    class _DummyRadio:  # pylint: disable=attribute-defined-outside-init
-        def __init__(self, _options: dict[str, str], on_change: Any = None):
-            self.on_change = on_change
-            self.target: Any | None = None
-            self.key: str | None = None
-
-        def bind_value(
-            self, _target: Any, _key: str
-        ) -> "_DummyRadio":  # pylint: disable=attribute-defined-outside-init
-            """Mock bind_value to capture binding information."""
-            self.target = _target
-            self.key = _key
-            return self
-
-        def props(self, *_args: Any, **_kwargs: Any) -> "_DummyRadio":
-            """Mock props to enable chaining."""
-            return self
 
     radio_instances: list[_DummyRadio] = []
 
@@ -171,34 +121,6 @@ def test_render_trends_tab_radio_bound_to_state() -> None:
 
 def test_render_trends_tab_radio_calls_refresh_on_change() -> None:
     """Test that render_trends_tab radio button triggers graphs refresh on change."""
-
-    class _DummyRow:
-        def __enter__(self):
-            return self
-
-        def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc: BaseException | None,
-            tb: TracebackType | None,
-        ) -> bool:
-            return False
-
-        def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyRow":
-            """Mock method to allow chaining."""
-            return self
-
-    class _DummyRadio:
-        def __init__(self, _options: dict[str, str], on_change: Any = None):
-            self.on_change = on_change
-
-        def bind_value(self, _target: Any, _key: str) -> "_DummyRadio":
-            """Mock bind_value."""
-            return self
-
-        def props(self, *_args: Any, **_kwargs: Any) -> "_DummyRadio":
-            """Mock props."""
-            return self
 
     radio_instances: list[_DummyRadio] = []
 

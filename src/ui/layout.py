@@ -437,8 +437,8 @@ def render_trends_graphs() -> None:
             "h",
         )
     with ui.row().classes("w-full justify-center gap-4"):
-        # Display elevation in meters (not km like the stat card) because monthly
-        # values can be small and would show as 0.0X km, making the chart less readable
+        # Display elevation in meters (not km like the stat card) because values for the
+        # selected period can be small and would show as 0.0X km, making the chart less readable
         render_bar_graph(
             f"Elevation by {period_code_to_label(state.trends_period)}",
             state.workouts.get_elevation_by_period(
