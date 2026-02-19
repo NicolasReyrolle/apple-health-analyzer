@@ -38,6 +38,7 @@ class AppState:
         self.selected_activity_type: str = "All"
         self.activity_options: list[str] = ["All"]
         self.date_range_text: str = ""
+        self.trends_period: str = 'M'
 
     def _parse_date(self, date_str: str) -> datetime | None:
         """Parse a date string in one of the supported formats.
