@@ -308,47 +308,63 @@ class TestExportFunctionality:
 class TestActivityFiltering:
     """Tests for activity type filtering functionality."""
 
+    @staticmethod
+    def _extract_labels_from_options(options: list[Any] | dict[Any, Any]) -> list[str]:
+        """Extract label strings from select options."""
+        if not options:
+            return []
+
+        if isinstance(options, list) and options and isinstance(options[0], dict):
+            return [
+                opt.get("label")  # type: ignore[union-attr]
+                for opt in options
+                if isinstance(opt, dict)
+            ]
+
+        if isinstance(options, list):
+            return [str(opt) for opt in options]
+
+        return []
+
+    async def _wait_for_activity_option(
+        self, user: User, activity_name: str, max_attempts: int = 30
+    ) -> tuple[ui.select | None, list[str]]:
+        """Wait for activity option to appear in the select element."""
+        select: ui.select | None = None
+        labels: list[str] = []
+
+        for _ in range(max_attempts):
+            select_elements = list(user.find("Activity Type").elements)
+            if select_elements:
+                select = cast(ui.select, select_elements[0])
+                options: list[Any] | dict[Any, Any] = select.options  # type: ignore[assignment]
+                labels = self._extract_labels_from_options(options)
+
+                if activity_name in labels:
+                    break
+
+            await asyncio.sleep(0.1)
+
+        return select, labels
+
     async def test_activity_filter_checkbox_rendering(
         self, user: User, create_health_zip: Callable[..., str]
     ) -> None:
         """Test that activity filter options are populated after loading data."""
-
         # Ensure a clean application state so this test is independent of others.
         if hasattr(state, "reset") and callable(getattr(state, "reset")):
             state.reset()  # type: ignore[call-arg]
 
         await user.open("/")
-
-        # 1. Load a valid health data file
         await load_health_export(user, create_health_zip)
-
-        # Re-open to ensure the select is rendered with updated options
         await user.open("/")
 
-        # 2. Verify the activity options were populated correctly in the state
+        # Verify the activity options were populated correctly in the state
         assert state.activity_options[0] == "All"
         assert "Running" in state.activity_options
 
-        # 3. Wait for the select to refresh and include the activity options
-        select: ui.select | None = None
-        labels: list[str] = []
-        for _ in range(30):
-            select_elements = list(user.find("Activity Type").elements)
-            if select_elements:
-                select = cast(ui.select, select_elements[0])
-                options: list[Any] | dict[Any, Any] = select.options  # type: ignore[assignment]
-                if options:
-                    if isinstance(options, list) and options and isinstance(options[0], dict):
-                        labels = [  # type: ignore[misc]
-                            opt.get("label")  # type: ignore[union-attr]
-                            for opt in options
-                            if isinstance(opt, dict)
-                        ]
-                    elif isinstance(options, list):
-                        labels = [str(opt) for opt in options]
-                if "Running" in labels:
-                    break
-            await asyncio.sleep(0.1)
+        # Wait for the select to refresh and include the activity options
+        select, labels = await self._wait_for_activity_option(user, "Running")
 
         assert select is not None
         assert select.value == "All"
