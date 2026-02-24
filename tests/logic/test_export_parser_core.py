@@ -44,7 +44,7 @@ class TestLoadWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)).workouts)
 
         assert workouts.get_count() == 3
         assert list(workouts.get_workouts()["startDate"]) == [
@@ -65,7 +65,7 @@ class TestLoadWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)).workouts)
 
         assert workouts.get_count() == 0
 
@@ -83,7 +83,7 @@ class TestLoadWorkouts:
 
         parser = ep.ExportParser()
         with parser:
-            workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
+            workouts = wm.WorkoutManager(parser.parse(str(zip_path)).workouts)
 
         # First parse should have 2 workouts
         assert workouts.get_count() == 2

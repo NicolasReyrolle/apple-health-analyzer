@@ -266,7 +266,7 @@ async def pick_file() -> None:
 def load_workouts_from_file(file_path: str) -> None:
     """Load and parse the Apple Health export file."""
     with ExportParser() as ep:
-        state.workouts = WorkoutManager(ep.parse(file_path, log=state.log))
+        state.workouts = WorkoutManager(ep.parse(file_path, log=state.log).workouts)
 
 
 async def load_file() -> None:

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from typing import Any, Callable, cast
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from nicegui.testing import User
 from app_state import state
 from tests.types_helper import StateAssertion
 from ui.helpers import format_integer
+from ui.layout import load_file
 
 
 def is_valid_json(data_string: str) -> bool:
@@ -496,7 +498,6 @@ class TestLoadingState:
         self, user: User, create_health_zip: Callable[..., str], caplog: pytest.LogCaptureFixture
     ) -> None:
         """Test that concurrent load_file invocations are prevented by the loading guard."""
-        import logging
 
         await user.open("/")
 
@@ -509,7 +510,6 @@ class TestLoadingState:
 
         with caplog.at_level(logging.DEBUG):
             # Try to load file while loading is already in progress
-            from ui.layout import load_file
 
             await load_file()
 
