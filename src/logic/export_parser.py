@@ -77,6 +77,17 @@ class ExportParser:
         pass
 
     @staticmethod
+    def to_number(raw: str | None) -> float | int | None:
+        """Convert a string to a number (int or float), or return None if conversion fails."""
+        if raw is None:
+            return None
+        try:
+            value = float(raw)
+            return int(value) if value.is_integer() else value
+        except ValueError:
+            return None
+
+    @staticmethod
     def _parse_value(raw_value: Optional[str]) -> Tuple[Any, Optional[str]]:
         """
         Internal helper: Separates value and unit, converts to standard metric system.
@@ -180,20 +191,7 @@ class ExportParser:
                     elem.clear()
 
                 if event == "end" and elem.tag == "Record":
-                    record_type = elem.get("type", "").replace("HKQuantityTypeIdentifier", "")
-                    record_data = {
-                        "type": record_type,
-                        "startDate": elem.get("startDate"),
-                        "value": elem.get("value"),
-                    }
-                    # Include metadata entries as additional fields
-                    for child in elem:
-                        if child.tag == "MetadataEntry":
-                            key = child.get("key", "").replace("HK", "")
-                            value, unit = self._parse_value(child.get("value", ""))
-                            record_data[key] = value
-                            if unit:
-                                record_data[f"{key}Unit"] = unit
+                    record_type, record_data = self._extract_health_data_record(elem)
 
                     record_rows_by_type[record_type].append(record_data)
 
@@ -212,6 +210,24 @@ class ExportParser:
             self._log(f"Loaded {len(workouts_df)} workouts total.")
 
             return ParsedHealthData(workouts=workouts_df, records_by_type=records_by_type_df)
+
+    def _extract_health_data_record(self, elem: Element) -> Tuple[str, dict[str, Any]]:
+        """Extract and clean health data record from element attributes and metadata."""
+        record_type = elem.get("type", "").replace("HKQuantityTypeIdentifier", "")
+        record_data = {
+            "type": record_type,
+            "startDate": elem.get("startDate"),
+            "value": self.to_number(elem.get("value")),
+        }
+        # Include metadata entries as additional fields
+        for child in elem:
+            if child.tag == "MetadataEntry":
+                key = child.get("key", "").replace("HK", "")
+                value, unit = self._parse_value(child.get("value", ""))
+                record_data[key] = value
+                if unit:
+                    record_data[f"{key}Unit"] = unit
+        return record_type, record_data
 
     def _extract_activity_type(self, elem: Element) -> str:
         """Extract and clean activity type from workout element."""
