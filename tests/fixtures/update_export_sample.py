@@ -12,14 +12,14 @@ INTERNAL_XML_PATH = "apple_health_export/export.xml"
 DEFAULT_EXPORT_DATE = "2026-01-20 22:00:00 +0100"
 
 
-def build_health_export_xml(workout_fragments: Iterable[str], export_date: str) -> str:
-    """Wrap workout fragments in a minimal HealthData document."""
-    workouts_xml = "\n".join(workout_fragments)
+def build_health_export_xml(fragments: Iterable[str], export_date: str) -> str:
+    """Wrap fragments in a minimal HealthData document."""
+    fragments_xml = "\n".join(fragments)
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<HealthData version="11">\n'
         f'    <ExportDate value="{export_date}"/>\n'
-        f"{workouts_xml}\n"
+        f"{fragments_xml}\n"
         "</HealthData>\n"
     )
 
