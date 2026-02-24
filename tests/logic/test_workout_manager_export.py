@@ -23,7 +23,7 @@ def parse_and_export_json(zip_path: Path, exclude_columns: Optional[set[str]] = 
     """Helper to parse ZIP and export to JSON."""
     parser = ep.ExportParser()
     with parser:
-        workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
+        workouts = wm.WorkoutManager(parser.parse(str(zip_path)).workouts)
         return workouts.export_to_json(exclude_columns=exclude_columns)
 
 
@@ -31,7 +31,7 @@ def parse_and_export_csv(zip_path: Path, exclude_columns: Optional[set[str]] = N
     """Helper to parse ZIP and export to CSV."""
     parser = ep.ExportParser()
     with parser:
-        workouts = wm.WorkoutManager(parser.parse(str(zip_path)))
+        workouts = wm.WorkoutManager(parser.parse(str(zip_path)).workouts)
         return workouts.export_to_csv(exclude_columns=exclude_columns)
 
 
