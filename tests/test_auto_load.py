@@ -19,7 +19,7 @@ class TestAutoLoadFunctionality:
     """Tests for automatic file loading from app.storage.general."""
 
     async def test_auto_load_when_dev_file_in_storage(
-        self, user: User, create_health_zip: Callable[..., str]
+        self, user: User, create_health_zip: Callable[..., str], caplog: pytest.LogCaptureFixture
     ) -> None:
         """Test that a dev file is auto-loaded when _dev_file_path is set in app storage."""
         # Create a test file
@@ -29,15 +29,22 @@ class TestAutoLoadFunctionality:
         app.storage.general["_dev_file_path"] = zip_path
 
         try:
-            # Open the page - this should trigger auto-load
-            await user.open("/")
+            with caplog.at_level(logging.INFO):
+                # Open the page - this should trigger auto-load
+                await user.open("/")
 
-            # Wait for the auto-load to complete (ui.timer is set to 1 second)
-            await asyncio.sleep(2.0)
+                # Wait for the auto-load to complete (ui.timer is set to 1 second)
+                await asyncio.sleep(2.0)
 
-            # Verify the file was loaded by checking for parsed data
-            await user.should_see("Finished parsing", retries=50)
-            await user.should_see("Total distance of 9")
+                # Verify the file was loaded by checking logs
+                log_messages = [record.message for record in caplog.records]
+                assert any(
+                    "Finished parsing in" in msg for msg in log_messages
+                ), "Should log completion message"
+                assert any(
+                    "Total distance of 9" in msg for msg in log_messages
+                ), "Should log workout statistics with total distance of 9"
+
         finally:
             # Cleanup
             app.storage.general.pop("_dev_file_path", None)
@@ -65,7 +72,7 @@ class TestAutoLoadFunctionality:
             await asyncio.sleep(0.2)
 
     async def test_auto_load_on_page_refresh(
-        self, user: User, create_health_zip: Callable[..., str]
+        self, user: User, create_health_zip: Callable[..., str], caplog: pytest.LogCaptureFixture
     ) -> None:
         """Test that auto-load works correctly when the page is refreshed."""
         zip_path = create_health_zip()
@@ -73,17 +80,30 @@ class TestAutoLoadFunctionality:
 
         try:
             # Open the page for the first time
-            await user.open("/")
-            await asyncio.sleep(2.0)
-            await user.should_see("Finished parsing", retries=50)
+            with caplog.at_level(logging.INFO):
+                await user.open("/")
+                await asyncio.sleep(2.0)
+
+                log_messages = [record.message for record in caplog.records]
+                assert any(
+                    "Finished parsing in" in msg for msg in log_messages
+                ), "Should log completion message on first load"
+
+            caplog.clear()
 
             # Refresh the page by opening it again
-            await user.open("/")
-            await asyncio.sleep(2.0)
+            with caplog.at_level(logging.INFO):
+                await user.open("/")
+                await asyncio.sleep(2.0)
 
-            # Verify the file is auto-loaded again after refresh
-            await user.should_see("Finished parsing", retries=50)
-            await user.should_see("Total distance of 9")
+                # Verify the file is auto-loaded again after refresh
+                log_messages = [record.message for record in caplog.records]
+                assert any(
+                    "Finished parsing in" in msg for msg in log_messages
+                ), "Should log completion message after refresh"
+                assert any(
+                    "Total distance of 9" in msg for msg in log_messages
+                ), "Should log workout statistics with total distance of 9"
         finally:
             # Cleanup
             app.storage.general.pop("_dev_file_path", None)
@@ -183,7 +203,7 @@ class TestAutoLoadFunctionality:
             await asyncio.sleep(0.2)
 
     async def test_auto_load_with_multiple_page_opens(
-        self, user: User, create_health_zip: Callable[..., str]
+        self, user: User, create_health_zip: Callable[..., str], caplog: pytest.LogCaptureFixture
     ) -> None:
         """Test auto-load behavior with multiple page opens (multiple connections)."""
         zip_path = create_health_zip()
@@ -192,12 +212,20 @@ class TestAutoLoadFunctionality:
         try:
             # Open the page multiple times in sequence
             for _ in range(3):
-                await user.open("/")
-                await asyncio.sleep(2.0)
+                with caplog.at_level(logging.INFO):
+                    await user.open("/")
+                    await asyncio.sleep(2.0)
 
-                # Each time should trigger auto-load
-                await user.should_see("Finished parsing", retries=50)
-                await user.should_see("Total distance of 9")
+                    # Each time should trigger auto-load
+                    log_messages = [record.message for record in caplog.records]
+                    assert any(
+                        "Finished parsing in" in msg for msg in log_messages
+                    ), "Should log completion message"
+                    assert any(
+                        "Total distance of 9" in msg for msg in log_messages
+                    ), "Should log workout statistics with total distance of 9"
+
+                caplog.clear()
         finally:
             # Cleanup
             app.storage.general.pop("_dev_file_path", None)

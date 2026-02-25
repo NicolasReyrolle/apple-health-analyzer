@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import time
+from typing import Callable, Optional
 
 import pandas as pd
 from nicegui import app, ui
@@ -263,10 +264,58 @@ async def pick_file() -> None:
     state.input_file.value = result[0]
 
 
-def load_workouts_from_file(file_path: str) -> None:
+def load_workouts_from_file(
+    file_path: str,
+    progress_callback: Optional[Callable[[int, str], None]] = None,
+) -> None:
     """Load and parse the Apple Health export file."""
-    with ExportParser() as ep:
-        state.workouts = WorkoutManager(ep.parse(file_path, log=state.log))
+
+    def report(progress: int, message: str) -> None:
+        _logger.info(message)
+        if progress_callback:
+            progress_callback(progress, message)
+
+    parser_progress = 20
+
+    def parser_message_handler(message: str) -> None:
+        nonlocal parser_progress
+
+        if message.startswith("Starting to parse"):
+            parser_progress = max(parser_progress, 20)
+        elif message.startswith("Loading the workouts"):
+            parser_progress = max(parser_progress, 35)
+        elif message.startswith("Processed "):
+            parser_progress = min(parser_progress + 2, 80)
+        elif message.startswith("Loaded "):
+            parser_progress = max(parser_progress, 85)
+        elif message.startswith("Finished parsing"):
+            parser_progress = max(parser_progress, 90)
+
+        report(parser_progress, message)
+
+    report(5, "Preparing file load...")
+    start_time = time.perf_counter()
+    _logger.info("Starting to load file: %s", file_path)
+
+    with ExportParser(progress_callback=parser_message_handler) as ep:
+        workouts_df = ep.parse(file_path)
+
+    report(93, "Building workout index...")
+    state.workouts = WorkoutManager(workouts_df)
+    elapsed = time.perf_counter() - start_time
+    _logger.info(state.workouts.get_statistics())
+    _logger.info("Finished parsing in %s seconds.", elapsed)
+
+    state.file_loaded = True
+    activity_types = state.workouts.get_activity_types()
+    activity_types.sort()
+    state.activity_options = ["All"] + activity_types
+
+    report(97, "Refreshing dashboard...")
+    render_activity_select.refresh()
+    render_date_range_selector.refresh()
+    refresh_data()
+    report(100, "Load complete")
 
 
 async def load_file() -> None:
@@ -281,27 +330,22 @@ async def load_file() -> None:
         return
 
     state.loading = True
-    start_time = time.perf_counter()
+    state.loading_status = "0% - Initializing..."
+
+    def progress_callback(progress: int, message: str) -> None:
+        state.loading_status = f"{progress}% - {message}"
 
     try:
-        _logger.info("Starting to load file: %s", state.input_file.value)
-
-        await asyncio.to_thread(load_workouts_from_file, state.input_file.value)
-
-        elapsed = time.perf_counter() - start_time
-        state.log.push(state.workouts.get_statistics())
-        state.log.push(f"Finished parsing in {elapsed:.1f} seconds.")
+        await asyncio.to_thread(
+            load_workouts_from_file,
+            state.input_file.value,
+            progress_callback,
+        )
         ui.notify("File parsed successfully.")
-        state.file_loaded = True
-        activity_types = state.workouts.get_activity_types()
-        activity_types.sort()
-        state.activity_options = ["All"] + activity_types
-        render_activity_select.refresh()
-        render_date_range_selector.refresh()
-        refresh_data()
     except Exception as e:  # pylint: disable=broad-except
         ui.notify(f"Error parsing file: {e}")
     finally:
+        state.loading_status = ""
         state.loading = False
 
 
@@ -323,6 +367,10 @@ def render_body() -> None:
             "flex-grow"
         ).bind_enabled_from(state, "loading", backward=lambda loading: not loading)
         ui.spinner(size="lg").bind_visibility_from(state, "loading")
+
+    ui.label().classes("text-sm text-gray-500").bind_text_from(
+        state, "loading_status"
+    ).bind_visibility_from(state, "loading")
 
     with ui.tabs().classes("w-full") as tabs:
         tab_summary = ui.tab("Overview")

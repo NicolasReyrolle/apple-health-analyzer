@@ -3,12 +3,11 @@
 import logging
 from datetime import datetime
 from types import TracebackType
-from typing import Any, List, Optional, Tuple, Type, TypedDict
+from typing import Any, Callable, List, Optional, Tuple, Type, TypedDict
 from xml.etree.ElementTree import Element, iterparse
 from zipfile import ZipFile
 
 import pandas as pd
-from nicegui import ui
 
 # Configuration constants
 WORKOUT_PROGRESS_INTERVAL = 100  # Report progress every N workouts
@@ -45,8 +44,8 @@ class WorkoutRoute(TypedDict):
 class ExportParser:
     """Reads and parses Apple Health export files."""
 
-    def __init__(self) -> None:
-        self.log = None
+    def __init__(self, progress_callback: Optional[Callable[[str], None]] = None) -> None:
+        self.progress_callback = progress_callback
 
     def __enter__(self) -> "ExportParser":
         return self
@@ -136,14 +135,13 @@ class ExportParser:
             raise ValueError(f"Unknown duration unit: {unit}")
 
     def _log(self, message: str) -> None:
-        """Log a message if logging is enabled."""
-        if self.log:
-            self.log.push(message)
+        """Emit progress message if callback is enabled."""
+        if self.progress_callback:
+            self.progress_callback(message)
 
     def _load_workouts(self, zipfile: ZipFile) -> pd.DataFrame:
         """Load workouts of a specific type from the export file."""
-        if self.log:
-            self._log("Loading the workouts...")
+        self._log("Loading the workouts...")
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
             rows: List[WorkoutRecord] = []
@@ -292,11 +290,10 @@ class ExportParser:
             if unit:
                 record[f"{key}Unit"] = unit
 
-    def parse(self, export_file: str, log: Optional[ui.log] = None) -> pd.DataFrame:
+    def parse(self, export_file: str) -> pd.DataFrame:
         """Parse the export file."""
 
         try:
-            self.log = log
             self._log("Starting to parse the Apple Health export file...")
             with ZipFile(export_file, "r") as zipfile:
                 result = self._load_workouts(zipfile)

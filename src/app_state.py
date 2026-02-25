@@ -13,13 +13,13 @@ class AppState:
     def __init__(self) -> None:
         self.reset()
         self.input_file: ui.input  # Assigned in layout.py
-        self.log: ui.log  # Assigned in layout.py
 
     def reset(self) -> None:
         """Reset the application state."""
         self.workouts: WorkoutManager = WorkoutManager()
         self.file_loaded: bool = False
         self.loading: bool = False
+        self.loading_status: str = ""
         self.metrics = {
             "count": 0,
             "distance": 0,
