@@ -267,8 +267,13 @@ async def pick_file() -> None:
 def load_workouts_from_file(
     file_path: str,
     progress_callback: Optional[Callable[[int, str], None]] = None,
-) -> None:
-    """Load and parse the Apple Health export file."""
+) -> tuple[WorkoutManager, list[str]]:
+    """Load and parse the Apple Health export file.
+
+    Returns a tuple of (WorkoutManager, activity_options) so that all UI
+    state mutations and refresh calls can be performed on the event-loop
+    thread by the caller (load_file), avoiding thread-safety issues.
+    """
 
     def report(progress: int, message: str) -> None:
         _logger.info(message)
@@ -301,21 +306,17 @@ def load_workouts_from_file(
         workouts_df = ep.parse(file_path)
 
     report(93, "Building workout index...")
-    state.workouts = WorkoutManager(workouts_df)
+    workouts = WorkoutManager(workouts_df)
     elapsed = time.perf_counter() - start_time
-    _logger.info(state.workouts.get_statistics())
+    _logger.info(workouts.get_statistics())
     _logger.info("Finished parsing in %s seconds.", elapsed)
 
-    state.file_loaded = True
-    activity_types = state.workouts.get_activity_types()
+    activity_types = workouts.get_activity_types()
     activity_types.sort()
-    state.activity_options = ["All"] + activity_types
+    activity_options = ["All"] + activity_types
 
-    report(97, "Refreshing dashboard...")
-    render_activity_select.refresh()
-    render_date_range_selector.refresh()
-    refresh_data()
-    report(100, "Load complete")
+    report(97, "Preparing dashboard update...")
+    return workouts, activity_options
 
 
 async def load_file() -> None:
@@ -337,15 +338,22 @@ async def load_file() -> None:
     def progress_callback(progress: int, message: str) -> None:
         """Schedule a UI-safe update of the loading status from a worker thread."""
         def _update() -> None:
-            state.loading_status = f"{progress}% - {message}"
+            if state.loading:
+                state.loading_status = f"{progress}% - {message}"
 
         loop.call_soon_threadsafe(_update)
     try:
-        await asyncio.to_thread(
+        workouts, activity_options = await asyncio.to_thread(
             load_workouts_from_file,
             state.input_file.value,
             progress_callback,
         )
+        state.workouts = workouts
+        state.file_loaded = True
+        state.activity_options = activity_options
+        render_activity_select.refresh()
+        render_date_range_selector.refresh()
+        refresh_data()
         ui.notify("File parsed successfully.")
     except Exception as e:  # pylint: disable=broad-except
         ui.notify(f"Error parsing file: {e}")
