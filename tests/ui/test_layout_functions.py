@@ -377,7 +377,7 @@ class TestLoadWorkoutsFromFile:
 
         with patch("ui.layout.ExportParser") as parser_class_mock:
             parser_instance_mock = MagicMock()
-            parser_instance_mock.parse.return_value.workouts = pd.DataFrame()
+            parser_instance_mock.parse.return_value.workouts.workouts = pd.DataFrame()
             parser_class_mock.return_value.__enter__.return_value = parser_instance_mock
             parser_class_mock.return_value.__exit__.return_value = None
 
