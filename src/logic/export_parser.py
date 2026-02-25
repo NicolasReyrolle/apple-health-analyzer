@@ -4,7 +4,8 @@ import logging
 from datetime import datetime
 from types import TracebackType
 from typing import Any, Callable, List, Optional, Tuple, Type, TypedDict
-from xml.etree.ElementTree import Element, iterparse
+from xml.etree.ElementTree import Element
+from defusedxml.ElementTree import iterparse
 from zipfile import ZipFile
 
 import pandas as pd
