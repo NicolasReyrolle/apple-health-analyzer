@@ -338,9 +338,6 @@ class TestLoadWorkoutsFromFile:
 
     def test_load_workouts_from_file_with_valid_zip(self, tmp_path: Path) -> None:
         """Test loading workouts from a valid ZIP file."""
-        original_workouts: Any = state.workouts
-        original_log: Any = getattr(state, "log", None)
-
         # Create a test ZIP file
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -356,26 +353,16 @@ class TestLoadWorkoutsFromFile:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        try:
-            # Mock state.log to avoid NiceGUI dependency
-            state.log = None  # type: ignore[assignment]
-            layout.load_workouts_from_file(str(zip_path))
+        workouts, activity_options = layout.load_workouts_from_file(str(zip_path))
 
-            # Verify state.workouts was updated
-            assert state.workouts is not None
-            assert state.workouts.get_count() > 0
-        finally:
-            state.workouts = original_workouts
-            if original_log is None and hasattr(state, "log"):
-                delattr(state, "log")
-            elif original_log is not None:
-                state.log = original_log
+        # Verify returned workouts is populated
+        assert workouts is not None
+        assert workouts.get_count() > 0
+        assert isinstance(activity_options, list)
+        assert "All" in activity_options
 
     def test_load_workouts_from_file_uses_context_manager(self, tmp_path: Path) -> None:
         """Test that load_workouts_from_file uses ExportParser as context manager."""
-        original_workouts: Any = state.workouts
-        original_log: Any = getattr(state, "log", None)
-
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
@@ -388,34 +375,21 @@ class TestLoadWorkoutsFromFile:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        try:
-            # Mock state.log to avoid NiceGUI dependency
-            state.log = MagicMock()  # type: ignore[assignment]
+        with patch("ui.layout.ExportParser") as parser_class_mock:
+            parser_instance_mock = MagicMock()
+            parser_instance_mock.parse.return_value = pd.DataFrame()
+            parser_class_mock.return_value.__enter__.return_value = parser_instance_mock
+            parser_class_mock.return_value.__exit__.return_value = None
 
-            with patch("ui.layout.ExportParser") as parser_class_mock:
-                parser_instance_mock = MagicMock()
-                parser_instance_mock.parse.return_value = pd.DataFrame()
-                parser_class_mock.return_value.__enter__.return_value = parser_instance_mock
-                parser_class_mock.return_value.__exit__.return_value = None
+            layout.load_workouts_from_file(str(zip_path))
 
-                layout.load_workouts_from_file(str(zip_path))
-
-                # Verify ExportParser was used as context manager
-                parser_class_mock.return_value.__enter__.assert_called_once()
-                parser_class_mock.return_value.__exit__.assert_called_once()
-                parser_instance_mock.parse.assert_called_once_with(str(zip_path), log=state.log)
-        finally:
-            state.workouts = original_workouts
-            if original_log is None and hasattr(state, "log"):
-                delattr(state, "log")
-            elif original_log is not None:
-                state.log = original_log
+            # Verify ExportParser was used as context manager
+            parser_class_mock.return_value.__enter__.assert_called_once()
+            parser_class_mock.return_value.__exit__.assert_called_once()
+            parser_instance_mock.parse.assert_called_once_with(str(zip_path))
 
     def test_load_workouts_from_file_creates_workout_manager(self, tmp_path: Path) -> None:
         """Test that load_workouts_from_file creates a WorkoutManager instance."""
-        original_workouts: Any = state.workouts
-        original_log: Any = getattr(state, "log", None)
-
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
@@ -428,23 +402,14 @@ class TestLoadWorkoutsFromFile:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        try:
-            # Mock state.log to avoid NiceGUI dependency
-            state.log = MagicMock()  # type: ignore[assignment]
+        with patch("ui.layout.WorkoutManager") as wm_class_mock:
+            wm_instance_mock = MagicMock()
+            wm_instance_mock.get_activity_types.return_value = []
+            wm_class_mock.return_value = wm_instance_mock
 
-            with patch("ui.layout.WorkoutManager") as wm_class_mock:
-                wm_instance_mock = MagicMock()
-                wm_class_mock.return_value = wm_instance_mock
+            workouts, activity_options = layout.load_workouts_from_file(str(zip_path))
 
-                layout.load_workouts_from_file(str(zip_path))
-
-                # Verify WorkoutManager was instantiated
-                wm_class_mock.assert_called_once()
-                # Verify state.workouts was set to the WorkoutManager instance
-                assert state.workouts == wm_instance_mock
-        finally:
-            state.workouts = original_workouts
-            if original_log is None and hasattr(state, "log"):
-                delattr(state, "log")
-            elif original_log is not None:
-                state.log = original_log
+            # Verify WorkoutManager was instantiated and returned
+            wm_class_mock.assert_called_once()
+            assert workouts == wm_instance_mock
+            assert activity_options == ["All"]

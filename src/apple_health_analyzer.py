@@ -104,9 +104,6 @@ def main() -> None:
     render_left_drawer()
     render_body()
 
-    with ui.footer():
-        state.log = ui.log(max_lines=10).classes("w-full h-20")
-
     app.add_static_files("/resources", "resources")
     ui.add_head_html('<link rel="stylesheet" href="/resources/style.css">', shared=True)
 
