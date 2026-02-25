@@ -20,6 +20,31 @@ from pathlib import Path
 import pytest
 
 
+def _terminate_process_tree(process: subprocess.Popen[str], timeout: float = 5.0) -> None:
+    """Terminate a subprocess and its children, with Windows-specific tree cleanup."""
+    if process.poll() is not None:
+        return
+
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    else:
+        process.terminate()
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+
+    try:
+        process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        pass
+
+
 def test_dev_file_help() -> None:
     """Test that --help shows the --dev-file option on the real CLI.
 
@@ -126,22 +151,10 @@ def test_dev_file_valid_path() -> None:
 
             time.sleep(poll_interval)
 
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
+        _terminate_process_tree(process)
 
     finally:
-        # Ensure the process is not left running
-        if process.poll() is None:
-            process.kill()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                # Best-effort cleanup: if the process still has not exited,
-                # ignore the timeout to avoid masking test results.
-                pass
+        _terminate_process_tree(process)
 
 
 def test_dev_file_directory_instead_of_file() -> None:
@@ -228,17 +241,7 @@ def test_dev_file_combined_with_log_level() -> None:
 
             time.sleep(poll_interval)
 
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
+        _terminate_process_tree(process)
 
     finally:
-        # Ensure the process is not left running
-        if process.poll() is None:
-            process.kill()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                pass
+        _terminate_process_tree(process)
