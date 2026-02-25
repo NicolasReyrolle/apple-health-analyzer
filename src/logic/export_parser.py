@@ -10,6 +10,8 @@ from zipfile import ZipFile
 
 import pandas as pd
 
+_logger = logging.getLogger(__name__)
+
 # Configuration constants
 WORKOUT_PROGRESS_INTERVAL = 100  # Report progress every N workouts
 
@@ -138,7 +140,10 @@ class ExportParser:
     def _log(self, message: str) -> None:
         """Emit progress message if callback is enabled."""
         if self.progress_callback:
-            self.progress_callback(message)
+            try:
+                self.progress_callback(message)
+            except Exception:  # pylint: disable=broad-except
+                _logger.debug(message)
 
     def _load_workouts(self, zipfile: ZipFile) -> pd.DataFrame:
         """Load workouts of a specific type from the export file."""
