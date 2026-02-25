@@ -138,7 +138,6 @@ class ExportParser:
         with zipfile.open("apple_health_export/export.xml") as export_file:
             workout_rows: List[WorkoutRecord] = []
             record_rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
-            record_rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
             for event, elem in iterparse(export_file, events=("start", "end")):
                 if event == "end" and elem.tag == "Workout":
@@ -171,7 +170,6 @@ class ExportParser:
                 )
 
             # Log final count
-            self._log(f"Loaded {len(workouts_df)} workouts total.")
             self._log(f"Loaded {len(workouts_df)} workouts total.")
 
             return ParsedHealthData(workouts=workouts_df, records_by_type=records_by_type_df)
@@ -321,7 +319,6 @@ class ExportParser:
         try:
             self._log("Starting to parse the Apple Health export file...")
             with ZipFile(export_file, "r") as zipfile:
-                result = self._load_data(zipfile)
                 result = self._load_data(zipfile)
             self._log("Finished parsing the Apple Health export file.")
             return result
