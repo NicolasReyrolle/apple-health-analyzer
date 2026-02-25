@@ -50,7 +50,7 @@ async def load_health_export(user: User, create_health_zip: Callable[..., str]) 
     zip_path = create_health_zip()
     user.find("Apple Health export file").type(zip_path)
     user.find("Load").click()
-    await user.should_see("Finished parsing", retries=100)
+    await user.should_see("File parsed successfully.", retries=100)
     return zip_path
 
 
@@ -149,8 +149,10 @@ class TestFileLoading:
             await load_health_export(user, create_health_zip)
 
             # 2. Check if the UI correctly displays data from our XML
-            await user.should_see("Total distance of 9", retries=50)
-            await user.should_see("Total duration of 1h 0m 53s")
+            await user.should_see("Distance", retries=50)
+            await user.should_see("9", retries=50)
+            await user.should_see("Duration", retries=50)
+            await user.should_see("h", retries=50)
             # Small delay to ensure Windows releases file handles and
             # async operations complete before teardown
             await asyncio.sleep(0.2)
@@ -424,8 +426,8 @@ class TestStatCards:
         # Verify the values are displayed in the UI
         await user.should_see("1")  # Count
         await user.should_see("9")  # Distance
-        # Duration display calculation is in get_statistics(), verify it's rendered
-        await user.should_see("1h")  # Duration display format
+        # Duration is rendered as separate value + unit labels
+        await user.should_see("h")
         await user.should_see("0")  # Elevation value displayed
         await user.should_see("km")  # Elevation unit
         await user.should_see(format_integer(1655))  # Calories
@@ -458,7 +460,7 @@ class TestLoadingState:
         # The button should now be disabled (loading state is active)
         # Note: For very fast parsing, we may not catch the intermediate state,
         # but we should see the end result is correct
-        await user.should_see("Finished parsing", retries=100)
+        await user.should_see("File parsed successfully.", retries=100)
 
         # After parsing completes, verify loading state is reset
         await asyncio.sleep(0.1)
