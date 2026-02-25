@@ -332,9 +332,14 @@ async def load_file() -> None:
     state.loading = True
     state.loading_status = "0% - Initializing..."
 
-    def progress_callback(progress: int, message: str) -> None:
-        state.loading_status = f"{progress}% - {message}"
+    loop = asyncio.get_running_loop()
 
+    def progress_callback(progress: int, message: str) -> None:
+        """Schedule a UI-safe update of the loading status from a worker thread."""
+        def _update() -> None:
+            state.loading_status = f"{progress}% - {message}"
+
+        loop.call_soon_threadsafe(_update)
     try:
         await asyncio.to_thread(
             load_workouts_from_file,
