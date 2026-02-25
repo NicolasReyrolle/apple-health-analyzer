@@ -522,3 +522,33 @@ class TestLoadingState:
 
         # Reset loading state
         state.loading = False
+
+    async def test_loading_status_cleared_after_load_no_stale_callbacks(
+        self, user: User, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Test that loading_status is empty after load completes.
+
+        Regression test for stale progress callbacks: progress_callback() schedules
+        _update() via call_soon_threadsafe, but _update() guards with `if state.loading`
+        so that any callbacks still queued when the finally block runs (setting
+        state.loading = False) are silently discarded and cannot re-populate
+        loading_status with stale text.
+        """
+        await user.open("/")
+
+        zip_path = create_health_zip()
+        user.find("Apple Health export file").type(zip_path)
+        user.find("Load").click()
+
+        await user.should_see("File parsed successfully.", retries=100)
+
+        # Allow any queued _update callbacks to run
+        await asyncio.sleep(0.1)
+
+        # loading_status must be empty: the finally block cleared it and the
+        # state.loading guard ensured stale callbacks did not re-populate it.
+        assert state.loading_status == ""
+        assert state.loading is False
+
+        # Small delay before teardown
+        await asyncio.sleep(0.2)
