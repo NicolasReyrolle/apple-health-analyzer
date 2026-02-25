@@ -303,7 +303,7 @@ def load_workouts_from_file(
     _logger.info("Starting to load file: %s", file_path)
 
     with ExportParser(progress_callback=parser_message_handler) as ep:
-        workouts_df = ep.parse(file_path)
+        workouts_df = ep.parse(file_path).workouts
 
     report(93, "Building workout index...")
     workouts = WorkoutManager(workouts_df)
@@ -337,11 +337,13 @@ async def load_file() -> None:
 
     def progress_callback(progress: int, message: str) -> None:
         """Schedule a UI-safe update of the loading status from a worker thread."""
+
         def _update() -> None:
             if state.loading:
                 state.loading_status = f"{progress}% - {message}"
 
         loop.call_soon_threadsafe(_update)
+
     try:
         workouts, activity_options = await asyncio.to_thread(
             load_workouts_from_file,

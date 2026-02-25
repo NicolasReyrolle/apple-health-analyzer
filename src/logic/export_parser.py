@@ -7,10 +7,10 @@ from datetime import datetime
 from types import TracebackType
 from typing import Any, Callable, List, Optional, Tuple, Type, TypedDict
 from xml.etree.ElementTree import Element
-from defusedxml.ElementTree import iterparse
 from zipfile import ZipFile
 
 import pandas as pd
+from defusedxml.ElementTree import iterparse
 
 _logger = logging.getLogger(__name__)
 
@@ -60,20 +60,6 @@ class ParsedHealthData:
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
-@dataclass(frozen=True)
-class ParsedHealthData:
-    """Structured data extracted from the Apple Health export."""
-
-    workouts: pd.DataFrame
-    records_by_type: dict[str, pd.DataFrame]
-
-    @property
-    def all_records(self) -> pd.DataFrame:
-        """Combine all records into a single DataFrame."""
-        frames: list[pd.DataFrame] = list(self.records_by_type.values())
-        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-
-
 class ExportParser:
     """Reads and parses Apple Health export files."""
 
@@ -91,17 +77,6 @@ class ExportParser:
     ) -> None:
         # Nothing to do for now
         pass
-
-    @staticmethod
-    def to_number(raw: str | None) -> float | int | None:
-        """Convert a string to a number (int or float), or return None if conversion fails."""
-        if raw is None:
-            return None
-        try:
-            value = float(raw)
-            return int(value) if value.is_integer() else value
-        except ValueError:
-            return None
 
     @staticmethod
     def to_number(raw: str | None) -> float | int | None:
@@ -198,12 +173,11 @@ class ExportParser:
                 _logger.debug(message)
 
     def _load_data(self, zipfile: ZipFile) -> ParsedHealthData:
-    def _load_data(self, zipfile: ZipFile) -> ParsedHealthData:
         """Load workouts of a specific type from the export file."""
         self._log("Loading the workouts...")
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
-            workout_workout_rows: List[WorkoutRecord] = []
+            workout_rows: List[WorkoutRecord] = []
             record_rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
             record_rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
@@ -213,18 +187,11 @@ class ExportParser:
 
                     record = self._create_workout_record(elem, activity_type)
                     self._process_workout_children(elem, record, zipfile)
-                    workout_workout_rows.append(record)
+                    workout_rows.append(record)
 
                     # Report progress every N workouts
-                    if len(workout_workout_rows) % WORKOUT_PROGRESS_INTERVAL == 0:
-                        self._log(f"Processed {len(workout_workout_rows)} workouts...")
-
-                    elem.clear()
-
-                if event == "end" and elem.tag == "Record":
-                    record_type, record_data = self._extract_health_data_record(elem)
-
-                    record_rows_by_type[record_type].append(record_data)
+                    if len(workout_rows) % WORKOUT_PROGRESS_INTERVAL == 0:
+                        self._log(f"Processed {len(workout_rows)} workouts...")
 
                     elem.clear()
 
@@ -248,25 +215,6 @@ class ExportParser:
             self._log(f"Loaded {len(workouts_df)} workouts total.")
             self._log(f"Loaded {len(workouts_df)} workouts total.")
 
-            return ParsedHealthData(workouts=workouts_df, records_by_type=records_by_type_df)
-
-    def _extract_health_data_record(self, elem: Element) -> Tuple[str, dict[str, Any]]:
-        """Extract and clean health data record from element attributes and metadata."""
-        record_type = elem.get("type", "").replace("HKQuantityTypeIdentifier", "")
-        record_data = {
-            "type": record_type,
-            "startDate": elem.get("startDate"),
-            "value": self.to_number(elem.get("value")),
-        }
-        # Include metadata entries as additional fields
-        for child in elem:
-            if child.tag == "MetadataEntry":
-                key = child.get("key", "").replace("HK", "")
-                value, unit = self._parse_value(child.get("value", ""))
-                record_data[key] = value
-                if unit:
-                    record_data[f"{key}Unit"] = unit
-        return record_type, record_data
             return ParsedHealthData(workouts=workouts_df, records_by_type=records_by_type_df)
 
     def _extract_health_data_record(self, elem: Element) -> Tuple[str, dict[str, Any]]:
