@@ -46,6 +46,7 @@ class RecordsByType:
         value_col: str = "value",
         date_col: str = "startDate",
         query_filter: str | None = None,
+        round_decimals: int = 2,
     ) -> pd.DataFrame:
         """Aggregate avg/min/max/count by period for one record type."""
         df = self.get(record_type)
@@ -75,12 +76,14 @@ class RecordsByType:
             .rename(columns={date_col: "period"})
             .sort_values("period")
         )
+        result[["avg", "min", "max"]] = result[["avg", "min", "max"]].round(round_decimals)
         return result
 
     def heart_rate_stats(
         self,
         period: str = "M",
         context: HeartRateMeasureContext | None = None,
+        round_decimals: int = 0,
     ) -> pd.DataFrame:
         """Return aggregated heart rate stats by period."""
         heart_rate_df = self.heart_rate()
@@ -92,12 +95,21 @@ class RecordsByType:
             self.HEART_RATE_TYPE,
             period=period,
             query_filter=query_filter,
+            round_decimals=round_decimals,
         )
 
-    def weight_stats(self, period: str = "M") -> pd.DataFrame:
+    def weight_stats(self, period: str = "M", round_decimals: int = 1) -> pd.DataFrame:
         """Return aggregated weight stats by period."""
-        return self.stats_by_period(self.BODY_MASS_TYPE, period=period)
+        return self.stats_by_period(
+            self.BODY_MASS_TYPE,
+            period=period,
+            round_decimals=round_decimals,
+        )
 
-    def vo2_max_stats(self, period: str = "M") -> pd.DataFrame:
+    def vo2_max_stats(self, period: str = "M", round_decimals: int = 2) -> pd.DataFrame:
         """Return aggregated VO2 max stats by period."""
-        return self.stats_by_period(self.VO2_MAX_TYPE, period=period)
+        return self.stats_by_period(
+            self.VO2_MAX_TYPE,
+            period=period,
+            round_decimals=round_decimals,
+        )

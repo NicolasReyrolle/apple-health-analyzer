@@ -117,6 +117,38 @@ class TestRecordsByTypeStatsByPeriod:
         assert list(result["max"]) == [90, 75]
         assert list(result["count"]) == [2, 1]
 
+    def test_stats_by_period_rounds_to_two_decimals_by_default(self) -> None:
+        """Round avg/min/max to 2 decimals when round_decimals is not specified."""
+        heart_rate_df = pd.DataFrame(
+            {
+                "startDate": ["2024-01-01", "2024-01-20"],
+                "value": [1.111, 1.239],
+            }
+        )
+        records = RecordsByType({"HeartRate": heart_rate_df})
+
+        result = records.stats_by_period("HeartRate", period="M")
+
+        assert list(result["avg"]) == [1.18]
+        assert list(result["min"]) == [1.11]
+        assert list(result["max"]) == [1.24]
+
+    def test_stats_by_period_respects_custom_round_decimals(self) -> None:
+        """Use caller-provided rounding precision for avg/min/max."""
+        heart_rate_df = pd.DataFrame(
+            {
+                "startDate": ["2024-01-01", "2024-01-20"],
+                "value": [1.111, 1.239],
+            }
+        )
+        records = RecordsByType({"HeartRate": heart_rate_df})
+
+        result = records.stats_by_period("HeartRate", period="M", round_decimals=3)
+
+        assert list(result["avg"]) == [1.175]
+        assert list(result["min"]) == [1.111]
+        assert list(result["max"]) == [1.239]
+
 
 class TestRecordsByTypeConvenienceStats:
     """Test convenience wrappers around stats_by_period."""
@@ -184,6 +216,22 @@ class TestRecordsByTypeConvenienceStats:
 
         assert list(result["period"].astype(str)) == ["2024-01", "2024-02"]
         assert list(result["avg"]) == [50.0, 51.0]
+
+    def test_vo2_max_stats_respects_custom_round_decimals(self) -> None:
+        """Apply custom rounding precision through vo2_max_stats."""
+        vo2_max_df = pd.DataFrame(
+            {
+                "startDate": ["2024-01-01", "2024-01-10"],
+                "value": [49.54, 50.05],
+            }
+        )
+        records = RecordsByType({"VO2Max": vo2_max_df})
+
+        result = records.vo2_max_stats("M", round_decimals=1)
+
+        assert list(result["avg"]) == [49.8]
+        assert list(result["min"]) == [49.5]
+        assert list(result["max"]) == [50.0]
 
     def test_heart_rate_stats_from_export_sample_zip(
         self, create_health_zip: Callable[..., str]
