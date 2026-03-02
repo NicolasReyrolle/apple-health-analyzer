@@ -176,7 +176,7 @@ class TestRenderTrendsGraphs:
     """Tests for render_trends_graphs function."""
 
     def test_render_trends_graphs_renders_all_charts(self) -> None:
-        """Test that render_trends_graphs calls render_bar_graph for all metrics."""
+        """Test that render_trends_graphs calls render_generic_graph for all metrics."""
         original_workouts: Any = state.workouts
         original_activity = state.selected_activity_type
 
@@ -192,7 +192,7 @@ class TestRenderTrendsGraphs:
             state.selected_activity_type = "Running"
 
             with patch("ui.layout.ui.row", return_value=_DummyRow()):
-                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                with patch("ui.layout.render_generic_graph") as render_graph_mock:
                     layout.render_trends_graphs.func()
 
             assert render_graph_mock.call_count == 5
@@ -243,7 +243,7 @@ class TestRenderTrendsGraphs:
             state.trends_period = "W"
 
             with patch("ui.layout.ui.row", return_value=_DummyRow()):
-                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                with patch("ui.layout.render_generic_graph") as render_graph_mock:
                     layout.render_trends_graphs.func()
 
             # Verify the period "W" was passed to get_*_by_period methods
@@ -286,11 +286,11 @@ class TestRenderHealthDataTab:
             state.records_by_type = records_by_type_mock
             state.trends_period = "M"
 
-            with patch("ui.layout.render_bar_graph") as render_bar_graph_mock:
+            with patch("ui.layout.render_generic_graph") as render_generic_graph_mock:
                 layout.render_health_data_tab.func()
 
-            render_bar_graph_mock.assert_called_once()
-            chart_data = render_bar_graph_mock.call_args[0][1]
+            render_generic_graph_mock.assert_called_once()
+            chart_data = render_generic_graph_mock.call_args[0][1]
             assert isinstance(chart_data, dict)
             assert list(chart_data.keys()) == ["2025-01"]  # type: ignore[arg-type]
         finally:
@@ -316,7 +316,7 @@ class TestRenderHealthDataTab:
             state.trends_period = "Q"
 
             with patch("ui.layout.ui.row", return_value=_DummyRow()):
-                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                with patch("ui.layout.render_generic_graph") as render_graph_mock:
                     layout.render_trends_graphs.func()
 
             # Verify the period "Q" was passed to get_*_by_period methods
@@ -351,7 +351,7 @@ class TestRenderHealthDataTab:
             state.trends_period = "Y"
 
             with patch("ui.layout.ui.row", return_value=_DummyRow()):
-                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                with patch("ui.layout.render_generic_graph") as render_graph_mock:
                     layout.render_trends_graphs.func()
 
             # Verify the period "Y" was passed to get_*_by_period methods

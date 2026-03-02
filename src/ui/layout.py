@@ -216,8 +216,10 @@ def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list
     return pd.Series(y_values).rolling(window=window_size, min_periods=1).mean().round(2).tolist()
 
 
-def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None:
-    """Render bar graphs for the given values."""
+def render_generic_graph(
+    label: str, values: dict[str, int], unit: str = "", graph_type: str = "bar"
+) -> None:
+    """Render generic graphs for the given values."""
 
     # Transform dictionary data into ECharts format: [{'value': x, 'name': y}, ...]
     chart_data = [{"value": v, "name": k} for k, v in values.items()]
@@ -238,7 +240,7 @@ def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None
                 },
                 "yAxis": {"type": "value"},
                 "series": [
-                    {"data": data_points, "type": "bar"},
+                    {"data": data_points, "type": graph_type},
                     {
                         "name": "Trend",
                         "type": "line",
@@ -478,7 +480,7 @@ def render_trends_tab() -> None:
 def render_trends_graphs() -> None:
     """Render trend graphs."""
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        render_bar_graph(
+        render_generic_graph(
             f"Count by {period_code_to_label(state.trends_period)}",
             state.workouts.get_count_by_period(
                 state.trends_period,
@@ -487,7 +489,7 @@ def render_trends_graphs() -> None:
                 end_date=state.end_date,
             ),
         )
-        render_bar_graph(
+        render_generic_graph(
             f"Distance by {period_code_to_label(state.trends_period)}",
             state.workouts.get_distance_by_period(
                 state.trends_period,
@@ -498,7 +500,7 @@ def render_trends_graphs() -> None:
             "km",
         )
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        render_bar_graph(
+        render_generic_graph(
             f"Calories by {period_code_to_label(state.trends_period)}",
             state.workouts.get_calories_by_period(
                 state.trends_period,
@@ -508,7 +510,7 @@ def render_trends_graphs() -> None:
             ),
             "kcal",
         )
-        render_bar_graph(
+        render_generic_graph(
             f"Duration by {period_code_to_label(state.trends_period)}",
             state.workouts.get_duration_by_period(
                 state.trends_period,
@@ -521,7 +523,7 @@ def render_trends_graphs() -> None:
     with ui.row().classes(ROW_CENTERED_CLASSES):
         # Display elevation in meters (not km like the stat card) because values for the
         # selected period can be small and would show as 0.0X km, making the chart less readable
-        render_bar_graph(
+        render_generic_graph(
             f"Elevation by {period_code_to_label(state.trends_period)}",
             state.workouts.get_elevation_by_period(
                 state.trends_period,
@@ -546,7 +548,7 @@ def render_health_data_tab() -> None:
         _logger.info("No heart rate records found for trends_period=%s", state.trends_period)
         return
 
-    render_bar_graph(
+    render_generic_graph(
         "HR frequency over time",
         dict(  # type: ignore[arg-type]
             heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
@@ -554,5 +556,6 @@ def render_health_data_tab() -> None:
             .to_dict()
         ),
         "bpm",
+        graph_type="line",
     )
     _logger.debug("Heart rate stats: %s", heart_rate_stats)
