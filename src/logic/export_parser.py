@@ -186,7 +186,7 @@ class ExportParser:
         # Include metadata entries as additional fields
         for child in elem:
             if child.tag == "MetadataEntry":
-                key = child.get("key", "").replace("HK", "")
+                key = child.get("key", "").replace("HKMetadataKey", "")
                 value, unit = self._parse_value(child.get("value", ""))
                 record_data[key] = value
                 if unit:

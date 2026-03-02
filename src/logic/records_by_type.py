@@ -1,5 +1,7 @@
 """Logic for working with HealthKit records grouped by type."""
+
 from dataclasses import dataclass
+from enum import Enum
 
 import pandas as pd
 
@@ -12,6 +14,13 @@ class RecordsByType:
 
     HEART_RATE_TYPE = "HeartRate"
     BODY_MASS_TYPE = "BodyMass"
+
+    class HeartRateMeasureContext(Enum):
+        """Context of a heart rate measurement."""
+
+        UNKNOWN = 0
+        SEDENTARY = 1
+        ACTIVE = 2
 
     def get(self, record_type: str) -> pd.DataFrame:
         """Return DataFrame for a HealthKit type, or empty DataFrame."""
@@ -31,10 +40,17 @@ class RecordsByType:
         period: str = "M",
         value_col: str = "value",
         date_col: str = "startDate",
+        query_filter: str | None = None,
     ) -> pd.DataFrame:
         """Aggregate avg/min/max/count by period for one record type."""
         df = self.get(record_type)
         if df.empty or value_col not in df.columns or date_col not in df.columns:
+            return pd.DataFrame(columns=["period", "avg", "min", "max", "count"])
+
+        if query_filter:
+            df = df.query(query_filter)
+
+        if df.empty:
             return pd.DataFrame(columns=["period", "avg", "min", "max", "count"])
 
         work = df[[date_col, value_col]].copy()
@@ -54,9 +70,20 @@ class RecordsByType:
         )
         return result
 
-    def heart_rate_stats(self, period: str = "M") -> pd.DataFrame:
+    def heart_rate_stats(
+        self, period: str = "M", context: HeartRateMeasureContext = HeartRateMeasureContext.SEDENTARY
+    ) -> pd.DataFrame:
         """Return aggregated heart rate stats by period."""
-        return self.stats_by_period(self.HEART_RATE_TYPE, period=period)
+        heart_rate_df = self.heart_rate()
+        query_filter = None
+        if "HeartRateMotionContext" in heart_rate_df.columns:
+            query_filter = f"HeartRateMotionContext == {context.value}"
+
+        return self.stats_by_period(
+            self.HEART_RATE_TYPE,
+            period=period,
+            query_filter=query_filter,
+        )
 
     def weight_stats(self, period: str = "M") -> pd.DataFrame:
         """Return aggregated weight stats by period."""

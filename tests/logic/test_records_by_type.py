@@ -131,6 +131,25 @@ class TestRecordsByTypeConvenienceStats:
         assert len(result) == 1
         assert result.iloc[0]["avg"] == 65.0
 
+    def test_heart_rate_stats_filters_unknown_context(self) -> None:
+        """Filter heart rate stats by UNKNOWN context."""
+        heart_rate_df = pd.DataFrame(
+            {
+                "startDate": ["2024-01-01", "2024-01-02", "2024-01-03"],
+                "value": [68, 69, 75],
+                "HeartRateMotionContext": [0, 0, 2],
+            }
+        )
+        records = RecordsByType({"HeartRate": heart_rate_df})
+
+        result = records.heart_rate_stats(
+            "M", context=RecordsByType.HeartRateMeasureContext.UNKNOWN
+        )
+
+        assert len(result) == 1
+        assert result.iloc[0]["count"] == 2
+        assert result.iloc[0]["avg"] == 68.5
+
     def test_weight_stats_uses_body_mass_type(self) -> None:
         """Use the BodyMass type constant in weight_stats."""
         body_mass_df = pd.DataFrame(

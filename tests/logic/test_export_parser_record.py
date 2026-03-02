@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from logic.export_parser import ExportParser, ParsedHealthData
+from logic.records_by_type import RecordsByType
 from tests.conftest import build_health_export_xml, load_export_fragment
 
 
@@ -80,6 +81,7 @@ class TestComplexRealWorldRecords:
         sample_record = health_data.iloc[0]
         assert sample_record["value"] == 67
         assert sample_record["startDate"] == "2022-01-17 16:34:57 +0100"
+        assert sample_record["HeartRateMotionContext"] == 1
 
     def test_parse_returns_parsed_health_data(self, create_health_zip: Callable[..., str]) -> None:
         """Test that parse() returns ParsedHealthData instance."""
@@ -107,6 +109,15 @@ class TestComplexRealWorldRecords:
         assert "HeartRate" in result.records_by_type
         assert isinstance(result.records_by_type["HeartRate"], pd.DataFrame)
         assert len(result.records_by_type["HeartRate"]) == 14
+
+        # Test the statistics aggregation for heart rate records
+        stats = result.records.heart_rate_stats(
+            "M", context=RecordsByType.HeartRateMeasureContext.UNKNOWN
+        )
+
+        assert len(stats) == 1
+        assert stats.iloc[0]["count"] == 2
+        assert stats.iloc[0]["avg"] == 68.5
 
 
 class TestToNumber:
