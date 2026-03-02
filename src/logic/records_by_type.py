@@ -100,8 +100,4 @@ class RecordsByType:
 
     def vo2_max_stats(self, period: str = "M") -> pd.DataFrame:
         """Return aggregated VO2 max stats by period."""
-        vo2_max_df = self.vo2_max()
-        if vo2_max_df.empty:
-            return pd.DataFrame(columns=["period", "avg", "min", "max", "count"])
-
         return self.stats_by_period(self.VO2_MAX_TYPE, period=period)
