@@ -263,6 +263,43 @@ class TestRenderTrendsGraphs:
             state.trends_period = original_period
 
 
+class TestRenderGenericGraph:
+    """Tests for render_generic_graph function."""
+
+    def test_render_generic_graph_includes_trend_by_default(self) -> None:
+        """Trend series is included when show_trend is not specified."""
+        values = {"2024-01": 10, "2024-02": 20}
+
+        with (
+            patch("ui.layout.ui.card", return_value=_DummyRow()),
+            patch("ui.layout.ui.label"),
+            patch("ui.layout.ui.echart") as echart_mock,
+        ):
+            layout.render_generic_graph("Distance by month", values, "km")
+
+        chart_options = echart_mock.call_args.args[0]
+        series = chart_options["series"]
+        assert len(series) == 2
+        assert series[0]["type"] == "bar"
+        assert series[1]["name"] == "Trend"
+
+    def test_render_generic_graph_excludes_trend_when_disabled(self) -> None:
+        """Trend series is omitted when show_trend is False."""
+        values = {"2024-01": 10, "2024-02": 20}
+
+        with (
+            patch("ui.layout.ui.card", return_value=_DummyRow()),
+            patch("ui.layout.ui.label"),
+            patch("ui.layout.ui.echart") as echart_mock,
+        ):
+            layout.render_generic_graph("Distance by month", values, "km", show_trend=False)
+
+        chart_options = echart_mock.call_args.args[0]
+        series = chart_options["series"]
+        assert len(series) == 1
+        assert series[0]["type"] == "bar"
+
+
 class TestRenderHealthDataTab:
     """Tests for render_health_data_tab behavior."""
 

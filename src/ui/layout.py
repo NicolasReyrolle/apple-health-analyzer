@@ -217,7 +217,11 @@ def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list
 
 
 def render_generic_graph(
-    label: str, values: dict[str, int], unit: str = "", graph_type: str = "bar"
+    label: str,
+    values: dict[str, int],
+    unit: str = "",
+    graph_type: str = "bar",
+    show_trend: bool = True,
 ) -> None:
     """Render generic graphs for the given values."""
 
@@ -227,6 +231,22 @@ def render_generic_graph(
     # Extract raw lists for the axes and series
     categories = [d["name"] for d in chart_data]
     data_points = list(values.values())
+
+    series: list[dict[str, object]] = [{"data": data_points, "type": graph_type}]
+    if show_trend:
+        series.append(
+            {
+                "name": "Trend",
+                "type": "line",
+                "data": calculate_moving_average(data_points),
+                "symbol": "none",  # Removes the dots on the line
+                "lineStyle": {
+                    "width": 2,
+                    "type": "dashed",  # Dashed line for statistical trends
+                },
+                "itemStyle": {"color": "#e74c3c"},  # Red color to stand out
+            }
+        )
 
     with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
         ui.label(label).classes("text-sm text-gray-500 uppercase")
@@ -239,20 +259,7 @@ def render_generic_graph(
                     "axisTick": {"alignWithLabel": True},
                 },
                 "yAxis": {"type": "value", "scale": True},
-                "series": [
-                    {"data": data_points, "type": graph_type},
-                    {
-                        "name": "Trend",
-                        "type": "line",
-                        "data": calculate_moving_average(data_points),
-                        "symbol": "none",  # Removes the dots on the line
-                        "lineStyle": {
-                            "width": 2,
-                            "type": "dashed",  # Dashed line for statistical trends
-                        },
-                        "itemStyle": {"color": "#e74c3c"},  # Red color to stand out
-                    },
-                ],
+                "series": series,
             }
         )
 
@@ -560,4 +567,6 @@ def render_health_data_tab() -> None:
                 .set_index("period")["avg"]
                 .to_dict()
             ),
+            "kg",
+            graph_type="line",
         )
