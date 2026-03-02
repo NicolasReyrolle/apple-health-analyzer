@@ -14,6 +14,7 @@ class RecordsByType:
 
     HEART_RATE_TYPE = "HeartRate"
     BODY_MASS_TYPE = "BodyMass"
+    VO2_MAX_TYPE = "VO2Max"
 
     class HeartRateMeasureContext(Enum):
         """Context of a heart rate measurement."""
@@ -33,6 +34,10 @@ class RecordsByType:
     def weight(self) -> pd.DataFrame:
         """Return DataFrame for weight records."""
         return self.get(self.BODY_MASS_TYPE)
+
+    def vo2_max(self) -> pd.DataFrame:
+        """Return DataFrame for VO2 max records."""
+        return self.get(self.VO2_MAX_TYPE)
 
     def stats_by_period(
         self,
@@ -92,3 +97,11 @@ class RecordsByType:
     def weight_stats(self, period: str = "M") -> pd.DataFrame:
         """Return aggregated weight stats by period."""
         return self.stats_by_period(self.BODY_MASS_TYPE, period=period)
+
+    def vo2_max_stats(self, period: str = "M") -> pd.DataFrame:
+        """Return aggregated VO2 max stats by period."""
+        vo2_max_df = self.vo2_max()
+        if vo2_max_df.empty:
+            return pd.DataFrame(columns=["period", "avg", "min", "max", "count"])
+
+        return self.stats_by_period(self.VO2_MAX_TYPE, period=period)

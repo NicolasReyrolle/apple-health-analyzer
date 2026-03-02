@@ -546,10 +546,9 @@ def render_trends_graphs() -> None:
 @ui.refreshable
 def render_health_data_tab() -> None:
     """Render the health data tab with filters and graphs."""
-    heart_rate_stats = state.records_by_type.heart_rate_stats(period=state.trends_period)
-    body_mass_stats = state.records_by_type.weight_stats(period=state.trends_period)
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
+        heart_rate_stats = state.records_by_type.heart_rate_stats(period=state.trends_period)
         render_generic_graph(
             "Resting HR frequency over time",
             dict(  # type: ignore[arg-type]
@@ -560,6 +559,8 @@ def render_health_data_tab() -> None:
             "bpm",
             graph_type="line",
         )
+
+        body_mass_stats = state.records_by_type.weight_stats(period=state.trends_period)
         render_generic_graph(
             "Body Mass over time",
             dict(  # type: ignore[arg-type]
@@ -568,5 +569,18 @@ def render_health_data_tab() -> None:
                 .to_dict()
             ),
             "kg",
+            graph_type="line",
+        )
+
+    with ui.row().classes(ROW_CENTERED_CLASSES):
+        vo2_max_stats = state.records_by_type.vo2_max_stats(period=state.trends_period)
+        render_generic_graph(
+            "VO2 Max over time",
+            dict(  # type: ignore[arg-type]
+                vo2_max_stats.assign(period=vo2_max_stats["period"].astype(str))
+                .set_index("period")["avg"]
+                .to_dict()
+            ),
+            "ml/kg/min",
             graph_type="line",
         )

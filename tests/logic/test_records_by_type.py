@@ -32,17 +32,22 @@ class TestRecordsByTypeGetters:
         assert isinstance(result, pd.DataFrame)
         assert result.empty
 
-    def test_heart_rate_and_weight_helpers_return_expected_types(self) -> None:
-        """Expose heart-rate and body-mass data via helper methods."""
+    def test_heart_rate_weight_and_vo2_helpers_return_expected_types(self) -> None:
+        """Expose heart-rate, body-mass and VO2 max data via helper methods."""
         heart_rate_df = pd.DataFrame({"value": [58, 62]})
         body_mass_df = pd.DataFrame({"value": [70.5, 70.2]})
-        records = RecordsByType({"HeartRate": heart_rate_df, "BodyMass": body_mass_df})
+        vo2_max_df = pd.DataFrame({"value": [49.8, 50.1]})
+        records = RecordsByType(
+            {"HeartRate": heart_rate_df, "BodyMass": body_mass_df, "VO2Max": vo2_max_df}
+        )
 
         heart_rate_result = records.heart_rate()
         body_mass_result = records.weight()
+        vo2_max_result = records.vo2_max()
 
         assert heart_rate_result is heart_rate_df
         assert body_mass_result is body_mass_df
+        assert vo2_max_result is vo2_max_df
 
 
 class TestRecordsByTypeStatsByPeriod:
@@ -165,6 +170,21 @@ class TestRecordsByTypeConvenienceStats:
         assert list(result["period"].astype(str)) == ["2024-01", "2024-02"]
         assert list(result["avg"]) == [70.0, 70.0]
 
+    def test_vo2_max_stats_uses_vo2_max_type(self) -> None:
+        """Use the VO2Max type constant in vo2_max_stats."""
+        vo2_max_df = pd.DataFrame(
+            {
+                "startDate": ["2024-01-01", "2024-01-10", "2024-02-10"],
+                "value": [49.5, 50.5, 51.0],
+            }
+        )
+        records = RecordsByType({"VO2Max": vo2_max_df})
+
+        result = records.vo2_max_stats("M")
+
+        assert list(result["period"].astype(str)) == ["2024-01", "2024-02"]
+        assert list(result["avg"]) == [50.0, 51.0]
+
     def test_heart_rate_stats_from_export_sample_zip(
         self, create_health_zip: Callable[..., str]
     ) -> None:
@@ -183,5 +203,26 @@ class TestRecordsByTypeConvenienceStats:
         assert list(result.columns) == ["period", "avg", "min", "max", "count"]
         assert not result.empty
         assert int(result["count"].sum()) == len(heart_rate_df)
+        assert (result["min"] <= result["avg"]).all()
+        assert (result["avg"] <= result["max"]).all()
+
+    def test_vo2_max_stats_from_export_sample_zip(
+        self, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Aggregate VO2 max stats from the export_sample.zip fixture."""
+        xml_content = build_health_export_xml([load_export_fragment("record_vo2_max.xml")])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        with ExportParser() as parser:
+            parsed = parser.parse(str(zip_path))
+
+        records = RecordsByType(data=parsed.records_by_type)
+        vo2_max_df = records.get(RecordsByType.VO2_MAX_TYPE)
+        result = records.vo2_max_stats("M")
+
+        assert not vo2_max_df.empty
+        assert list(result.columns) == ["period", "avg", "min", "max", "count"]
+        assert not result.empty
+        assert int(result["count"].sum()) == len(vo2_max_df)
         assert (result["min"] <= result["avg"]).all()
         assert (result["avg"] <= result["max"]).all()
