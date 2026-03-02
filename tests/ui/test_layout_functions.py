@@ -289,8 +289,12 @@ class TestRenderHealthDataTab:
             with patch("ui.layout.render_generic_graph") as render_generic_graph_mock:
                 layout.render_health_data_tab.func()
 
-            render_generic_graph_mock.assert_called_once()
-            chart_data = render_generic_graph_mock.call_args[0][1]
+            heart_rate_call = next(
+                call
+                for call in render_generic_graph_mock.call_args_list
+                if call.args and call.args[0] == "Resting HR frequency over time"
+            )
+            chart_data = heart_rate_call.args[1]
             assert isinstance(chart_data, dict)
             assert list(chart_data.keys()) == ["2025-01"]  # type: ignore[arg-type]
         finally:

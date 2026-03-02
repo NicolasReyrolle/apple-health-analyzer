@@ -176,7 +176,7 @@ class TestExtractHealthDataRecord:
 
         assert record_type == "HeartRate"
         assert record_data["type"] == "HeartRate"
-        assert record_data["MetadataKeyHeartRateMotionContext"] is True
+        assert record_data["HeartRateMotionContext"] is True
 
     def test_extract_health_data_record_with_multiple_metadata(self) -> None:
         """Test extracting a record with multiple metadata entries."""
@@ -202,9 +202,9 @@ class TestExtractHealthDataRecord:
         parser = ep.ExportParser()
         _, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
 
-        assert "MetadataKeyDeviceType" in record_data
-        assert "MetadataKeySource" in record_data
-        assert record_data["MetadataKeySource"] is True
+        assert "DeviceType" in record_data
+        assert "Source" in record_data
+        assert record_data["Source"] is True
 
     def test_extract_health_data_record_with_metadata_unit(self) -> None:
         """Test extracting a record with metadata that has units."""
@@ -226,8 +226,8 @@ class TestExtractHealthDataRecord:
         record_type, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
 
         assert record_type == "BodyMass"
-        assert record_data["MetadataKeyBodyMassUnit"] == 75.0
-        assert record_data["MetadataKeyBodyMassUnitUnit"] == "kg"
+        assert record_data["BodyMassUnit"] == 75.0
+        assert record_data["BodyMassUnitUnit"] == "kg"
 
     def test_extract_health_data_record_type_removal(self) -> None:
         """Test that HKQuantityTypeIdentifier prefix is removed from type."""

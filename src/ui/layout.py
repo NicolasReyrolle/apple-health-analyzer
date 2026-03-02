@@ -238,7 +238,7 @@ def render_generic_graph(
                     "data": categories,
                     "axisTick": {"alignWithLabel": True},
                 },
-                "yAxis": {"type": "value"},
+                "yAxis": {"type": "value", "scale": True},
                 "series": [
                     {"data": data_points, "type": graph_type},
                     {

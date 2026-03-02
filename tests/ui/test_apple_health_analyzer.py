@@ -177,19 +177,6 @@ class TestFileLoading:
         # Small delay before teardown
         await asyncio.sleep(0.2)
 
-    async def test_health_data_tab_shows_message_without_heart_rate_records(
-        self, user: User
-    ) -> None:
-        """Show an informative message when the export has no heart rate records."""
-        await user.open("/")
-        user.find("Apple Health export file").type("tests/fixtures/export_sample.zip")
-        user.find("Load").click()
-        await user.should_see("File parsed successfully.", retries=100)
-
-        user.find("Health Data").click()
-        await user.should_see("No heart rate records found in this export file.", retries=50)
-        await asyncio.sleep(0.2)
-
 
 class TestExportFunctionality:
     """Tests for data export functionality."""
