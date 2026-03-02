@@ -558,4 +558,3 @@ def render_health_data_tab() -> None:
         "bpm",
         graph_type="line",
     )
-    _logger.debug("Heart rate stats: %s", heart_rate_stats)
