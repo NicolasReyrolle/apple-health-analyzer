@@ -1,11 +1,9 @@
 """Tests for logging in layout module."""
 
 import logging
-from unittest.mock import MagicMock
 
 import pytest
 
-from app_state import state
 from ui import layout
 
 
