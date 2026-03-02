@@ -1,8 +1,13 @@
 """Test suite for RecordsByType wrapper around HealthKit record DataFrames."""
 
+from typing import Callable
+
 import pandas as pd
 
+from logic.export_parser import ExportParser
 from logic.records_by_type import RecordsByType
+
+from tests.conftest import build_health_export_xml, load_export_fragment
 
 
 class TestRecordsByTypeGetters:
@@ -140,3 +145,24 @@ class TestRecordsByTypeConvenienceStats:
 
         assert list(result["period"].astype(str)) == ["2024-01", "2024-02"]
         assert list(result["avg"]) == [70.0, 70.0]
+
+    def test_heart_rate_stats_from_export_sample_zip(
+        self, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Aggregate heart rate stats from the export_sample.zip fixture."""
+        xml_content = build_health_export_xml([load_export_fragment("record_heart_rate.xml")])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        with ExportParser() as parser:
+            parsed = parser.parse(str(zip_path))
+
+        records = RecordsByType(data=parsed.records_by_type)
+        heart_rate_df = records.heart_rate()
+        result = records.heart_rate_stats("M")
+
+        assert not heart_rate_df.empty
+        assert list(result.columns) == ["period", "avg", "min", "max", "count"]
+        assert not result.empty
+        assert int(result["count"].sum()) == len(heart_rate_df)
+        assert (result["min"] <= result["avg"]).all()
+        assert (result["avg"] <= result["max"]).all()

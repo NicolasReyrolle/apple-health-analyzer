@@ -12,6 +12,7 @@ from nicegui.client import Client  # Added for type hinting
 from nicegui.testing import User
 
 from app_state import state
+from tests.conftest import build_health_export_xml, load_export_fragment
 from tests.types_helper import StateAssertion
 from ui.helpers import format_integer
 from ui.layout import load_file
@@ -175,6 +176,41 @@ class TestFileLoading:
         user.find("Load").click()
         await user.should_see("Error parsing file")
         # Small delay before teardown
+        await asyncio.sleep(0.2)
+
+    async def test_health_data_tab_shows_message_without_heart_rate_records(
+        self, user: User, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Show an informative message when the export has no heart rate records."""
+        xml_content = build_health_export_xml([load_export_fragment("workout_running.xml")])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        await user.open("/")
+        user.find("Apple Health export file").type(zip_path)
+        user.find("Load").click()
+        await user.should_see("File parsed successfully.", retries=100)
+
+        await user.should_see("No heart rate records found in this export file.", retries=50)
+        await asyncio.sleep(0.2)
+
+    async def test_health_data_tab_shows_heart_rate_chart_when_records_exist(
+        self, user: User, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Render the HR chart when heart rate records are present in the export."""
+        xml_content = build_health_export_xml(
+            [
+                load_export_fragment("workout_running.xml"),
+                load_export_fragment("record_heart_rate.xml"),
+            ]
+        )
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        await user.open("/")
+        user.find("Apple Health export file").type(zip_path)
+        user.find("Load").click()
+        await user.should_see("File parsed successfully.", retries=100)
+
+        await user.should_see("HR frequency over time", retries=50)
         await asyncio.sleep(0.2)
 
 

@@ -11,6 +11,7 @@ from nicegui import app, ui
 from app_state import state
 from assets import APP_ICON_BASE64
 from logic.export_parser import ExportParser
+from logic.records_by_type import RecordsByType
 from logic.workout_manager import WorkoutManager
 from ui.helpers import format_integer, period_code_to_label
 from ui.local_file_picker import LocalFilePicker
@@ -75,6 +76,7 @@ def refresh_data() -> None:
 
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()
+    render_health_data_tab.refresh()
 
 
 @ui.refreshable
@@ -267,10 +269,10 @@ async def pick_file() -> None:
 def load_workouts_from_file(
     file_path: str,
     progress_callback: Optional[Callable[[int, str], None]] = None,
-) -> tuple[WorkoutManager, list[str]]:
+) -> tuple[WorkoutManager, list[str], RecordsByType]:
     """Load and parse the Apple Health export file.
 
-    Returns a tuple of (WorkoutManager, activity_options) so that all UI
+    Returns a tuple of (WorkoutManager, activity_options, records_dict) so that all UI
     state mutations and refresh calls can be performed on the event-loop
     thread by the caller (load_file), avoiding thread-safety issues.
     """
@@ -303,7 +305,9 @@ def load_workouts_from_file(
     _logger.info("Starting to load file: %s", file_path)
 
     with ExportParser(progress_callback=parser_message_handler) as ep:
-        workouts_df = ep.parse(file_path).workouts
+        phd = ep.parse(file_path)
+        workouts_df = phd.workouts
+        records_dict = RecordsByType(data=phd.records_by_type)
 
     report(93, "Building workout index...")
     workouts = WorkoutManager(workouts_df)
@@ -316,7 +320,7 @@ def load_workouts_from_file(
     activity_options = ["All"] + activity_types
 
     report(97, "Preparing dashboard update...")
-    return workouts, activity_options
+    return workouts, activity_options, records_dict
 
 
 async def load_file() -> None:
@@ -345,12 +349,13 @@ async def load_file() -> None:
         loop.call_soon_threadsafe(_update)
 
     try:
-        workouts, activity_options = await asyncio.to_thread(
+        workouts, activity_options, records_dict = await asyncio.to_thread(
             load_workouts_from_file,
             state.input_file.value,
             progress_callback,
         )
         state.workouts = workouts
+        state.records_by_type = records_dict
         state.file_loaded = True
         state.activity_options = activity_options
         render_activity_select.refresh()
@@ -391,7 +396,7 @@ def render_body() -> None:
         tab_summary = ui.tab("Overview")
         tab_activities = ui.tab("Activities").bind_enabled_from(state, "file_loaded")
         tab_trends = ui.tab("Trends").bind_enabled_from(state, "file_loaded")
-        ui.tab("Health Data").props("disable")
+        tab_health_data = ui.tab("Health Data").bind_enabled_from(state, "file_loaded")
 
     with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
         with ui.tab_panel(tab_summary):
@@ -408,6 +413,9 @@ def render_body() -> None:
 
         with ui.tab_panel(tab_trends):
             render_trends_tab()
+
+        with ui.tab_panel(tab_health_data):
+            render_health_data_tab()
 
 
 @ui.refreshable
@@ -524,3 +532,27 @@ def render_trends_graphs() -> None:
             ),
             "m",
         )
+
+
+@ui.refreshable
+def render_health_data_tab() -> None:
+    """Render the health data tab with filters and graphs."""
+    heart_rate_stats = state.records_by_type.heart_rate_stats(period=state.trends_period)
+
+    if heart_rate_stats.empty:
+        ui.label("No heart rate records found in this export file.").classes(
+            "text-sm text-gray-500"
+        )
+        _logger.info("No heart rate records found for trends_period=%s", state.trends_period)
+        return
+
+    render_bar_graph(
+        "HR frequency over time",
+        dict(  # type: ignore[arg-type]
+            heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
+            .set_index("period")["avg"]
+            .to_dict()
+        ),
+        "bpm",
+    )
+    _logger.debug("Heart rate stats: %s", heart_rate_stats)

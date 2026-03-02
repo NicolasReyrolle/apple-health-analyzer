@@ -262,6 +262,41 @@ class TestRenderTrendsGraphs:
             state.selected_activity_type = original_activity
             state.trends_period = original_period
 
+
+class TestRenderHealthDataTab:
+    """Tests for render_health_data_tab behavior."""
+
+    def test_render_health_data_tab_converts_period_keys_to_strings(self) -> None:
+        """Convert pandas Period keys to strings for JSON-safe chart options."""
+        original_records_by_type: Any = state.records_by_type
+        original_period = state.trends_period
+
+        records_by_type_mock = MagicMock()
+        records_by_type_mock.heart_rate_stats.return_value = pd.DataFrame(
+            {
+                "period": [pd.Period("2025-01", freq="M")],
+                "avg": [67.0],
+                "min": [67.0],
+                "max": [67.0],
+                "count": [1],
+            }
+        )
+
+        try:
+            state.records_by_type = records_by_type_mock
+            state.trends_period = "M"
+
+            with patch("ui.layout.render_bar_graph") as render_bar_graph_mock:
+                layout.render_health_data_tab.func()
+
+            render_bar_graph_mock.assert_called_once()
+            chart_data = render_bar_graph_mock.call_args[0][1]
+            assert isinstance(chart_data, dict)
+            assert list(chart_data.keys()) == ["2025-01"]  # type: ignore[arg-type]
+        finally:
+            state.records_by_type = original_records_by_type
+            state.trends_period = original_period
+
     def test_render_trends_graphs_with_quarter_period(self) -> None:
         """Test that render_trends_graphs uses correct period when set to quarter."""
         original_workouts: Any = state.workouts
@@ -353,7 +388,7 @@ class TestLoadWorkoutsFromFile:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        workouts, activity_options = layout.load_workouts_from_file(str(zip_path))
+        workouts, activity_options, _ = layout.load_workouts_from_file(str(zip_path))
 
         # Verify returned workouts is populated
         assert workouts is not None
@@ -407,7 +442,7 @@ class TestLoadWorkoutsFromFile:
             wm_instance_mock.get_activity_types.return_value = []
             wm_class_mock.return_value = wm_instance_mock
 
-            workouts, activity_options = layout.load_workouts_from_file(str(zip_path))
+            workouts, activity_options, _ = layout.load_workouts_from_file(str(zip_path))
 
             # Verify WorkoutManager was instantiated and returned
             wm_class_mock.assert_called_once()
