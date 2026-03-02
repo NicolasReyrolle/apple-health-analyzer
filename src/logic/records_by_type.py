@@ -55,6 +55,8 @@ class RecordsByType:
 
         work = df[[date_col, value_col]].copy()
         work[date_col] = pd.to_datetime(work[date_col], errors="coerce")
+        if isinstance(work[date_col].dtype, pd.DatetimeTZDtype):
+            work[date_col] = work[date_col].dt.tz_localize(None)
         work[value_col] = pd.to_numeric(work[value_col], errors="coerce")
         work = work.dropna(subset=[date_col, value_col])
 
@@ -71,7 +73,9 @@ class RecordsByType:
         return result
 
     def heart_rate_stats(
-        self, period: str = "M", context: HeartRateMeasureContext = HeartRateMeasureContext.SEDENTARY
+        self,
+        period: str = "M",
+        context: HeartRateMeasureContext = HeartRateMeasureContext.SEDENTARY,
     ) -> pd.DataFrame:
         """Return aggregated heart rate stats by period."""
         heart_rate_df = self.heart_rate()
