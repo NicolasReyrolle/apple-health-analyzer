@@ -540,13 +540,7 @@ def render_trends_graphs() -> None:
 def render_health_data_tab() -> None:
     """Render the health data tab with filters and graphs."""
     heart_rate_stats = state.records_by_type.heart_rate_stats(period=state.trends_period)
-
-    if heart_rate_stats.empty:
-        ui.label("No heart rate records found in this export file.").classes(
-            "text-sm text-gray-500"
-        )
-        _logger.info("No heart rate records found for trends_period=%s", state.trends_period)
-        return
+    body_mass_stats = state.records_by_type.weight_stats(period=state.trends_period)
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_generic_graph(
@@ -558,4 +552,12 @@ def render_health_data_tab() -> None:
             ),
             "bpm",
             graph_type="line",
+        )
+        render_generic_graph(
+            "Body Mass over time",
+            dict(  # type: ignore[arg-type]
+                body_mass_stats.assign(period=body_mass_stats["period"].astype(str))
+                .set_index("period")["avg"]
+                .to_dict()
+            ),
         )
