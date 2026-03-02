@@ -75,12 +75,12 @@ class RecordsByType:
     def heart_rate_stats(
         self,
         period: str = "M",
-        context: HeartRateMeasureContext = HeartRateMeasureContext.SEDENTARY,
+        context: HeartRateMeasureContext | None = None,
     ) -> pd.DataFrame:
         """Return aggregated heart rate stats by period."""
         heart_rate_df = self.heart_rate()
         query_filter = None
-        if "HeartRateMotionContext" in heart_rate_df.columns:
+        if context is not None and "HeartRateMotionContext" in heart_rate_df.columns:
             query_filter = f"HeartRateMotionContext == {context.value}"
 
         return self.stats_by_period(

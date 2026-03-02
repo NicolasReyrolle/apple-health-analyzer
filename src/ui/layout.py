@@ -548,13 +548,14 @@ def render_health_data_tab() -> None:
         _logger.info("No heart rate records found for trends_period=%s", state.trends_period)
         return
 
-    render_generic_graph(
-        "HR frequency over time",
-        dict(  # type: ignore[arg-type]
-            heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
-            .set_index("period")["avg"]
-            .to_dict()
-        ),
-        "bpm",
-        graph_type="line",
-    )
+    with ui.row().classes(ROW_CENTERED_CLASSES):
+        render_generic_graph(
+            "Resting HR frequency over time",
+            dict(  # type: ignore[arg-type]
+                heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
+                .set_index("period")["avg"]
+                .to_dict()
+            ),
+            "bpm",
+            graph_type="line",
+        )
