@@ -66,7 +66,7 @@ class TestComplexRealWorldRecords:
     """Test parsing of complex real-world records."""
 
     def test_parse_complex_records(self, create_health_zip: Callable[..., str]) -> None:
-        """Test parsing a complex running workout with multiple activities and route"""
+        """Test parsing complex real-world heart rate Record entries from an export fragment."""
 
         xml_content = build_health_export_xml([load_export_fragment("record_heart_rate.xml")])
         zip_path = create_health_zip(xml_content=xml_content)
@@ -123,72 +123,72 @@ class TestComplexRealWorldRecords:
 class TestToNumber:
     """Test suite for ExportParser.to_number static method."""
 
-    def testto_number_with_none(self) -> None:
+    def test_to_number_with_none(self) -> None:
         """Test that None input returns None."""
         assert ExportParser.to_number(None) is None
 
-    def testto_number_with_integer_string(self) -> None:
+    def test_to_number_with_integer_string(self) -> None:
         """Test that integer string returns int."""
         assert ExportParser.to_number("42") == 42
         assert isinstance(ExportParser.to_number("42"), int)
 
-    def testto_number_with_float_string(self) -> None:
+    def test_to_number_with_float_string(self) -> None:
         """Test that float string returns float."""
         assert ExportParser.to_number("3.14") == 3.14
         assert isinstance(ExportParser.to_number("3.14"), float)
 
-    def testto_number_with_float_that_is_integer(self) -> None:
+    def test_to_number_with_float_that_is_integer(self) -> None:
         """Test that float string like '5.0' returns int."""
         assert ExportParser.to_number("5.0") == 5
         assert isinstance(ExportParser.to_number("5.0"), int)
 
-    def testto_number_with_negative_integer(self) -> None:
+    def test_to_number_with_negative_integer(self) -> None:
         """Test that negative integer string returns int."""
         assert ExportParser.to_number("-10") == -10
         assert isinstance(ExportParser.to_number("-10"), int)
 
-    def testto_number_with_negative_float(self) -> None:
+    def test_to_number_with_negative_float(self) -> None:
         """Test that negative float string returns float."""
         assert ExportParser.to_number("-2.5") == -2.5
         assert isinstance(ExportParser.to_number("-2.5"), float)
 
-    def testto_number_with_zero(self) -> None:
+    def test_to_number_with_zero(self) -> None:
         """Test that '0' returns int 0."""
         assert ExportParser.to_number("0") == 0
         assert isinstance(ExportParser.to_number("0"), int)
 
-    def testto_number_with_zero_float(self) -> None:
+    def test_to_number_with_zero_float(self) -> None:
         """Test that '0.0' returns int 0."""
         assert ExportParser.to_number("0.0") == 0
         assert isinstance(ExportParser.to_number("0.0"), int)
 
-    def testto_number_with_scientific_notation(self) -> None:
+    def test_to_number_with_scientific_notation(self) -> None:
         """Test that scientific notation string is parsed correctly."""
         assert ExportParser.to_number("1e3") == 1000
         assert isinstance(ExportParser.to_number("1e3"), int)
 
-    def testto_number_with_invalid_string(self) -> None:
+    def test_to_number_with_invalid_string(self) -> None:
         """Test that non-numeric string returns None."""
         assert ExportParser.to_number("abc") is None
         assert ExportParser.to_number("123abc") is None
         assert ExportParser.to_number("") is None
 
-    def testto_number_with_whitespace(self) -> None:
+    def test_to_number_with_whitespace(self) -> None:
         """Test that string with only whitespace returns None."""
         assert ExportParser.to_number("   ") is None
 
-    def testto_number_with_leading_trailing_whitespace(self) -> None:
+    def test_to_number_with_leading_trailing_whitespace(self) -> None:
         """Test that numeric string with whitespace is parsed correctly."""
         assert ExportParser.to_number("  42  ") == 42
         assert ExportParser.to_number("  3.14  ") == 3.14
 
-    def testto_number_with_very_large_number(self) -> None:
+    def test_to_number_with_very_large_number(self) -> None:
         """Test that very large numbers are handled correctly."""
         result = ExportParser.to_number("999999999999999")
         assert result == 999999999999999
         assert isinstance(result, int)
 
-    def testto_number_with_very_small_float(self) -> None:
+    def test_to_number_with_very_small_float(self) -> None:
         """Test that very small floats are handled correctly."""
         result = ExportParser.to_number("0.0000001")
         assert result == 0.0000001

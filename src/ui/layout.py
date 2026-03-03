@@ -289,7 +289,7 @@ def load_workouts_from_file(
 ) -> tuple[WorkoutManager, list[str], RecordsByType]:
     """Load and parse the Apple Health export file.
 
-    Returns a tuple of (WorkoutManager, activity_options, records_dict) so that all UI
+    Returns a tuple of (WorkoutManager, activity_options, records_by_type) so that all UI
     state mutations and refresh calls can be performed on the event-loop
     thread by the caller (load_file), avoiding thread-safety issues.
     """
@@ -324,7 +324,7 @@ def load_workouts_from_file(
     with ExportParser(progress_callback=parser_message_handler) as ep:
         phd = ep.parse(file_path)
         workouts_df = phd.workouts
-        records_dict = RecordsByType(data=phd.records_by_type)
+        records_by_type = RecordsByType(data=phd.records_by_type)
 
     report(93, "Building workout index...")
     workouts = WorkoutManager(workouts_df)
@@ -337,7 +337,7 @@ def load_workouts_from_file(
     activity_options = ["All"] + activity_types
 
     report(97, "Preparing dashboard update...")
-    return workouts, activity_options, records_dict
+    return workouts, activity_options, records_by_type
 
 
 async def load_file() -> None:
@@ -366,13 +366,13 @@ async def load_file() -> None:
         loop.call_soon_threadsafe(_update)
 
     try:
-        workouts, activity_options, records_dict = await asyncio.to_thread(
+        workouts, activity_options, records_by_type = await asyncio.to_thread(
             load_workouts_from_file,
             state.input_file.value,
             progress_callback,
         )
         state.workouts = workouts
-        state.records_by_type = records_dict
+        state.records_by_type = records_by_type
         state.file_loaded = True
         state.activity_options = activity_options
         render_activity_select.refresh()
@@ -571,7 +571,9 @@ def render_health_data_tab() -> None:
         return result
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        heart_rate_stats = state.records_by_type.heart_rate_stats(period=state.trends_period)
+        heart_rate_stats = state.records_by_type.heart_rate_stats(
+            period=state.trends_period, context=RecordsByType.HeartRateMeasureContext.SEDENTARY
+        )
         render_generic_graph(
             "Resting HR frequency over time",
             to_json_safe(
