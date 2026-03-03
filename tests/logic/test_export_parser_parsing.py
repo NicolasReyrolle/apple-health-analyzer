@@ -176,7 +176,7 @@ class TestExtractHealthDataRecord:
 
         assert record_type == "HeartRate"
         assert record_data["type"] == "HeartRate"
-        assert record_data["HeartRateMotionContext"] is True
+        assert record_data["HeartRateMotionContext"] == 1
 
     def test_extract_health_data_record_with_multiple_metadata(self) -> None:
         """Test extracting a record with multiple metadata entries."""
@@ -204,7 +204,7 @@ class TestExtractHealthDataRecord:
 
         assert "DeviceType" in record_data
         assert "Source" in record_data
-        assert record_data["Source"] is True
+        assert record_data["Source"] == 1
 
     def test_extract_health_data_record_with_metadata_unit(self) -> None:
         """Test extracting a record with metadata that has units."""

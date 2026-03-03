@@ -75,7 +75,8 @@ def test_refresh_data_formats_metrics_display() -> None:
     finally:
         state.workouts = original_workouts
 
-def mock_refresh_data():
+
+def mock_refresh_data() -> None:
     """Helper to call refresh_data with necessary UI patches."""
     with patch("ui.layout.render_activity_graphs.refresh"):
         with patch("ui.layout.render_trends_graphs.refresh"):

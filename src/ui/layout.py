@@ -3,7 +3,8 @@
 import asyncio
 import logging
 import time
-from typing import Callable, Optional
+from collections.abc import Hashable, Mapping, Sequence
+from typing import Any, Callable, Optional
 
 import pandas as pd
 from nicegui import app, ui
@@ -205,20 +206,27 @@ def render_pie_rose_graph(label: str, values: dict[str, int], unit: str = "") ->
         )
 
 
-def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list[float]:
+def calculate_moving_average(
+    y_values: Sequence[float | int | None], window_size: int = 12
+) -> list[float | None]:
     """
     Calculate a moving average to smooth out peaks and valleys in sports data.
 
     Uses a rolling window with ``min_periods=1``, which behaves like an expanding
     average for the initial points when there are fewer samples than ``window_size``.
+    Missing values (None/NaN) are preserved as None in the output.
     """
     # Use pandas rolling window to calculate the moving average consistently
-    return pd.Series(y_values).rolling(window=window_size, min_periods=1).mean().round(2).tolist()
+    # Convert y_values to a list to ensure compatibility with pandas Series
+    # constructor's type hints.
+    series = pd.Series(list(y_values), dtype=float)
+    result = series.rolling(window=window_size, min_periods=1).mean().round(2)
+    return [None if pd.isna(v) else v for v in result]
 
 
 def render_generic_graph(
     label: str,
-    values: dict[str, int],
+    values: Mapping[str, float | int | None],
     unit: str = "",
     graph_type: str = "bar",
     show_trend: bool = True,
@@ -547,11 +555,26 @@ def render_trends_graphs() -> None:
 def render_health_data_tab() -> None:
     """Render the health data tab with filters and graphs."""
 
+    def to_json_safe(d: dict[Hashable, Any]) -> dict[str, float | int | None]:
+        """Replace pd.NA/NaN with None for JSON-safe chart data."""
+        result: dict[str, float | int | None] = {}
+        for key, value in d.items():
+            normalized_key = str(key)
+            if value is None:
+                result[normalized_key] = None
+            elif isinstance(value, float) and pd.isna(value):
+                result[normalized_key] = None
+            elif isinstance(value, (int, float)):
+                result[normalized_key] = value
+            else:
+                result[normalized_key] = None
+        return result
+
     with ui.row().classes(ROW_CENTERED_CLASSES):
         heart_rate_stats = state.records_by_type.heart_rate_stats(period=state.trends_period)
         render_generic_graph(
             "Resting HR frequency over time",
-            dict(  # type: ignore[arg-type]
+            to_json_safe(
                 heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
                 .set_index("period")["avg"]
                 .to_dict()
@@ -563,7 +586,7 @@ def render_health_data_tab() -> None:
         body_mass_stats = state.records_by_type.weight_stats(period=state.trends_period)
         render_generic_graph(
             "Body Mass over time",
-            dict(  # type: ignore[arg-type]
+            to_json_safe(
                 body_mass_stats.assign(period=body_mass_stats["period"].astype(str))
                 .set_index("period")["avg"]
                 .to_dict()
@@ -576,7 +599,7 @@ def render_health_data_tab() -> None:
         vo2_max_stats = state.records_by_type.vo2_max_stats(period=state.trends_period)
         render_generic_graph(
             "VO2 Max over time",
-            dict(  # type: ignore[arg-type]
+            to_json_safe(
                 vo2_max_stats.assign(period=vo2_max_stats["period"].astype(str))
                 .set_index("period")["avg"]
                 .to_dict()
