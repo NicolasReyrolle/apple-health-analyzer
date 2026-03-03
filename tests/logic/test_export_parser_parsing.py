@@ -273,3 +273,17 @@ class TestExtractHealthDataRecord:
 
         assert record_type == "HeartRate"
         assert record_data["startDate"] is None
+
+    def test_extract_health_data_record_missing_type(self) -> None:
+        """Test that a record with missing type attribute returns None."""
+        elem = Element(
+            "Record",
+            attrib={
+                "value": "67",
+                "startDate": "2022-01-17 16:34:57 +0100",
+            },
+        )
+        parser = ep.ExportParser()
+        result = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert result is None

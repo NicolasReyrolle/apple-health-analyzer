@@ -187,10 +187,11 @@ class ExportParser:
                     elem.clear()
 
                 if event == "end" and elem.tag == "Record":
-                    record_type, record_data = self._extract_health_data_record(elem)
-
-                    if record_type and record_type in SUPPORTED_RECORD_TYPES:
-                        record_rows_by_type[record_type].append(record_data)
+                    result = self._extract_health_data_record(elem)
+                    if result is not None:
+                        record_type, record_data = result
+                        if record_type in SUPPORTED_RECORD_TYPES:
+                            record_rows_by_type[record_type].append(record_data)
 
                     elem.clear()
 
@@ -208,9 +209,12 @@ class ExportParser:
 
             return ParsedHealthData(workouts=workouts_df, records_by_type=records_by_type_df)
 
-    def _extract_health_data_record(self, elem: Element) -> Tuple[str, dict[str, Any]]:
+    def _extract_health_data_record(self, elem: Element) -> Optional[Tuple[str, dict[str, Any]]]:
         """Extract and clean health data record from element attributes and metadata."""
-        record_type = elem.get("type", "").replace("HKQuantityTypeIdentifier", "")
+        raw_type = elem.get("type")
+        if not raw_type:
+            return None
+        record_type = raw_type.replace("HKQuantityTypeIdentifier", "")
         record_data = {
             "type": record_type,
             "startDate": elem.get("startDate"),
