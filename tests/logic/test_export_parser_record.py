@@ -220,3 +220,27 @@ class TestParseMetadataValue:  # pylint: disable=too-few-public-methods
 
         assert value == "Europe/Luxembourg"
         assert unit is None
+
+    def test_parse_metadata_value_with_leading_trailing_whitespace(self) -> None:
+        """Strip leading/trailing whitespace from the raw value before parsing."""
+        value, unit = ExportParser.parse_metadata_value("  42  ")
+
+        assert value == 42
+        assert isinstance(value, int)
+        assert unit is None
+
+    def test_parse_metadata_value_with_multiple_spaces(self) -> None:
+        """Handle multiple spaces between number and unit correctly."""
+        value, unit = ExportParser.parse_metadata_value("100  m")
+
+        assert value == 100.0
+        assert isinstance(value, float)
+        assert unit == "m"
+
+    def test_parse_metadata_value_with_trailing_space_and_no_unit(self) -> None:
+        """Treat trailing whitespace after number (no unit) as unit=None."""
+        value, unit = ExportParser.parse_metadata_value("55 ")
+
+        assert value == 55
+        assert isinstance(value, int)
+        assert unit is None
