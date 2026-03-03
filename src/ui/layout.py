@@ -3,7 +3,8 @@
 import asyncio
 import logging
 import time
-from typing import Callable, Optional, Sequence
+from collections.abc import Hashable, Mapping, Sequence
+from typing import Any, Callable, Optional
 
 import pandas as pd
 from nicegui import app, ui
@@ -216,14 +217,16 @@ def calculate_moving_average(
     Missing values (None/NaN) are preserved as None in the output.
     """
     # Use pandas rolling window to calculate the moving average consistently
-    series = pd.Series(y_values, dtype=float)
+    # Convert y_values to a list to ensure compatibility with pandas Series
+    # constructor's type hints.
+    series = pd.Series(list(y_values), dtype=float)
     result = series.rolling(window=window_size, min_periods=1).mean().round(2)
     return [None if pd.isna(v) else v for v in result]
 
 
 def render_generic_graph(
     label: str,
-    values: dict[str, float | int | None],
+    values: Mapping[str, float | int | None],
     unit: str = "",
     graph_type: str = "bar",
     show_trend: bool = True,
@@ -552,9 +555,20 @@ def render_trends_graphs() -> None:
 def render_health_data_tab() -> None:
     """Render the health data tab with filters and graphs."""
 
-    def to_json_safe(d: dict[str, float | int | None]) -> dict[str, float | int | None]:
+    def to_json_safe(d: dict[Hashable, Any]) -> dict[str, float | int | None]:
         """Replace pd.NA/NaN with None for JSON-safe chart data."""
-        return {k: (None if pd.isna(v) else v) for k, v in d.items()}
+        result: dict[str, float | int | None] = {}
+        for key, value in d.items():
+            normalized_key = str(key)
+            if value is None:
+                result[normalized_key] = None
+            elif isinstance(value, float) and pd.isna(value):
+                result[normalized_key] = None
+            elif isinstance(value, (int, float)):
+                result[normalized_key] = value
+            else:
+                result[normalized_key] = None
+        return result
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
         heart_rate_stats = state.records_by_type.heart_rate_stats(period=state.trends_period)
