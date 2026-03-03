@@ -10,9 +10,11 @@ A modern, graphical tool to parse, analyze, and export your Apple Health data. O
 - **ZIP Parsing**: Directly select and parse your `export.zip` file from Apple Health.
 - **Workout Extraction**: Focused on running workouts with detailed metrics (distance, duration, METs, heart rate, power, etc.).
 - **Visual Statistics**: Real-time summary of total activities, distance, duration, elevation, and calories with interactive charts (pie/rose charts for activity breakdown, bar charts with trend lines for time-based analysis).
+- **Health Data Insights**: Dedicated Health Data tab with period-based trends for resting heart rate, body mass, and VO2 max.
 - **Activity Filtering**: Filter your workout data by activity type (Running, Cycling, Walking, etc.).
 - **Date Range Filtering**: Analyze specific time periods using the date range picker to focus on your desired date ranges.
 - **Trends Period Aggregation**: Switch the Trends tab aggregation between week, month, quarter, or year.
+- **Gap-Aware Time Series**: Missing periods are preserved in health-data charts, so the x-axis remains continuous and missing measurements are explicit (not coerced to zero).
 - **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
 - All processing happens locally on your machine.
 - **Modern UI**: Dark/Light mode support with a responsive layout.
@@ -63,7 +65,7 @@ python -m nicegui src.apple_health_analyzer
 1. Click **Browse** to select your Apple Health `export.zip`.
 1. Click **Load** to parse the data.
 1. View the statistics in the **Overview** tab.
-1. Explore your data in the **Activities** tab (pie/rose charts grouped by activity type) and **Trends** tab (weekly/monthly/quarterly/yearly bar charts with moving average trend lines).
+1. Explore your data in the **Activities** tab (pie/rose charts grouped by activity type), **Trends** tab (weekly/monthly/quarterly/yearly bar charts with moving average trend lines), and **Health Data** tab (line charts for resting heart rate, body mass, and VO2 max).
 1. Use the **Activity filter** in the left drawer to focus on specific workout types.
 1. Use the **Date range picker** to analyze specific time periods.
 1. Use the **Aggregate by** selector in the **Trends** tab to change the period.
