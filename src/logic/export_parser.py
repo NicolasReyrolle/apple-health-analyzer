@@ -19,6 +19,9 @@ _logger = logging.getLogger(__name__)
 # Configuration constants
 WORKOUT_PROGRESS_INTERVAL = 100  # Report progress every N workouts
 
+# Only parse record types that the application currently supports to limit memory usage.
+SUPPORTED_RECORD_TYPES = frozenset({"HeartRate", "BodyMass", "VO2Max"})
+
 
 class ExportParser:
     """Reads and parses Apple Health export files."""
@@ -161,7 +164,7 @@ class ExportParser:
                 _logger.debug(message)
 
     def _load_data(self, zipfile: ZipFile) -> ParsedHealthData:
-        """Load workouts of a specific type from the export file."""
+        """Load workouts and HealthKit records from the export file into ParsedHealthData."""
         self._log("Loading the workouts...")
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
@@ -185,7 +188,8 @@ class ExportParser:
                 if event == "end" and elem.tag == "Record":
                     record_type, record_data = self._extract_health_data_record(elem)
 
-                    record_rows_by_type[record_type].append(record_data)
+                    if record_type and record_type in SUPPORTED_RECORD_TYPES:
+                        record_rows_by_type[record_type].append(record_data)
 
                     elem.clear()
 
@@ -214,7 +218,13 @@ class ExportParser:
         # Include metadata entries as additional fields
         for child in elem:
             if child.tag == "MetadataEntry":
-                key = child.get("key", "").replace("HKMetadataKey", "")
+                raw_key = child.get("key", "")
+                if raw_key.startswith("HKMetadataKey"):
+                    key = raw_key[len("HKMetadataKey"):]
+                elif raw_key.startswith("HK"):
+                    key = raw_key[2:]
+                else:
+                    key = raw_key
                 value, unit = self.parse_metadata_value(child.get("value", ""))
                 record_data[key] = value
                 if unit:
