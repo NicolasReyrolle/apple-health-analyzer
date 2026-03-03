@@ -11,37 +11,37 @@
 - ✅ Activity filtering (dropdown with activity type selection)
 - ✅ **Date range filtering** (date picker with start/end dates)
 - ✅ **Trends period aggregation** (week/month/quarter/year selector)
+- ✅ **Health Data tab** with period-based charts for resting heart rate, body mass, and VO2 max
+- ✅ Gap-aware health-data time series (missing periods shown explicitly, not coerced to zero)
 - ✅ Comprehensive test coverage for all metrics methods and filtering features
 
-### Work In Progress / Disabled Features
+### Work In Progress
 
-1. **"Health Data" tab** - Currently disabled ([src/ui/layout.py](src/ui/layout.py#L331))
+1. **Health Data breadth** - Additional record types and richer health analytics are still limited.
 
 ## Recommended Next Steps
 
-### Priority 1: Implement "Health Data" Tab
+### Priority 1: Expand Health Data Coverage
 
-**Why:** This tab is present in the UI but completely disabled. Based on the data model, it could display raw health metrics (heart rate, steps, blood pressure, etc.) that aren't workouts.
+**Why:** The Health Data tab is now available, but only a subset of metrics is visualized.
 
 **Implementation:**
 
 1. Extend [src/logic/export_parser.py](src/logic/export_parser.py):
-   - Add `_load_health_records()` method to parse `<Record>` elements from Apple Health XML
-   - Parse common health metrics (steps, heart rate, blood pressure, sleep, etc.)
+   - Improve normalization for additional record types (sleep, blood pressure, respiratory rate, etc.)
+   - Keep metadata parsing behavior stable for enumerated values
 
-2. Create new manager class ([src/logic/health_record_manager.py](src/logic/health_record_manager.py)):
-   - Similar structure to WorkoutManager
-   - Methods for aggregating health metrics by period
-   - Support for different metric types
+2. Extend [src/logic/records_by_type.py](src/logic/records_by_type.py):
+   - Add convenience accessors + period aggregations for new metrics
+   - Keep missing periods explicit (None) for chart continuity
 
-3. Update [src/ui/layout.py](src/ui/layout.py#L331):
-   - Remove `.props("disable")` from Health Data tab
-   - Create `render_health_data_graphs()` function
-   - Add health data visualizations (line charts for continuous metrics, bar charts for discrete)
+3. Update [src/ui/layout.py](src/ui/layout.py):
+   - Add new health charts while preserving current simple tab layout
+   - Keep JSON-safe NA serialization for ECharts
 
-4. Add comprehensive test coverage
+4. Add end-to-end fixture-based tests for each new metric path
 
-**Complexity:** High | **Impact:** High | **Estimated effort:** 12-16 hours
+**Complexity:** Medium-High | **Impact:** High | **Estimated effort:** 8-12 hours
 
 ---
 
@@ -146,4 +146,4 @@ After implementing each priority:
 - **For data enthusiasts:** Priority 1 (Health Data) + Priority 2 (Enhanced Visualizations)
 - **For athletes/coaches:** Priority 3 (Routes) + Priority 4 (Analytics)
 
-The most logical progression is **Priority 1 → Priority 2 → Priority 3**, as each builds on the foundation established by the previous one.
+The most logical progression is **Priority 1 → Priority 2 → Priority 3**, as each builds on the existing health + workout visualization foundation.
