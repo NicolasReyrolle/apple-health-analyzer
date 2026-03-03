@@ -193,3 +193,30 @@ class TestToNumber:
         result = ExportParser.to_number("0.0000001")
         assert result == 0.0000001
         assert isinstance(result, float)
+
+
+class TestParseMetadataValue:  # pylint: disable=too-few-public-methods
+    """Test suite for ExportParser.parse_metadata_value static method."""
+
+    def test_parse_metadata_value_keeps_numeric_flags_as_ints(self) -> None:
+        """Return integers for bare numeric metadata values (no bool coercion)."""
+        value, unit = ExportParser.parse_metadata_value("1")
+
+        assert value == 1
+        assert isinstance(value, int)
+        assert unit is None
+
+    def test_parse_metadata_value_with_number_and_unit(self) -> None:
+        """Parse a numeric metadata value that includes a unit."""
+        value, unit = ExportParser.parse_metadata_value("100 m")
+
+        assert value == 100.0
+        assert isinstance(value, float)
+        assert unit == "m"
+
+    def test_parse_metadata_value_with_text(self) -> None:
+        """Return raw text for non-numeric metadata values."""
+        value, unit = ExportParser.parse_metadata_value("Europe/Luxembourg")
+
+        assert value == "Europe/Luxembourg"
+        assert unit is None

@@ -50,7 +50,7 @@ class ExportParser:
             return None
 
     @staticmethod
-    def _parse_metadata_value(raw_value: Optional[str]) -> Tuple[Any, Optional[str]]:
+    def parse_metadata_value(raw_value: Optional[str]) -> Tuple[Any, Optional[str]]:
         """
         Parse a metadata entry value without boolean coercion.
 
@@ -215,7 +215,7 @@ class ExportParser:
         for child in elem:
             if child.tag == "MetadataEntry":
                 key = child.get("key", "").replace("HKMetadataKey", "")
-                value, unit = self._parse_metadata_value(child.get("value", ""))
+                value, unit = self.parse_metadata_value(child.get("value", ""))
                 record_data[key] = value
                 if unit:
                     record_data[f"{key}Unit"] = unit

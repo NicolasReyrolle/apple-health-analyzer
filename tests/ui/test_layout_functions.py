@@ -341,6 +341,73 @@ class TestRenderHealthDataTab:
             state.records_by_type = original_records_by_type
             state.trends_period = original_period
 
+    def test_render_health_data_tab_serializes_missing_and_invalid_values(self) -> None:
+        """Serialize None/NaN/non-numeric avg values to explicit None for chart data."""
+        original_records_by_type: Any = state.records_by_type
+        original_period = state.trends_period
+
+        records_by_type_mock = MagicMock()
+        records_by_type_mock.heart_rate_stats.return_value = pd.DataFrame(
+            {
+                "period": [pd.Period("2025-01", freq="M")],
+                "avg": [None],
+                "min": [0.0],
+                "max": [0.0],
+                "count": [0],
+            }
+        )
+        records_by_type_mock.weight_stats.return_value = pd.DataFrame(
+            {
+                "period": [pd.Period("2025-01", freq="M")],
+                "avg": [float("nan")],
+                "min": [0.0],
+                "max": [0.0],
+                "count": [0],
+            }
+        )
+        records_by_type_mock.vo2_max_stats.return_value = pd.DataFrame(
+            {
+                "period": [pd.Period("2025-01", freq="M")],
+                "avg": ["invalid"],
+                "min": [0.0],
+                "max": [0.0],
+                "count": [0],
+            }
+        )
+
+        try:
+            state.records_by_type = records_by_type_mock
+            state.trends_period = "M"
+
+            with (
+                patch("ui.layout.ui.row", return_value=_DummyRow()),
+                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
+            ):
+                layout.render_health_data_tab.func()
+
+            heart_rate_call = next(
+                call
+                for call in render_generic_graph_mock.call_args_list
+                if call.args and call.args[0] == "Resting HR frequency over time"
+            )
+            body_mass_call = next(
+                call
+                for call in render_generic_graph_mock.call_args_list
+                if call.args and call.args[0] == "Body Mass over time"
+            )
+            vo2_max_call = next(
+                call
+                for call in render_generic_graph_mock.call_args_list
+                if call.args and call.args[0] == "VO2 Max over time"
+            )
+
+            assert heart_rate_call.args[1]["2025-01"] is None
+            assert body_mass_call.args[1]["2025-01"] is None
+            assert vo2_max_call.args[1]["2025-01"] is None
+        finally:
+            state.records_by_type = original_records_by_type
+            state.trends_period = original_period
+
     def test_render_trends_graphs_with_quarter_period(self) -> None:
         """Test that render_trends_graphs uses correct period when set to quarter."""
         original_workouts: Any = state.workouts
