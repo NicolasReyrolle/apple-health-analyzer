@@ -323,7 +323,10 @@ class TestRenderHealthDataTab:
             state.records_by_type = records_by_type_mock
             state.trends_period = "M"
 
-            with patch("ui.layout.render_generic_graph") as render_generic_graph_mock:
+            with (
+                patch("ui.layout.ui.row", return_value=_DummyRow()),
+                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
+            ):
                 layout.render_health_data_tab.func()
 
             heart_rate_call = next(
