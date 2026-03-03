@@ -221,7 +221,7 @@ def calculate_moving_average(
     # constructor's type hints.
     series = pd.Series(list(y_values), dtype=float)
     result = series.rolling(window=window_size, min_periods=1).mean().round(2)
-    return [None if pd.isna(v) else v for v in result]
+    return [None if pd.isna(v) else float(v) for v in result]
 
 
 def render_generic_graph(
