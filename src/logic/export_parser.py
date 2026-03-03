@@ -50,6 +50,34 @@ class ExportParser:
             return None
 
     @staticmethod
+    def _parse_metadata_value(raw_value: Optional[str]) -> Tuple[Any, Optional[str]]:
+        """
+        Parse a metadata entry value without boolean coercion.
+
+        Unlike _parse_value, numeric values "0" and "1" are returned as integers,
+        not booleans. This is needed for enumerated metadata fields such as
+        HeartRateMotionContext (0/1/2).
+
+        Returns: (value, unit) where unit is None when no unit is present.
+        """
+        if not raw_value:
+            return None, None
+
+        if " " not in raw_value:
+            num = ExportParser.to_number(raw_value)
+            if num is not None:
+                return num, None
+            return raw_value, None
+
+        parts = raw_value.split(" ")
+        try:
+            val = float(parts[0])
+            unit = parts[1]
+            return val, unit
+        except ValueError:
+            return raw_value, None
+
+    @staticmethod
     def _parse_value(raw_value: Optional[str]) -> Tuple[Any, Optional[str]]:
         """
         Internal helper: Separates value and unit, converts to standard metric system.
@@ -187,7 +215,7 @@ class ExportParser:
         for child in elem:
             if child.tag == "MetadataEntry":
                 key = child.get("key", "").replace("HKMetadataKey", "")
-                value, unit = self._parse_value(child.get("value", ""))
+                value, unit = self._parse_metadata_value(child.get("value", ""))
                 record_data[key] = value
                 if unit:
                     record_data[f"{key}Unit"] = unit
