@@ -47,6 +47,7 @@ class RecordsByType:
         date_col: str = "startDate",
         query_filter: str | None = None,
         round_decimals: int = 2,
+        fill_missing_periods: bool = True,
     ) -> pd.DataFrame:
         """Aggregate avg/min/max/count by period for one record type."""
         df = self.get(record_type)
@@ -77,13 +78,31 @@ class RecordsByType:
             .sort_values("period")
         )
         result[["avg", "min", "max"]] = result[["avg", "min", "max"]].round(round_decimals)
+
+        # Add missing periods while preserving missing metric values (None)
+        if fill_missing_periods:
+            full_range = pd.period_range(
+                start=result["period"].min(),
+                end=result["period"].max(),
+                freq=period,
+            )
+            result = (
+                result.set_index("period").reindex(full_range).rename_axis("period").reset_index()
+            )
+            result[["avg", "min", "max"]] = result[["avg", "min", "max"]].where(
+                result[["avg", "min", "max"]].notna(), pd.NA  # type: ignore[arg-type]
+            )
+            result["count"] = result["count"].fillna(0)
+            result["count"] = result["count"].astype(int)
+
         return result
 
     def heart_rate_stats(
         self,
         period: str = "M",
         context: HeartRateMeasureContext | None = None,
-        round_decimals: int = 0,
+        round_decimals: int = 2,
+        fill_missing_periods: bool = True,
     ) -> pd.DataFrame:
         """Return aggregated heart rate stats by period."""
         heart_rate_df = self.heart_rate()
@@ -96,20 +115,33 @@ class RecordsByType:
             period=period,
             query_filter=query_filter,
             round_decimals=round_decimals,
+            fill_missing_periods=fill_missing_periods,
         )
 
-    def weight_stats(self, period: str = "M", round_decimals: int = 1) -> pd.DataFrame:
+    def weight_stats(
+        self,
+        period: str = "M",
+        round_decimals: int = 2,
+        fill_missing_periods: bool = True,
+    ) -> pd.DataFrame:
         """Return aggregated weight stats by period."""
         return self.stats_by_period(
             self.BODY_MASS_TYPE,
             period=period,
             round_decimals=round_decimals,
+            fill_missing_periods=fill_missing_periods,
         )
 
-    def vo2_max_stats(self, period: str = "M", round_decimals: int = 2) -> pd.DataFrame:
+    def vo2_max_stats(
+        self,
+        period: str = "M",
+        round_decimals: int = 2,
+        fill_missing_periods: bool = True,
+    ) -> pd.DataFrame:
         """Return aggregated VO2 max stats by period."""
         return self.stats_by_period(
             self.VO2_MAX_TYPE,
             period=period,
             round_decimals=round_decimals,
+            fill_missing_periods=fill_missing_periods,
         )

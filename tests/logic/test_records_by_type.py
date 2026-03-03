@@ -233,6 +233,28 @@ class TestRecordsByTypeConvenienceStats:
         assert list(result["min"]) == [49.5]
         assert list(result["max"]) == [50.0]
 
+    def test_vo2_max_stats_fill_missing_periods_parameter(self) -> None:
+        """Fill or keep gaps depending on fill_missing_periods parameter."""
+        vo2_max_df = pd.DataFrame(
+            {
+                "startDate": ["2024-01-05", "2024-03-10"],
+                "value": [49.5, 51.0],
+            }
+        )
+        records = RecordsByType({"VO2Max": vo2_max_df})
+
+        result_with_fill = records.vo2_max_stats("M", fill_missing_periods=True)
+        result_without_fill = records.vo2_max_stats("M", fill_missing_periods=False)
+
+        assert list(result_with_fill["period"].astype(str)) == ["2024-01", "2024-02", "2024-03"]
+        feb = result_with_fill[result_with_fill["period"].astype(str) == "2024-02"].iloc[0]
+        assert pd.isna(feb["avg"])
+        assert pd.isna(feb["min"])
+        assert pd.isna(feb["max"])
+        assert feb["count"] == 0
+
+        assert list(result_without_fill["period"].astype(str)) == ["2024-01", "2024-03"]
+
     def test_heart_rate_stats_from_export_sample_zip(
         self, create_health_zip: Callable[..., str]
     ) -> None:
