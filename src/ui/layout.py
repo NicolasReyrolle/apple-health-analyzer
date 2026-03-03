@@ -571,7 +571,9 @@ def render_health_data_tab() -> None:
         return result
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        heart_rate_stats = state.records_by_type.heart_rate_stats(period=state.trends_period)
+        heart_rate_stats = state.records_by_type.heart_rate_stats(
+            period=state.trends_period, context=RecordsByType.HeartRateMeasureContext.SEDENTARY
+        )
         render_generic_graph(
             "Resting HR frequency over time",
             to_json_safe(
