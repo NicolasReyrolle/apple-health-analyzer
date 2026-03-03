@@ -66,19 +66,20 @@ class ExportParser:
         if not raw_value:
             return None, None
 
-        if " " not in raw_value:
-            num = ExportParser.to_number(raw_value)
+        raw_value = raw_value.strip()
+
+        parts = raw_value.split(maxsplit=1)
+        if len(parts) == 1:
+            num = ExportParser.to_number(parts[0])
             if num is not None:
                 return num, None
-            return raw_value, None
+            return parts[0], None
 
-        parts = raw_value.split(" ")
-        try:
-            val = float(parts[0])
-            unit = parts[1]
-            return val, unit
-        except ValueError:
-            return raw_value, None
+        num = ExportParser.to_number(parts[0])
+        if num is not None:
+            unit = parts[1].strip() or None
+            return float(num), unit
+        return raw_value, None
 
     @staticmethod
     def _parse_value(raw_value: Optional[str]) -> Tuple[Any, Optional[str]]:
