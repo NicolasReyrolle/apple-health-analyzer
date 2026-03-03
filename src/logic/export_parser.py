@@ -172,7 +172,7 @@ class ExportParser:
             workout_rows: List[WorkoutRecord] = []
             record_rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
-            for event, elem in iterparse(export_file, events=("start", "end")):
+            for event, elem in iterparse(export_file, events=("end",)):
                 if event == "end" and elem.tag == "Workout":
                     activity_type = self._extract_activity_type(elem)
 
