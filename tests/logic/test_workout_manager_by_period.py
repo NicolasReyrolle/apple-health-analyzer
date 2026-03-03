@@ -31,7 +31,7 @@ class TestGetCaloriesByPeriod:
 
         assert result == {}
 
-    def test_get_calories_by_period_missing_startDate_column(self) -> None:
+    def test_get_calories_by_period_missing_start_date_column(self) -> None:
         """Return empty dict when startDate column is missing."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -46,7 +46,7 @@ class TestGetCaloriesByPeriod:
 
         assert result == {}
 
-    def test_get_calories_by_period_non_datetime_startDate(self) -> None:
+    def test_get_calories_by_period_non_datetime_start_date(self) -> None:
         """Return empty dict when startDate is not datetime-like."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -146,7 +146,7 @@ class TestGetDistanceByPeriod:
 
         assert result == {}
 
-    def test_get_distance_by_period_missing_startDate_column(self) -> None:
+    def test_get_distance_by_period_missing_start_date_column(self) -> None:
         """Return empty dict when startDate column is missing."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -161,7 +161,7 @@ class TestGetDistanceByPeriod:
 
         assert result == {}
 
-    def test_get_distance_by_period_non_datetime_startDate(self) -> None:
+    def test_get_distance_by_period_non_datetime_start_date(self) -> None:
         """Return empty dict when startDate is not datetime-like."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -333,7 +333,7 @@ class TestGetCountByPeriod:
 
         assert result == {}
 
-    def test_get_count_by_period_missing_startDate_column(self) -> None:
+    def test_get_count_by_period_missing_start_date_column(self) -> None:
         """Return empty dict when startDate column is missing."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -347,7 +347,7 @@ class TestGetCountByPeriod:
 
         assert result == {}
 
-    def test_get_count_by_period_non_datetime_startDate(self) -> None:
+    def test_get_count_by_period_non_datetime_start_date(self) -> None:
         """Return empty dict when startDate is not datetime-like."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -514,7 +514,7 @@ class TestGetDurationByPeriod:
 
         assert result == {}
 
-    def test_get_duration_by_period_missing_startDate_column(self) -> None:
+    def test_get_duration_by_period_missing_start_date_column(self) -> None:
         """Return empty dict when startDate column is missing."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -529,7 +529,7 @@ class TestGetDurationByPeriod:
 
         assert result == {}
 
-    def test_get_duration_by_period_non_datetime_startDate(self) -> None:
+    def test_get_duration_by_period_non_datetime_start_date(self) -> None:
         """Return empty dict when startDate is not datetime-like."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -691,7 +691,7 @@ class TestGetElevationByPeriod:
 
         assert result == {}
 
-    def test_get_elevation_by_period_missing_startDate_column(self) -> None:
+    def test_get_elevation_by_period_missing_start_date_column(self) -> None:
         """Return empty dict when startDate column is missing."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -706,7 +706,7 @@ class TestGetElevationByPeriod:
 
         assert result == {}
 
-    def test_get_elevation_by_period_non_datetime_startDate(self) -> None:
+    def test_get_elevation_by_period_non_datetime_start_date(self) -> None:
         """Return empty dict when startDate is not datetime-like."""
         workouts = wm.WorkoutManager(
             pd.DataFrame(

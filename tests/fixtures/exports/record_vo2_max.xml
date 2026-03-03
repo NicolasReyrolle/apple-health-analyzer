@@ -1,0 +1,50 @@
+<Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2665.0.8" unit="mL/min·kg" creationDate="2022-01-19 18:33:06 +0100" startDate="2022-01-19 18:33:05 +0100" endDate="2022-01-19 18:33:05 +0100" value="49.91">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="5101E2D0-D4BE-4D57-A378-ECC1D8B37AE3"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2665.0.8" unit="mL/min·kg" creationDate="2022-01-21 19:24:36 +0100" startDate="2022-01-21 19:24:35 +0100" endDate="2022-01-21 19:24:35 +0100" value="49.75">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="8FB52BBA-DA82-4D2B-AC96-AFD6E3E9B20F"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2665.0.8" unit="mL/min·kg" creationDate="2022-01-23 17:27:30 +0100" startDate="2022-01-23 17:27:28 +0100" endDate="2022-01-23 17:27:28 +0100" value="49.53">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="E5564E97-08C5-4F83-9473-144B50CC8D11"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2664.0.8.1.1" unit="mL/min·kg" creationDate="2021-11-30 18:52:13 +0100" startDate="2021-11-30 18:52:12 +0100" endDate="2021-11-30 18:52:12 +0100" value="50.72">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="8FBBBB21-06AE-49D2-8A0E-4D2B4F7B5BF8"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2664.0.8.1.1" unit="mL/min·kg" creationDate="2021-12-02 18:30:19 +0100" startDate="2021-12-02 18:30:17 +0100" endDate="2021-12-02 18:30:17 +0100" value="50.86">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="80CAD52C-3C0D-4F03-8B67-903AA0FF62DF"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2664.0.8.1.1" unit="mL/min·kg" creationDate="2021-12-05 18:59:07 +0100" startDate="2021-12-05 18:59:06 +0100" endDate="2021-12-05 18:59:06 +0100" value="50.9">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="978C2EB4-6EC8-404C-A6C4-858702082E6E"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2664.0.8.1.1" unit="mL/min·kg" creationDate="2021-12-07 20:01:53 +0100" startDate="2021-12-07 20:01:52 +0100" endDate="2021-12-07 20:01:52 +0100" value="51.09">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="530A9EDC-C9B5-4941-AFA6-C00BEE647EE6"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2664.0.8.1.1" unit="mL/min·kg" creationDate="2021-12-10 18:37:13 +0100" startDate="2021-12-10 18:37:12 +0100" endDate="2021-12-10 18:37:12 +0100" value="51.02">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="DAA22824-2579-46FD-A1BE-CE385B4C4045"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2664.0.8.1.1" unit="mL/min·kg" creationDate="2021-12-12 16:19:06 +0100" startDate="2021-12-12 16:19:04 +0100" endDate="2021-12-12 16:19:04 +0100" value="51.06">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="EF7B8650-486D-4C78-8B57-E2FF1D55BDDA"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierVO2Max" sourceName="Apple Watch" sourceVersion="2664.0.8.1.1" unit="mL/min·kg" creationDate="2021-12-13 18:48:44 +0100" startDate="2021-12-13 18:48:42 +0100" endDate="2021-12-13 18:48:42 +0100" value="51.27">
+  <MetadataEntry key="HKVO2MaxTestType" value="2"/>
+  <MetadataEntry key="HKMetadataKeySyncVersion" value="1"/>
+  <MetadataEntry key="HKMetadataKeySyncIdentifier" value="9DC9D70D-F46E-4F29-A5BB-4B800E829519"/>
+ </Record>

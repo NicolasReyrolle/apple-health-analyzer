@@ -130,3 +130,160 @@ class TestExtractActivityType:
         parser = ep.ExportParser()
         result = parser._extract_activity_type(elem)  # type: ignore[misc]
         assert result == ""
+
+
+class TestExtractHealthDataRecord:
+    """Test the _extract_health_data_record method."""
+
+    # pylint: disable=protected-access
+    def test_extract_heart_rate_record_basic(self) -> None:
+        """Test extracting a basic heart rate record."""
+        elem = Element(
+            "Record",
+            attrib={
+                "type": "HKQuantityTypeIdentifierHeartRate",
+                "value": "67",
+                "startDate": "2022-01-17 16:34:57 +0100",
+                "unit": "count/min",
+            },
+        )
+        parser = ep.ExportParser()
+        record_type, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert record_type == "HeartRate"
+        assert record_data["type"] == "HeartRate"
+        assert record_data["value"] == 67
+        assert record_data["startDate"] == "2022-01-17 16:34:57 +0100"
+
+    def test_extract_health_data_record_with_metadata(self) -> None:
+        """Test extracting a record with metadata entries."""
+        elem = Element(
+            "Record",
+            attrib={
+                "type": "HKQuantityTypeIdentifierHeartRate",
+                "value": "67",
+                "startDate": "2022-01-17 16:34:57 +0100",
+            },
+        )
+        # Add metadata child
+        metadata = Element("MetadataEntry")
+        metadata.set("key", "HKMetadataKeyHeartRateMotionContext")
+        metadata.set("value", "1")
+        elem.append(metadata)
+
+        parser = ep.ExportParser()
+        record_type, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert record_type == "HeartRate"
+        assert record_data["type"] == "HeartRate"
+        assert record_data["HeartRateMotionContext"] == 1
+
+    def test_extract_health_data_record_with_multiple_metadata(self) -> None:
+        """Test extracting a record with multiple metadata entries."""
+        elem = Element(
+            "Record",
+            attrib={
+                "type": "HKQuantityTypeIdentifierStepCount",
+                "value": "100",
+                "startDate": "2022-01-17 16:34:57 +0100",
+            },
+        )
+        # Add multiple metadata entries
+        metadata1 = Element("MetadataEntry")
+        metadata1.set("key", "HKMetadataKeyDeviceType")
+        metadata1.set("value", "Apple Watch")
+        elem.append(metadata1)
+
+        metadata2 = Element("MetadataEntry")
+        metadata2.set("key", "HKMetadataKeySource")
+        metadata2.set("value", "1")
+        elem.append(metadata2)
+
+        parser = ep.ExportParser()
+        _, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert "DeviceType" in record_data
+        assert "Source" in record_data
+        assert record_data["Source"] == 1
+
+    def test_extract_health_data_record_with_metadata_unit(self) -> None:
+        """Test extracting a record with metadata that has units."""
+        elem = Element(
+            "Record",
+            attrib={
+                "type": "HKQuantityTypeIdentifierBodyMass",
+                "value": "70.5",
+                "startDate": "2022-01-17 16:34:57 +0100",
+            },
+        )
+        # Add metadata with unit
+        metadata = Element("MetadataEntry")
+        metadata.set("key", "HKMetadataKeyBodyMassUnit")
+        metadata.set("value", "75 kg")
+        elem.append(metadata)
+
+        parser = ep.ExportParser()
+        record_type, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert record_type == "BodyMass"
+        assert record_data["BodyMassUnit"] == 75.0
+        assert record_data["BodyMassUnitUnit"] == "kg"
+
+    def test_extract_health_data_record_type_removal(self) -> None:
+        """Test that HKQuantityTypeIdentifier prefix is removed from type."""
+        elem = Element(
+            "Record",
+            attrib={
+                "type": "HKQuantityTypeIdentifierWakingHeartRateAverage",
+                "value": "55",
+                "startDate": "2022-01-17 16:34:57 +0100",
+            },
+        )
+        parser = ep.ExportParser()
+        record_type, _ = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert record_type == "WakingHeartRateAverage"
+
+    def test_extract_health_data_record_missing_value(self) -> None:
+        """Test extracting a record with missing value attribute."""
+        elem = Element(
+            "Record",
+            attrib={
+                "type": "HKQuantityTypeIdentifierHeartRate",
+                "startDate": "2022-01-17 16:34:57 +0100",
+            },
+        )
+        parser = ep.ExportParser()
+        record_type, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert record_type == "HeartRate"
+        assert record_data["value"] is None
+
+    def test_extract_health_data_record_missing_start_date(self) -> None:
+        """Test extracting a record with missing startDate attribute."""
+        elem = Element(
+            "Record",
+            attrib={
+                "type": "HKQuantityTypeIdentifierHeartRate",
+                "value": "67",
+            },
+        )
+        parser = ep.ExportParser()
+        record_type, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert record_type == "HeartRate"
+        assert record_data["startDate"] is None
+
+    def test_extract_health_data_record_missing_type(self) -> None:
+        """Test that a record with missing type attribute returns None."""
+        elem = Element(
+            "Record",
+            attrib={
+                "value": "67",
+                "startDate": "2022-01-17 16:34:57 +0100",
+            },
+        )
+        parser = ep.ExportParser()
+        result = parser._extract_health_data_record(elem)  # type: ignore[misc]
+
+        assert result is None

@@ -176,7 +176,7 @@ class TestRenderTrendsGraphs:
     """Tests for render_trends_graphs function."""
 
     def test_render_trends_graphs_renders_all_charts(self) -> None:
-        """Test that render_trends_graphs calls render_bar_graph for all metrics."""
+        """Test that render_trends_graphs calls render_generic_graph for all metrics."""
         original_workouts: Any = state.workouts
         original_activity = state.selected_activity_type
 
@@ -192,7 +192,7 @@ class TestRenderTrendsGraphs:
             state.selected_activity_type = "Running"
 
             with patch("ui.layout.ui.row", return_value=_DummyRow()):
-                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                with patch("ui.layout.render_generic_graph") as render_graph_mock:
                     layout.render_trends_graphs.func()
 
             assert render_graph_mock.call_count == 5
@@ -243,7 +243,7 @@ class TestRenderTrendsGraphs:
             state.trends_period = "W"
 
             with patch("ui.layout.ui.row", return_value=_DummyRow()):
-                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                with patch("ui.layout.render_generic_graph") as render_graph_mock:
                     layout.render_trends_graphs.func()
 
             # Verify the period "W" was passed to get_*_by_period methods
@@ -260,6 +260,152 @@ class TestRenderTrendsGraphs:
         finally:
             state.workouts = original_workouts
             state.selected_activity_type = original_activity
+            state.trends_period = original_period
+
+
+class TestRenderGenericGraph:
+    """Tests for render_generic_graph function."""
+
+    def test_render_generic_graph_includes_trend_by_default(self) -> None:
+        """Trend series is included when show_trend is not specified."""
+        values = {"2024-01": 10, "2024-02": 20}
+
+        with (
+            patch("ui.layout.ui.card", return_value=_DummyRow()),
+            patch("ui.layout.ui.label"),
+            patch("ui.layout.ui.echart") as echart_mock,
+        ):
+            layout.render_generic_graph("Distance by month", values, "km")
+
+        chart_options = echart_mock.call_args.args[0]
+        series = chart_options["series"]
+        assert len(series) == 2
+        assert series[0]["type"] == "bar"
+        assert series[1]["name"] == "Trend"
+
+    def test_render_generic_graph_excludes_trend_when_disabled(self) -> None:
+        """Trend series is omitted when show_trend is False."""
+        values = {"2024-01": 10, "2024-02": 20}
+
+        with (
+            patch("ui.layout.ui.card", return_value=_DummyRow()),
+            patch("ui.layout.ui.label"),
+            patch("ui.layout.ui.echart") as echart_mock,
+        ):
+            layout.render_generic_graph("Distance by month", values, "km", show_trend=False)
+
+        chart_options = echart_mock.call_args.args[0]
+        series = chart_options["series"]
+        assert len(series) == 1
+        assert series[0]["type"] == "bar"
+
+
+class TestRenderHealthDataTab:
+    """Tests for render_health_data_tab behavior."""
+
+    def test_render_health_data_tab_converts_period_keys_to_strings(self) -> None:
+        """Convert pandas Period keys to strings for JSON-safe chart options."""
+        original_records_by_type: Any = state.records_by_type
+        original_period = state.trends_period
+
+        records_by_type_mock = MagicMock()
+        records_by_type_mock.heart_rate_stats.return_value = pd.DataFrame(
+            {
+                "period": [pd.Period("2025-01", freq="M")],
+                "avg": [67.0],
+                "min": [67.0],
+                "max": [67.0],
+                "count": [1],
+            }
+        )
+
+        try:
+            state.records_by_type = records_by_type_mock
+            state.trends_period = "M"
+
+            with (
+                patch("ui.layout.ui.row", return_value=_DummyRow()),
+                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
+            ):
+                layout.render_health_data_tab.func()
+
+            heart_rate_call = next(
+                call
+                for call in render_generic_graph_mock.call_args_list
+                if call.args and call.args[0] == "Resting HR frequency over time"
+            )
+            chart_data = heart_rate_call.args[1]
+            assert isinstance(chart_data, dict)
+            assert list(chart_data.keys()) == ["2025-01"]  # type: ignore[arg-type]
+        finally:
+            state.records_by_type = original_records_by_type
+            state.trends_period = original_period
+
+    def test_render_health_data_tab_serializes_missing_and_invalid_values(self) -> None:
+        """Serialize None/NaN/non-numeric avg values to explicit None for chart data."""
+        original_records_by_type: Any = state.records_by_type
+        original_period = state.trends_period
+
+        records_by_type_mock = MagicMock()
+        records_by_type_mock.heart_rate_stats.return_value = pd.DataFrame(
+            {
+                "period": [pd.Period("2025-01", freq="M")],
+                "avg": [None],
+                "min": [0.0],
+                "max": [0.0],
+                "count": [0],
+            }
+        )
+        records_by_type_mock.weight_stats.return_value = pd.DataFrame(
+            {
+                "period": [pd.Period("2025-01", freq="M")],
+                "avg": [float("nan")],
+                "min": [0.0],
+                "max": [0.0],
+                "count": [0],
+            }
+        )
+        records_by_type_mock.vo2_max_stats.return_value = pd.DataFrame(
+            {
+                "period": [pd.Period("2025-01", freq="M")],
+                "avg": ["invalid"],
+                "min": [0.0],
+                "max": [0.0],
+                "count": [0],
+            }
+        )
+
+        try:
+            state.records_by_type = records_by_type_mock
+            state.trends_period = "M"
+
+            with (
+                patch("ui.layout.ui.row", return_value=_DummyRow()),
+                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
+            ):
+                layout.render_health_data_tab.func()
+
+            heart_rate_call = next(
+                call
+                for call in render_generic_graph_mock.call_args_list
+                if call.args and call.args[0] == "Resting HR frequency over time"
+            )
+            body_mass_call = next(
+                call
+                for call in render_generic_graph_mock.call_args_list
+                if call.args and call.args[0] == "Body Mass over time"
+            )
+            vo2_max_call = next(
+                call
+                for call in render_generic_graph_mock.call_args_list
+                if call.args and call.args[0] == "VO2 Max over time"
+            )
+
+            assert heart_rate_call.args[1]["2025-01"] is None
+            assert body_mass_call.args[1]["2025-01"] is None
+            assert vo2_max_call.args[1]["2025-01"] is None
+        finally:
+            state.records_by_type = original_records_by_type
             state.trends_period = original_period
 
     def test_render_trends_graphs_with_quarter_period(self) -> None:
@@ -281,7 +427,7 @@ class TestRenderTrendsGraphs:
             state.trends_period = "Q"
 
             with patch("ui.layout.ui.row", return_value=_DummyRow()):
-                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                with patch("ui.layout.render_generic_graph") as render_graph_mock:
                     layout.render_trends_graphs.func()
 
             # Verify the period "Q" was passed to get_*_by_period methods
@@ -316,7 +462,7 @@ class TestRenderTrendsGraphs:
             state.trends_period = "Y"
 
             with patch("ui.layout.ui.row", return_value=_DummyRow()):
-                with patch("ui.layout.render_bar_graph") as render_graph_mock:
+                with patch("ui.layout.render_generic_graph") as render_graph_mock:
                     layout.render_trends_graphs.func()
 
             # Verify the period "Y" was passed to get_*_by_period methods
@@ -353,7 +499,7 @@ class TestLoadWorkoutsFromFile:
         with ZipFile(zip_path, "w") as zf:
             zf.writestr("apple_health_export/export.xml", xml_content)
 
-        workouts, activity_options = layout.load_workouts_from_file(str(zip_path))
+        workouts, activity_options, _ = layout.load_workouts_from_file(str(zip_path))
 
         # Verify returned workouts is populated
         assert workouts is not None
@@ -377,7 +523,8 @@ class TestLoadWorkoutsFromFile:
 
         with patch("ui.layout.ExportParser") as parser_class_mock:
             parser_instance_mock = MagicMock()
-            parser_instance_mock.parse.return_value = pd.DataFrame()
+            parser_instance_mock.parse.return_value.workouts = pd.DataFrame()
+            parser_instance_mock.parse.return_value.records_by_type = {}
             parser_class_mock.return_value.__enter__.return_value = parser_instance_mock
             parser_class_mock.return_value.__exit__.return_value = None
 
@@ -407,7 +554,7 @@ class TestLoadWorkoutsFromFile:
             wm_instance_mock.get_activity_types.return_value = []
             wm_class_mock.return_value = wm_instance_mock
 
-            workouts, activity_options = layout.load_workouts_from_file(str(zip_path))
+            workouts, activity_options, _ = layout.load_workouts_from_file(str(zip_path))
 
             # Verify WorkoutManager was instantiated and returned
             wm_class_mock.assert_called_once()

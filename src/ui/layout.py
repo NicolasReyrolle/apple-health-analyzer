@@ -3,7 +3,8 @@
 import asyncio
 import logging
 import time
-from typing import Callable, Optional
+from collections.abc import Hashable, Mapping, Sequence
+from typing import Any, Callable, Optional
 
 import pandas as pd
 from nicegui import app, ui
@@ -11,6 +12,7 @@ from nicegui import app, ui
 from app_state import state
 from assets import APP_ICON_BASE64
 from logic.export_parser import ExportParser
+from logic.records_by_type import RecordsByType
 from logic.workout_manager import WorkoutManager
 from ui.helpers import format_integer, period_code_to_label
 from ui.local_file_picker import LocalFilePicker
@@ -75,6 +77,7 @@ def refresh_data() -> None:
 
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()
+    render_health_data_tab.refresh()
 
 
 @ui.refreshable
@@ -203,19 +206,32 @@ def render_pie_rose_graph(label: str, values: dict[str, int], unit: str = "") ->
         )
 
 
-def calculate_moving_average(y_values: list[int], window_size: int = 12) -> list[float]:
+def calculate_moving_average(
+    y_values: Sequence[float | int | None], window_size: int = 12
+) -> list[float | None]:
     """
     Calculate a moving average to smooth out peaks and valleys in sports data.
 
     Uses a rolling window with ``min_periods=1``, which behaves like an expanding
     average for the initial points when there are fewer samples than ``window_size``.
+    Missing values (None/NaN) are preserved as None in the output.
     """
     # Use pandas rolling window to calculate the moving average consistently
-    return pd.Series(y_values).rolling(window=window_size, min_periods=1).mean().round(2).tolist()
+    # Convert y_values to a list to ensure compatibility with pandas Series
+    # constructor's type hints.
+    series = pd.Series(list(y_values), dtype=float)
+    result = series.rolling(window=window_size, min_periods=1).mean().round(2)
+    return [None if pd.isna(v) else float(v) for v in result]
 
 
-def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None:
-    """Render bar graphs for the given values."""
+def render_generic_graph(
+    label: str,
+    values: Mapping[str, float | int | None],
+    unit: str = "",
+    graph_type: str = "bar",
+    show_trend: bool = True,
+) -> None:
+    """Render generic graphs for the given values."""
 
     # Transform dictionary data into ECharts format: [{'value': x, 'name': y}, ...]
     chart_data = [{"value": v, "name": k} for k, v in values.items()]
@@ -223,6 +239,22 @@ def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None
     # Extract raw lists for the axes and series
     categories = [d["name"] for d in chart_data]
     data_points = list(values.values())
+
+    series: list[dict[str, object]] = [{"data": data_points, "type": graph_type}]
+    if show_trend:
+        series.append(
+            {
+                "name": "Trend",
+                "type": "line",
+                "data": calculate_moving_average(data_points),
+                "symbol": "none",  # Removes the dots on the line
+                "lineStyle": {
+                    "width": 2,
+                    "type": "dashed",  # Dashed line for statistical trends
+                },
+                "itemStyle": {"color": "#e74c3c"},  # Red color to stand out
+            }
+        )
 
     with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
         ui.label(label).classes("text-sm text-gray-500 uppercase")
@@ -234,21 +266,8 @@ def render_bar_graph(label: str, values: dict[str, int], unit: str = "") -> None
                     "data": categories,
                     "axisTick": {"alignWithLabel": True},
                 },
-                "yAxis": {"type": "value"},
-                "series": [
-                    {"data": data_points, "type": "bar"},
-                    {
-                        "name": "Trend",
-                        "type": "line",
-                        "data": calculate_moving_average(data_points),
-                        "symbol": "none",  # Removes the dots on the line
-                        "lineStyle": {
-                            "width": 2,
-                            "type": "dashed",  # Dashed line for statistical trends
-                        },
-                        "itemStyle": {"color": "#e74c3c"},  # Red color to stand out
-                    },
-                ],
+                "yAxis": {"type": "value", "scale": True},
+                "series": series,
             }
         )
 
@@ -267,10 +286,10 @@ async def pick_file() -> None:
 def load_workouts_from_file(
     file_path: str,
     progress_callback: Optional[Callable[[int, str], None]] = None,
-) -> tuple[WorkoutManager, list[str]]:
+) -> tuple[WorkoutManager, list[str], RecordsByType]:
     """Load and parse the Apple Health export file.
 
-    Returns a tuple of (WorkoutManager, activity_options) so that all UI
+    Returns a tuple of (WorkoutManager, activity_options, records_by_type) so that all UI
     state mutations and refresh calls can be performed on the event-loop
     thread by the caller (load_file), avoiding thread-safety issues.
     """
@@ -303,7 +322,9 @@ def load_workouts_from_file(
     _logger.info("Starting to load file: %s", file_path)
 
     with ExportParser(progress_callback=parser_message_handler) as ep:
-        workouts_df = ep.parse(file_path)
+        phd = ep.parse(file_path)
+        workouts_df = phd.workouts
+        records_by_type = RecordsByType(data=phd.records_by_type)
 
     report(93, "Building workout index...")
     workouts = WorkoutManager(workouts_df)
@@ -316,7 +337,7 @@ def load_workouts_from_file(
     activity_options = ["All"] + activity_types
 
     report(97, "Preparing dashboard update...")
-    return workouts, activity_options
+    return workouts, activity_options, records_by_type
 
 
 async def load_file() -> None:
@@ -337,18 +358,21 @@ async def load_file() -> None:
 
     def progress_callback(progress: int, message: str) -> None:
         """Schedule a UI-safe update of the loading status from a worker thread."""
+
         def _update() -> None:
             if state.loading:
                 state.loading_status = f"{progress}% - {message}"
 
         loop.call_soon_threadsafe(_update)
+
     try:
-        workouts, activity_options = await asyncio.to_thread(
+        workouts, activity_options, records_by_type = await asyncio.to_thread(
             load_workouts_from_file,
             state.input_file.value,
             progress_callback,
         )
         state.workouts = workouts
+        state.records_by_type = records_by_type
         state.file_loaded = True
         state.activity_options = activity_options
         render_activity_select.refresh()
@@ -389,7 +413,7 @@ def render_body() -> None:
         tab_summary = ui.tab("Overview")
         tab_activities = ui.tab("Activities").bind_enabled_from(state, "file_loaded")
         tab_trends = ui.tab("Trends").bind_enabled_from(state, "file_loaded")
-        ui.tab("Health Data").props("disable")
+        tab_health_data = ui.tab("Health Data").bind_enabled_from(state, "file_loaded")
 
     with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
         with ui.tab_panel(tab_summary):
@@ -406,6 +430,9 @@ def render_body() -> None:
 
         with ui.tab_panel(tab_trends):
             render_trends_tab()
+
+        with ui.tab_panel(tab_health_data):
+            render_health_data_tab()
 
 
 @ui.refreshable
@@ -468,7 +495,7 @@ def render_trends_tab() -> None:
 def render_trends_graphs() -> None:
     """Render trend graphs."""
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        render_bar_graph(
+        render_generic_graph(
             f"Count by {period_code_to_label(state.trends_period)}",
             state.workouts.get_count_by_period(
                 state.trends_period,
@@ -477,7 +504,7 @@ def render_trends_graphs() -> None:
                 end_date=state.end_date,
             ),
         )
-        render_bar_graph(
+        render_generic_graph(
             f"Distance by {period_code_to_label(state.trends_period)}",
             state.workouts.get_distance_by_period(
                 state.trends_period,
@@ -488,7 +515,7 @@ def render_trends_graphs() -> None:
             "km",
         )
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        render_bar_graph(
+        render_generic_graph(
             f"Calories by {period_code_to_label(state.trends_period)}",
             state.workouts.get_calories_by_period(
                 state.trends_period,
@@ -498,7 +525,7 @@ def render_trends_graphs() -> None:
             ),
             "kcal",
         )
-        render_bar_graph(
+        render_generic_graph(
             f"Duration by {period_code_to_label(state.trends_period)}",
             state.workouts.get_duration_by_period(
                 state.trends_period,
@@ -511,7 +538,7 @@ def render_trends_graphs() -> None:
     with ui.row().classes(ROW_CENTERED_CLASSES):
         # Display elevation in meters (not km like the stat card) because values for the
         # selected period can be small and would show as 0.0X km, making the chart less readable
-        render_bar_graph(
+        render_generic_graph(
             f"Elevation by {period_code_to_label(state.trends_period)}",
             state.workouts.get_elevation_by_period(
                 state.trends_period,
@@ -521,4 +548,64 @@ def render_trends_graphs() -> None:
                 end_date=state.end_date,
             ),
             "m",
+        )
+
+
+@ui.refreshable
+def render_health_data_tab() -> None:
+    """Render the health data tab with filters and graphs."""
+
+    def to_json_safe(d: dict[Hashable, Any]) -> dict[str, float | int | None]:
+        """Replace pd.NA/NaN with None for JSON-safe chart data."""
+        result: dict[str, float | int | None] = {}
+        for key, value in d.items():
+            normalized_key = str(key)
+            if value is None:
+                result[normalized_key] = None
+            elif isinstance(value, float) and pd.isna(value):
+                result[normalized_key] = None
+            elif isinstance(value, (int, float)):
+                result[normalized_key] = value
+            else:
+                result[normalized_key] = None
+        return result
+
+    with ui.row().classes(ROW_CENTERED_CLASSES):
+        heart_rate_stats = state.records_by_type.heart_rate_stats(
+            period=state.trends_period, context=RecordsByType.HeartRateMeasureContext.SEDENTARY
+        )
+        render_generic_graph(
+            "Resting HR frequency over time",
+            to_json_safe(
+                heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
+                .set_index("period")["avg"]
+                .to_dict()
+            ),
+            "bpm",
+            graph_type="line",
+        )
+
+        body_mass_stats = state.records_by_type.weight_stats(period=state.trends_period)
+        render_generic_graph(
+            "Body Mass over time",
+            to_json_safe(
+                body_mass_stats.assign(period=body_mass_stats["period"].astype(str))
+                .set_index("period")["avg"]
+                .to_dict()
+            ),
+            "kg",
+            graph_type="line",
+        )
+
+    with ui.row().classes(ROW_CENTERED_CLASSES):
+        vo2_max_stats = state.records_by_type.vo2_max_stats(period=state.trends_period)
+        render_generic_graph(
+            "VO2 Max over time",
+            to_json_safe(
+                vo2_max_stats.assign(period=vo2_max_stats["period"].astype(str))
+                .set_index("period")["avg"]
+                .to_dict()
+            ),
+            "ml/kg/min",
+            graph_type="line",
         )

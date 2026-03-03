@@ -25,13 +25,13 @@ class TestComplexRealWorldWorkout:
 
         parser = ExportParser()
         with parser:
-            workouts = parser.parse(str(zip_path))
+            health_data = parser.parse(str(zip_path))
 
         # Verify the workout was parsed
-        assert len(workouts) == 1
+        assert len(health_data.workouts) == 1
 
         # Get the parsed workout record
-        workout = workouts.iloc[0]
+        workout = health_data.workouts.iloc[0]
 
         # Verify basic attributes
         assert workout["activityType"] == "Running"
@@ -88,8 +88,9 @@ class TestComplexRealWorldWorkout:
 
         parser = ExportParser()
         with parser:
-            workouts = parser.parse(str(zip_path))
+            health_data = parser.parse(str(zip_path))
 
+        workouts = health_data.workouts
         assert len(workouts) == 1
 
         assert "sumActiveEnergyBurned" not in workouts.columns
@@ -118,9 +119,10 @@ class TestComplexRealWorldWorkout:
 
         parser = ExportParser()
         with parser:
-            workouts = parser.parse(str(zip_path))
+            health_data = parser.parse(str(zip_path))
 
         # Should parse as two separate workout records
+        workouts = health_data.workouts
         assert len(workouts) == 2
 
         # First workout: Swimming
@@ -161,8 +163,9 @@ class TestComplexRealWorldWorkout:
 
         parser = ExportParser()
         with parser:
-            workouts = parser.parse(str(zip_path))
+            health_data = parser.parse(str(zip_path))
 
+        workouts = health_data.workouts
         assert len(workouts) == 1
         workout = workouts.iloc[0]
 

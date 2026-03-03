@@ -1,47 +1,26 @@
 """Export processor for Apple Health data."""
 
 import logging
+from collections import defaultdict
 from datetime import datetime
 from types import TracebackType
-from typing import Any, Callable, List, Optional, Tuple, Type, TypedDict
+from typing import Any, Callable, List, Optional, Tuple, Type
 from xml.etree.ElementTree import Element
-from defusedxml.ElementTree import iterparse
 from zipfile import ZipFile
 
 import pandas as pd
+from defusedxml.ElementTree import iterparse
+
+from logic.models import WorkoutRecord, WorkoutRoute
+from logic.parsed_health_data import ParsedHealthData
 
 _logger = logging.getLogger(__name__)
 
 # Configuration constants
 WORKOUT_PROGRESS_INTERVAL = 100  # Report progress every N workouts
 
-
-class WorkoutRecordRequired(TypedDict):
-    """Required fields for workout record."""
-
-    activityType: str
-
-
-class WorkoutRecord(WorkoutRecordRequired, total=False):
-    """Type definition for workout record structure."""
-
-    duration: Optional[float]
-    durationUnit: Optional[str]
-    startDate: Optional[str]
-    endDate: Optional[str]
-    source: Optional[str]
-    routeFile: Optional[str]
-    route: Optional[pd.DataFrame]
-    distance: Optional[int]  # Total distance in meters
-
-
-class WorkoutRoute(TypedDict):
-    """Type definition for workout route structure."""
-
-    time: datetime
-    latitude: float
-    longitude: float
-    altitude: float
+# Only parse record types that the application currently supports to limit memory usage.
+SUPPORTED_RECORD_TYPES = frozenset({"HeartRate", "BodyMass", "VO2Max"})
 
 
 class ExportParser:
@@ -61,6 +40,46 @@ class ExportParser:
     ) -> None:
         # Nothing to do for now
         pass
+
+    @staticmethod
+    def to_number(raw: str | None) -> float | int | None:
+        """Convert a string to a number (int or float), or return None if conversion fails."""
+        if raw is None:
+            return None
+        try:
+            value = float(raw)
+            return int(value) if value.is_integer() else value
+        except ValueError:
+            return None
+
+    @staticmethod
+    def parse_metadata_value(raw_value: Optional[str]) -> Tuple[Any, Optional[str]]:
+        """
+        Parse a metadata entry value without boolean coercion.
+
+        Unlike _parse_value, numeric values "0" and "1" are returned as integers,
+        not booleans. This is needed for enumerated metadata fields such as
+        HeartRateMotionContext (0/1/2).
+
+        Returns: (value, unit) where unit is None when no unit is present.
+        """
+        if not raw_value:
+            return None, None
+
+        raw_value = raw_value.strip()
+
+        parts = raw_value.split(maxsplit=1)
+        if len(parts) == 1:
+            num = ExportParser.to_number(parts[0])
+            if num is not None:
+                return num, None
+            return parts[0], None
+
+        num = ExportParser.to_number(parts[0])
+        if num is not None:
+            unit = parts[1].strip() or None
+            return float(num), unit
+        return raw_value, None
 
     @staticmethod
     def _parse_value(raw_value: Optional[str]) -> Tuple[Any, Optional[str]]:
@@ -145,35 +164,77 @@ class ExportParser:
             except Exception:  # pylint: disable=broad-except
                 _logger.debug(message)
 
-    def _load_workouts(self, zipfile: ZipFile) -> pd.DataFrame:
-        """Load workouts of a specific type from the export file."""
+    def _load_data(self, zipfile: ZipFile) -> ParsedHealthData:
+        """Load workouts and HealthKit records from the export file into ParsedHealthData."""
         self._log("Loading the workouts...")
 
         with zipfile.open("apple_health_export/export.xml") as export_file:
-            rows: List[WorkoutRecord] = []
+            workout_rows: List[WorkoutRecord] = []
+            record_rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
-            for event, elem in iterparse(export_file, events=("start", "end")):
+            for event, elem in iterparse(export_file, events=("end",)):
                 if event == "end" and elem.tag == "Workout":
                     activity_type = self._extract_activity_type(elem)
 
                     record = self._create_workout_record(elem, activity_type)
                     self._process_workout_children(elem, record, zipfile)
-                    rows.append(record)
+                    workout_rows.append(record)
 
                     # Report progress every N workouts
-                    if len(rows) % WORKOUT_PROGRESS_INTERVAL == 0:
-                        self._log(f"Processed {len(rows)} workouts...")
+                    if len(workout_rows) % WORKOUT_PROGRESS_INTERVAL == 0:
+                        self._log(f"Processed {len(workout_rows)} workouts...")
 
                     elem.clear()
 
-            result = pd.DataFrame(rows)
-            if len(result) > 0:
-                result["startDate"] = pd.to_datetime(result["startDate"]).dt.tz_localize(None)
+                if event == "end" and elem.tag == "Record":
+                    result = self._extract_health_data_record(elem)
+                    if result is not None:
+                        record_type, record_data = result
+                        if record_type in SUPPORTED_RECORD_TYPES:
+                            record_rows_by_type[record_type].append(record_data)
+
+                    elem.clear()
+
+            workouts_df = pd.DataFrame(workout_rows)
+            records_by_type_df = {
+                record_type: pd.DataFrame(rows) for record_type, rows in record_rows_by_type.items()
+            }
+            if len(workouts_df) > 0:
+                workouts_df["startDate"] = pd.to_datetime(workouts_df["startDate"]).dt.tz_localize(
+                    None
+                )
 
             # Log final count
-            self._log(f"Loaded {len(result)} workouts total.")
+            self._log(f"Loaded {len(workouts_df)} workouts total.")
 
-            return result
+            return ParsedHealthData(workouts=workouts_df, records_by_type=records_by_type_df)
+
+    def _extract_health_data_record(self, elem: Element) -> Optional[Tuple[str, dict[str, Any]]]:
+        """Extract and clean health data record from element attributes and metadata."""
+        raw_type = elem.get("type")
+        if not raw_type:
+            return None
+        record_type = raw_type.replace("HKQuantityTypeIdentifier", "")
+        record_data = {
+            "type": record_type,
+            "startDate": elem.get("startDate"),
+            "value": self.to_number(elem.get("value")),
+        }
+        # Include metadata entries as additional fields
+        for child in elem:
+            if child.tag == "MetadataEntry":
+                raw_key = child.get("key", "")
+                if raw_key.startswith("HKMetadataKey"):
+                    key = raw_key[len("HKMetadataKey"):]
+                elif raw_key.startswith("HK"):
+                    key = raw_key[2:]
+                else:
+                    key = raw_key
+                value, unit = self.parse_metadata_value(child.get("value", ""))
+                record_data[key] = value
+                if unit:
+                    record_data[f"{key}Unit"] = unit
+        return record_type, record_data
 
     def _extract_activity_type(self, elem: Element) -> str:
         """Extract and clean activity type from workout element."""
@@ -296,13 +357,13 @@ class ExportParser:
             if unit:
                 record[f"{key}Unit"] = unit
 
-    def parse(self, export_file: str) -> pd.DataFrame:
+    def parse(self, export_file: str) -> ParsedHealthData:
         """Parse the export file."""
 
         try:
             self._log("Starting to parse the Apple Health export file...")
             with ZipFile(export_file, "r") as zipfile:
-                result = self._load_workouts(zipfile)
+                result = self._load_data(zipfile)
             self._log("Finished parsing the Apple Health export file.")
             return result
         except Exception as e:

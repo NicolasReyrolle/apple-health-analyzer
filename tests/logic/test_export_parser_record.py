@@ -1,0 +1,246 @@
+"""Test parsing of complex real-world records from Apple Health export."""
+
+from typing import Callable
+
+import pandas as pd
+import pytest
+
+from logic.export_parser import ExportParser, ParsedHealthData
+from logic.records_by_type import RecordsByType
+from tests.conftest import build_health_export_xml, load_export_fragment
+
+
+class TestParsedHealthData:
+    """Test cases for ParsedHealthData dataclass."""
+
+    def test_parsed_health_data_creation(self) -> None:
+        """Test creating ParsedHealthData with workouts and records."""
+        workouts_df = pd.DataFrame({"activityType": ["Running"]})
+        records_df = pd.DataFrame({"type": ["HeartRate"], "value": [67]})
+        records_by_type = {"HeartRate": records_df}
+
+        health_data = ParsedHealthData(workouts=workouts_df, records_by_type=records_by_type)
+
+        assert len(health_data.workouts) == 1
+        assert "HeartRate" in health_data.records_by_type
+        assert len(health_data.records_by_type["HeartRate"]) == 1
+
+    def test_all_records_property_single_type(self) -> None:
+        """Test all_records property with single record type."""
+        records_df = pd.DataFrame({"type": ["HeartRate"], "value": [67]})
+        records_by_type = {"HeartRate": records_df}
+        health_data = ParsedHealthData(workouts=pd.DataFrame(), records_by_type=records_by_type)
+
+        all_records = health_data.all_records
+        assert len(all_records) == 1
+        assert all_records.iloc[0]["value"] == 67
+
+    def test_all_records_property_multiple_types(self) -> None:
+        """Test all_records property combining multiple record types."""
+        hr_df = pd.DataFrame({"type": ["HeartRate"], "value": [67]})
+        weight_df = pd.DataFrame({"type": ["BodyMass"], "value": [70.5]})
+        records_by_type = {"HeartRate": hr_df, "BodyMass": weight_df}
+        health_data = ParsedHealthData(workouts=pd.DataFrame(), records_by_type=records_by_type)
+
+        all_records = health_data.all_records
+        assert len(all_records) == 2
+        assert set(all_records["type"]) == {"HeartRate", "BodyMass"}
+
+    def test_all_records_property_empty(self) -> None:
+        """Test all_records property with no records."""
+        health_data = ParsedHealthData(workouts=pd.DataFrame(), records_by_type={})
+
+        all_records = health_data.all_records
+        assert len(all_records) == 0
+        assert isinstance(all_records, pd.DataFrame)
+
+    def test_parsed_health_data_is_frozen(self) -> None:
+        """Test that ParsedHealthData is immutable (frozen)."""
+        health_data = ParsedHealthData(workouts=pd.DataFrame(), records_by_type={})
+
+        with pytest.raises(AttributeError):
+            health_data.workouts = pd.DataFrame()  # type: ignore
+
+
+class TestComplexRealWorldRecords:
+    """Test parsing of complex real-world records."""
+
+    def test_parse_complex_records(self, create_health_zip: Callable[..., str]) -> None:
+        """Test parsing complex real-world heart rate Record entries from an export fragment."""
+
+        xml_content = build_health_export_xml([load_export_fragment("record_heart_rate.xml")])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        parser = ExportParser()
+        with parser:
+            health_data = parser.parse(str(zip_path)).records_by_type["HeartRate"]
+
+        # Verify the heart rate records were parsed
+        assert len(health_data) == 14
+
+        sample_record = health_data.iloc[0]
+        assert sample_record["value"] == 67
+        assert sample_record["startDate"] == "2022-01-17 16:34:57 +0100"
+        assert sample_record["HeartRateMotionContext"] == 1
+
+    def test_parse_returns_parsed_health_data(self, create_health_zip: Callable[..., str]) -> None:
+        """Test that parse() returns ParsedHealthData instance."""
+        xml_content = build_health_export_xml([load_export_fragment("record_heart_rate.xml")])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        parser = ExportParser()
+        with parser:
+            result = parser.parse(str(zip_path))
+
+        assert isinstance(result, ParsedHealthData)
+        assert isinstance(result.workouts, pd.DataFrame)
+        assert isinstance(result.records_by_type, dict)
+
+    def test_parse_records_by_type_structure(self, create_health_zip: Callable[..., str]) -> None:
+        """Test that records are properly grouped by type."""
+        xml_content = build_health_export_xml([load_export_fragment("record_heart_rate.xml")])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        parser = ExportParser()
+        with parser:
+            result = parser.parse(str(zip_path))
+
+        # Should have HeartRate records
+        assert "HeartRate" in result.records_by_type
+        assert isinstance(result.records_by_type["HeartRate"], pd.DataFrame)
+        assert len(result.records_by_type["HeartRate"]) == 14
+
+        # Test the statistics aggregation for heart rate records
+        stats = result.records.heart_rate_stats(
+            "M", context=RecordsByType.HeartRateMeasureContext.UNKNOWN
+        )
+
+        assert len(stats) == 1
+        assert stats.iloc[0]["count"] == 2
+        assert stats.iloc[0]["avg"] == 68.5
+
+
+class TestToNumber:
+    """Test suite for ExportParser.to_number static method."""
+
+    def test_to_number_with_none(self) -> None:
+        """Test that None input returns None."""
+        assert ExportParser.to_number(None) is None
+
+    def test_to_number_with_integer_string(self) -> None:
+        """Test that integer string returns int."""
+        assert ExportParser.to_number("42") == 42
+        assert isinstance(ExportParser.to_number("42"), int)
+
+    def test_to_number_with_float_string(self) -> None:
+        """Test that float string returns float."""
+        assert ExportParser.to_number("3.14") == 3.14
+        assert isinstance(ExportParser.to_number("3.14"), float)
+
+    def test_to_number_with_float_that_is_integer(self) -> None:
+        """Test that float string like '5.0' returns int."""
+        assert ExportParser.to_number("5.0") == 5
+        assert isinstance(ExportParser.to_number("5.0"), int)
+
+    def test_to_number_with_negative_integer(self) -> None:
+        """Test that negative integer string returns int."""
+        assert ExportParser.to_number("-10") == -10
+        assert isinstance(ExportParser.to_number("-10"), int)
+
+    def test_to_number_with_negative_float(self) -> None:
+        """Test that negative float string returns float."""
+        assert ExportParser.to_number("-2.5") == -2.5
+        assert isinstance(ExportParser.to_number("-2.5"), float)
+
+    def test_to_number_with_zero(self) -> None:
+        """Test that '0' returns int 0."""
+        assert ExportParser.to_number("0") == 0
+        assert isinstance(ExportParser.to_number("0"), int)
+
+    def test_to_number_with_zero_float(self) -> None:
+        """Test that '0.0' returns int 0."""
+        assert ExportParser.to_number("0.0") == 0
+        assert isinstance(ExportParser.to_number("0.0"), int)
+
+    def test_to_number_with_scientific_notation(self) -> None:
+        """Test that scientific notation string is parsed correctly."""
+        assert ExportParser.to_number("1e3") == 1000
+        assert isinstance(ExportParser.to_number("1e3"), int)
+
+    def test_to_number_with_invalid_string(self) -> None:
+        """Test that non-numeric string returns None."""
+        assert ExportParser.to_number("abc") is None
+        assert ExportParser.to_number("123abc") is None
+        assert ExportParser.to_number("") is None
+
+    def test_to_number_with_whitespace(self) -> None:
+        """Test that string with only whitespace returns None."""
+        assert ExportParser.to_number("   ") is None
+
+    def test_to_number_with_leading_trailing_whitespace(self) -> None:
+        """Test that numeric string with whitespace is parsed correctly."""
+        assert ExportParser.to_number("  42  ") == 42
+        assert ExportParser.to_number("  3.14  ") == 3.14
+
+    def test_to_number_with_very_large_number(self) -> None:
+        """Test that very large numbers are handled correctly."""
+        result = ExportParser.to_number("999999999999999")
+        assert result == 999999999999999
+        assert isinstance(result, int)
+
+    def test_to_number_with_very_small_float(self) -> None:
+        """Test that very small floats are handled correctly."""
+        result = ExportParser.to_number("0.0000001")
+        assert result == 0.0000001
+        assert isinstance(result, float)
+
+
+class TestParseMetadataValue:  # pylint: disable=too-few-public-methods
+    """Test suite for ExportParser.parse_metadata_value static method."""
+
+    def test_parse_metadata_value_keeps_numeric_flags_as_ints(self) -> None:
+        """Return integers for bare numeric metadata values (no bool coercion)."""
+        value, unit = ExportParser.parse_metadata_value("1")
+
+        assert value == 1
+        assert isinstance(value, int)
+        assert unit is None
+
+    def test_parse_metadata_value_with_number_and_unit(self) -> None:
+        """Parse a numeric metadata value that includes a unit."""
+        value, unit = ExportParser.parse_metadata_value("100 m")
+
+        assert value == 100.0
+        assert isinstance(value, float)
+        assert unit == "m"
+
+    def test_parse_metadata_value_with_text(self) -> None:
+        """Return raw text for non-numeric metadata values."""
+        value, unit = ExportParser.parse_metadata_value("Europe/Luxembourg")
+
+        assert value == "Europe/Luxembourg"
+        assert unit is None
+
+    def test_parse_metadata_value_with_leading_trailing_whitespace(self) -> None:
+        """Strip leading/trailing whitespace from the raw value before parsing."""
+        value, unit = ExportParser.parse_metadata_value("  42  ")
+
+        assert value == 42
+        assert isinstance(value, int)
+        assert unit is None
+
+    def test_parse_metadata_value_with_multiple_spaces(self) -> None:
+        """Handle multiple spaces between number and unit correctly."""
+        value, unit = ExportParser.parse_metadata_value("100  m")
+
+        assert value == 100.0
+        assert isinstance(value, float)
+        assert unit == "m"
+
+    def test_parse_metadata_value_with_trailing_space_and_no_unit(self) -> None:
+        """Treat trailing whitespace after number (no unit) as unit=None."""
+        value, unit = ExportParser.parse_metadata_value("55 ")
+
+        assert value == 55
+        assert isinstance(value, int)
+        assert unit is None

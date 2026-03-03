@@ -4,6 +4,7 @@ from datetime import datetime
 
 from nicegui import ui
 
+from logic.records_by_type import RecordsByType
 from logic.workout_manager import WorkoutManager
 
 
@@ -17,6 +18,7 @@ class AppState:
     def reset(self) -> None:
         """Reset the application state."""
         self.workouts: WorkoutManager = WorkoutManager()
+        self.records_by_type: RecordsByType = RecordsByType(data={})
         self.file_loaded: bool = False
         self.loading: bool = False
         self.loading_status: str = ""
