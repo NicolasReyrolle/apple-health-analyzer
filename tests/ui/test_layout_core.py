@@ -254,3 +254,27 @@ def test_render_date_range_selector_applies_english_calendar_locale() -> None:
         assert "Sunday" in dummy_date.props_arg
     finally:
         state.workouts = original_workouts
+
+
+def test_render_date_range_selector_unknown_language_falls_back_to_english() -> None:
+    """Unknown active language should fallback to English date locale configuration."""
+
+    original_workouts: Any = state.workouts
+    workouts_mock = MagicMock()
+    workouts_mock.get_date_bounds.return_value = ("2024/01/01", "2024/12/31")
+
+    dummy_date = _DummyDate()
+
+    try:
+        state.workouts = workouts_mock
+        with patch("ui.layout.get_language", return_value="xx"):
+            with patch("ui.layout.ui.row", return_value=_DummyRow()):
+                with patch("ui.layout.ui.input", return_value=_DummyInput()):
+                    with patch("ui.layout.ui.date", return_value=dummy_date):
+                        layout.render_date_range_selector.func()
+
+        assert '"firstDayOfWeek": 0' in dummy_date.props_arg
+        assert "January" in dummy_date.props_arg
+        assert "Sunday" in dummy_date.props_arg
+    finally:
+        state.workouts = original_workouts
