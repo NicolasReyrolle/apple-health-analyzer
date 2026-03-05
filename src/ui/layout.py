@@ -15,7 +15,7 @@ from i18n import LANGUAGES, t
 from logic.export_parser import ExportParser
 from logic.records_by_type import RecordsByType
 from logic.workout_manager import WorkoutManager
-from ui.helpers import format_integer
+from ui.helpers import format_integer, period_code_to_label
 from ui.local_file_picker import LocalFilePicker
 
 # Get logger for this module
@@ -89,7 +89,7 @@ def render_activity_select() -> None:
         options=state.activity_options,
         on_change=refresh_data,
         value=state.selected_activity_type,
-        label=t("drawer.activity_type"),
+        label=t("Activity Type"),
     ).classes("w-40").bind_enabled_from(state, "file_loaded").bind_value(
         state, "selected_activity_type"
     )
@@ -99,7 +99,7 @@ def render_left_drawer() -> None:
     """Generate the left drawer with filters."""
 
     with ui.left_drawer().props("width=330"):
-        ui.label(t("drawer.activities"))
+        ui.label(t("Activities"))
         render_activity_select()
 
         ui.separator()
@@ -107,15 +107,11 @@ def render_left_drawer() -> None:
         render_date_range_selector()
 
         ui.separator()
-        with ui.dropdown_button(t("drawer.export_data"), icon="download").bind_enabled_from(
+        with ui.dropdown_button(t("Export data"), icon="download").bind_enabled_from(
             state, "file_loaded"
         ):
-            ui.button(t("drawer.export_to_json"), on_click=handle_json_export).props(
-                "flat"
-            ).classes("w-full")
-            ui.button(t("drawer.export_to_csv"), on_click=handle_csv_export).props(
-                "flat"
-            ).classes("w-full")
+            ui.button(t("to JSON"), on_click=handle_json_export).props("flat").classes("w-full")
+            ui.button(t("to CSV"), on_click=handle_csv_export).props("flat").classes("w-full")
 
 
 @ui.refreshable
@@ -125,7 +121,7 @@ def render_date_range_selector() -> None:
         min_date, max_date = state.workouts.get_date_bounds()
 
         date_input = (
-            ui.input(t("drawer.date_range"))
+            ui.input(t("Date range"))
             .classes("w-50")
             .bind_enabled_from(state, "file_loaded")
             .bind_value(state, "date_range_text")
@@ -167,7 +163,7 @@ def render_header() -> None:
     dark = ui.dark_mode()
     with ui.header().classes("items-center justify-between border-b"):
         ui.image(APP_ICON_BASE64).classes("w-16 h-16")
-        ui.label(t("app.title")).classes("font-bold text-xl")
+        ui.label(t("Apple Health Analyzer")).classes("font-bold text-xl")
 
         # Toggle button with dynamic icon
         ui.button(icon="dark_mode", on_click=dark.enable).bind_visibility_from(
@@ -294,7 +290,7 @@ async def pick_file() -> None:
     result: list[str] = await LocalFilePicker("~", multiple=False, file_filter=".zip")
 
     if not result:
-        ui.notify(t("notify.no_file_selected"))
+        ui.notify(t("No file selected"))
         return
 
     state.input_file.value = result[0]
@@ -360,7 +356,7 @@ def load_workouts_from_file(
 async def load_file() -> None:
     """Load and parse the selected Apple Health export file."""
     if state.input_file.value == "":
-        ui.notify(t("notify.select_file_first"))
+        ui.notify(t("Please select an Apple Health export file first."))
         return
 
     # Guard against concurrent invocations (e.g., from auto-load timer + manual click)
@@ -395,9 +391,9 @@ async def load_file() -> None:
         render_activity_select.refresh()
         render_date_range_selector.refresh()
         refresh_data()
-        ui.notify(t("notify.file_parsed"))
+        ui.notify(t("File parsed successfully."))
     except Exception as e:  # pylint: disable=broad-except
-        ui.notify(t("notify.error_parsing", error=str(e)))
+        ui.notify(t("Error parsing file: {error}", error=str(e)))
     finally:
         state.loading_status = ""
         state.loading = False
@@ -408,16 +404,16 @@ def render_body() -> None:
     with ui.row().classes("w-full items-center"):
         state.input_file = (
             ui.input(
-                t("body.input_file_label"),
-                placeholder=t("body.input_file_placeholder"),
+                t("Apple Health export file"),
+                placeholder=t("Select an Apple Health export file..."),
             )
             .classes("flex-grow")
             .bind_value(app.storage.user, "input_file_path")
         )
-        ui.button(t("body.btn_browse"), on_click=pick_file, icon="folder_open")
+        ui.button(t("Browse"), on_click=pick_file, icon="folder_open")
 
     with ui.row().classes("w-full items-center"):
-        ui.button(t("body.btn_load"), on_click=load_file, icon="play_arrow").classes(
+        ui.button(t("Load"), on_click=load_file, icon="play_arrow").classes(
             "flex-grow"
         ).bind_enabled_from(state, "loading", backward=lambda loading: not loading)
         ui.spinner(size="lg").bind_visibility_from(state, "loading")
@@ -427,20 +423,20 @@ def render_body() -> None:
     ).bind_visibility_from(state, "loading")
 
     with ui.tabs().classes("w-full") as tabs:
-        tab_summary = ui.tab(t("tab.overview"))
-        tab_activities = ui.tab(t("tab.activities")).bind_enabled_from(state, "file_loaded")
-        tab_trends = ui.tab(t("tab.trends")).bind_enabled_from(state, "file_loaded")
-        tab_health_data = ui.tab(t("tab.health_data")).bind_enabled_from(state, "file_loaded")
+        tab_summary = ui.tab(t("Overview"))
+        tab_activities = ui.tab(t("Activities")).bind_enabled_from(state, "file_loaded")
+        tab_trends = ui.tab(t("Trends")).bind_enabled_from(state, "file_loaded")
+        tab_health_data = ui.tab(t("Health Data")).bind_enabled_from(state, "file_loaded")
 
     with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
         with ui.tab_panel(tab_summary):
             with ui.row().classes(ROW_CENTERED_CLASSES):
-                stat_card(t("stat.count"), state.metrics_display, "count")
-                stat_card(t("stat.distance"), state.metrics_display, "distance", "km")
-                stat_card(t("stat.duration"), state.metrics_display, "duration", "h")
-                stat_card(t("stat.elevation"), state.metrics_display, "elevation", "km")
+                stat_card(t("Count"), state.metrics_display, "count")
+                stat_card(t("Distance"), state.metrics_display, "distance", "km")
+                stat_card(t("Duration"), state.metrics_display, "duration", "h")
+                stat_card(t("Elevation"), state.metrics_display, "elevation", "km")
             with ui.row().classes(ROW_CENTERED_CLASSES):
-                stat_card(t("stat.calories"), state.metrics_display, "calories", "kcal")
+                stat_card(t("Calories"), state.metrics_display, "calories", "kcal")
 
         with ui.tab_panel(tab_activities):
             render_activity_graphs()
@@ -457,13 +453,13 @@ def render_activity_graphs() -> None:
     """Render graphs by activity type."""
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_pie_rose_graph(
-            t("chart.count_by_activity"),
+            t("Count by activity"),
             state.workouts.get_count_by_activity(
                 start_date=state.start_date, end_date=state.end_date
             ),
         )
         render_pie_rose_graph(
-            t("chart.distance_by_activity"),
+            t("Distance by activity"),
             state.workouts.get_distance_by_activity(
                 start_date=state.start_date, end_date=state.end_date
             ),
@@ -471,14 +467,14 @@ def render_activity_graphs() -> None:
         )
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_pie_rose_graph(
-            t("chart.calories_by_activity"),
+            t("Calories by activity"),
             state.workouts.get_calories_by_activity(
                 start_date=state.start_date, end_date=state.end_date
             ),
             "kcal",
         )
         render_pie_rose_graph(
-            t("chart.duration_by_activity"),
+            t("Duration by activity"),
             state.workouts.get_duration_by_activity(
                 start_date=state.start_date, end_date=state.end_date
             ),
@@ -488,7 +484,7 @@ def render_activity_graphs() -> None:
         # Display elevation in meters (not km like the stat card) because per-activity
         # values can be small and would show as 0.0X km, making the chart less readable
         render_pie_rose_graph(
-            t("chart.elevation_by_activity"),
+            t("Elevation by activity"),
             state.workouts.get_elevation_by_activity(
                 start_date=state.start_date, end_date=state.end_date
             ),
@@ -499,13 +495,13 @@ def render_activity_graphs() -> None:
 def render_trends_tab() -> None:
     """Render the trends tab with period selection and graphs."""
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        ui.label(t("trends.aggregate_by")).classes("text-sm text-gray-500 uppercase self-center")
+        ui.label(t("Aggregate by:")).classes("text-sm text-gray-500 uppercase self-center")
         ui.radio(
             {
-                "W": t("period.W"),
-                "M": t("period.M"),
-                "Q": t("period.Q"),
-                "Y": t("period.Y"),
+                "W": t("Week"),
+                "M": t("Month"),
+                "Q": t("Quarter"),
+                "Y": t("Year"),
             },
             on_change=render_trends_graphs.refresh,
         ).bind_value(state, "trends_period").props("inline")
@@ -516,10 +512,10 @@ def render_trends_tab() -> None:
 @ui.refreshable
 def render_trends_graphs() -> None:
     """Render trend graphs."""
-    period_label = t(f"period_label.{state.trends_period}")
+    period_label = t(period_code_to_label(state.trends_period))
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_generic_graph(
-            t("chart.count_by_period", period=period_label),
+            t("Count by {period}", period=period_label),
             state.workouts.get_count_by_period(
                 state.trends_period,
                 activity_type=state.selected_activity_type,
@@ -528,7 +524,7 @@ def render_trends_graphs() -> None:
             ),
         )
         render_generic_graph(
-            t("chart.distance_by_period", period=period_label),
+            t("Distance by {period}", period=period_label),
             state.workouts.get_distance_by_period(
                 state.trends_period,
                 activity_type=state.selected_activity_type,
@@ -539,7 +535,7 @@ def render_trends_graphs() -> None:
         )
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_generic_graph(
-            t("chart.calories_by_period", period=period_label),
+            t("Calories by {period}", period=period_label),
             state.workouts.get_calories_by_period(
                 state.trends_period,
                 activity_type=state.selected_activity_type,
@@ -549,7 +545,7 @@ def render_trends_graphs() -> None:
             "kcal",
         )
         render_generic_graph(
-            t("chart.duration_by_period", period=period_label),
+            t("Duration by {period}", period=period_label),
             state.workouts.get_duration_by_period(
                 state.trends_period,
                 activity_type=state.selected_activity_type,
@@ -562,7 +558,7 @@ def render_trends_graphs() -> None:
         # Display elevation in meters (not km like the stat card) because values for the
         # selected period can be small and would show as 0.0X km, making the chart less readable
         render_generic_graph(
-            t("chart.elevation_by_period", period=period_label),
+            t("Elevation by {period}", period=period_label),
             state.workouts.get_elevation_by_period(
                 state.trends_period,
                 activity_type=state.selected_activity_type,
@@ -598,7 +594,7 @@ def render_health_data_tab() -> None:
             period=state.trends_period, context=RecordsByType.HeartRateMeasureContext.SEDENTARY
         )
         render_generic_graph(
-            t("chart.resting_hr"),
+            t("Resting HR frequency over time"),
             to_json_safe(
                 heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
                 .set_index("period")["avg"]
@@ -610,7 +606,7 @@ def render_health_data_tab() -> None:
 
         body_mass_stats = state.records_by_type.weight_stats(period=state.trends_period)
         render_generic_graph(
-            t("chart.body_mass"),
+            t("Body Mass over time"),
             to_json_safe(
                 body_mass_stats.assign(period=body_mass_stats["period"].astype(str))
                 .set_index("period")["avg"]
@@ -623,7 +619,7 @@ def render_health_data_tab() -> None:
     with ui.row().classes(ROW_CENTERED_CLASSES):
         vo2_max_stats = state.records_by_type.vo2_max_stats(period=state.trends_period)
         render_generic_graph(
-            t("chart.vo2_max"),
+            t("VO2 Max over time"),
             to_json_safe(
                 vo2_max_stats.assign(period=vo2_max_stats["period"].astype(str))
                 .set_index("period")["avg"]
