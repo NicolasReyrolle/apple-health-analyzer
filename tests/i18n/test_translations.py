@@ -57,7 +57,7 @@ class TestPoFiles:
         mo_path = _LOCALE_DIR / lang / "LC_MESSAGES" / "messages.mo"
         assert mo_path.exists(), (
             f"Missing compiled .mo file for '{lang}'. "
-            f"Run: python -c \"from babel.messages.mofile import write_mo; "
+            f'Run: python -c "from babel.messages.mofile import write_mo; '
             f"from babel.messages.pofile import read_po; "
             f"[write_mo(open(str(p).replace('.po','.mo'),'wb'), read_po(open(p,'rb'))) "
             f"for p in ['{mo_path.with_suffix('.po')}']]\" "
@@ -70,18 +70,14 @@ class TestPoFiles:
         pot_msgids = _read_msgids_from_pot()
         po_translations = _read_po_for_lang(lang)
         missing = pot_msgids - set(po_translations.keys())
-        assert not missing, (
-            f"Language '{lang}' is missing translations for: {sorted(missing)}"
-        )
+        assert not missing, f"Language '{lang}' is missing translations for: {sorted(missing)}"
 
     @pytest.mark.parametrize("lang", _TRANSLATED_LANGUAGES)
     def test_no_empty_msgstr_in_po(self, lang: str) -> None:
         """No msgstr should be empty in any .po file."""
         po_translations = _read_po_for_lang(lang)
         empty = [msgid for msgid, msgstr in po_translations.items() if not msgstr]
-        assert not empty, (
-            f"Language '{lang}' has empty translations for: {sorted(empty)}"
-        )
+        assert not empty, f"Language '{lang}' has empty translations for: {sorted(empty)}"
 
     @pytest.mark.parametrize("lang", _TRANSLATED_LANGUAGES)
     def test_no_extra_msgids_in_po(self, lang: str) -> None:
@@ -89,9 +85,7 @@ class TestPoFiles:
         pot_msgids = _read_msgids_from_pot()
         po_translations = _read_po_for_lang(lang)
         extra = set(po_translations.keys()) - pot_msgids
-        assert not extra, (
-            f"Language '{lang}' has msgids not in .pot template: {sorted(extra)}"
-        )
+        assert not extra, f"Language '{lang}' has msgids not in .pot template: {sorted(extra)}"
 
 
 class TestTranslationFunction:
@@ -151,4 +145,3 @@ class TestLanguageConstants:
         """At minimum, English and French must be supported."""
         assert "en" in LANGUAGES
         assert "fr" in LANGUAGES
-
