@@ -1,7 +1,6 @@
 # Apple Health Analyzer - Message Catalog Template
 # Copyright (C) 2026 Nicolas Reyrolle
 # This file is distributed under the same license as the Apple Health Analyzer package.
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: Apple Health Analyzer 0.1.0\n"
