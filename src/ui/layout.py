@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import time
 from collections.abc import Hashable, Mapping, Sequence
 from typing import Any, Callable, Optional
@@ -302,6 +303,30 @@ async def pick_file() -> None:
     state.input_file.value = result[0]
 
 
+def _translate_parser_progress_message(message: str) -> str:
+    """Translate parser progress messages emitted by ExportParser."""
+    if message == "Starting to parse the Apple Health export file...":
+        return t("Starting to parse the Apple Health export file...")
+    if message == "Loading the workouts...":
+        return t("Loading the workouts...")
+    if message == "Finished parsing the Apple Health export file.":
+        return t("Finished parsing the Apple Health export file.")
+
+    processed_match = re.match(r"^Processed (\d+) workouts\.\.\.$", message)
+    if processed_match:
+        return t("Processed {count} workouts...", count=processed_match.group(1))
+
+    loaded_match = re.match(r"^Loaded (\d+) workouts total\.$", message)
+    if loaded_match:
+        return t("Loaded {count} workouts total.", count=loaded_match.group(1))
+
+    error_match = re.match(r"^Error during parsing: (.+)$", message)
+    if error_match:
+        return t("Error during parsing: {error}", error=error_match.group(1))
+
+    return message
+
+
 def load_workouts_from_file(
     file_path: str,
     progress_callback: Optional[Callable[[int, str], None]] = None,
@@ -314,9 +339,10 @@ def load_workouts_from_file(
     """
 
     def report(progress: int, message: str) -> None:
-        _logger.info(message)
+        localized_message = _translate_parser_progress_message(message)
+        _logger.info(localized_message)
         if progress_callback:
-            progress_callback(progress, message)
+            progress_callback(progress, localized_message)
 
     parser_progress = 20
 
@@ -336,7 +362,7 @@ def load_workouts_from_file(
 
         report(parser_progress, message)
 
-    report(5, "Preparing file load...")
+    report(5, t("Preparing file load..."))
     start_time = time.perf_counter()
     _logger.info("Starting to load file: %s", file_path)
 
@@ -345,7 +371,7 @@ def load_workouts_from_file(
         workouts_df = phd.workouts
         records_by_type = RecordsByType(data=phd.records_by_type)
 
-    report(93, "Building workout index...")
+    report(93, t("Building workout index..."))
     workouts = WorkoutManager(workouts_df)
     elapsed = time.perf_counter() - start_time
     _logger.info(workouts.get_statistics())
@@ -355,7 +381,7 @@ def load_workouts_from_file(
     activity_types.sort()
     activity_options = ["All"] + activity_types
 
-    report(97, "Preparing dashboard update...")
+    report(97, t("Preparing dashboard update..."))
     return workouts, activity_options, records_by_type
 
 
@@ -371,7 +397,7 @@ async def load_file() -> None:
         return
 
     state.loading = True
-    state.loading_status = "0% - Initializing..."
+    state.loading_status = f"0% - {t('Initializing...')}"
 
     loop = asyncio.get_running_loop()
 

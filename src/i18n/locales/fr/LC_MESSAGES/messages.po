@@ -95,6 +95,37 @@ msgstr "Fichier analysé avec succès."
 msgid "Error parsing file: {error}"
 msgstr "Erreur lors de l'analyse : {error}"
 
+# File loading progress
+msgid "Preparing file load..."
+msgstr "Préparation du chargement du fichier..."
+
+msgid "Starting to parse the Apple Health export file..."
+msgstr "Début de l'analyse du fichier d'export Apple Health..."
+
+msgid "Loading the workouts..."
+msgstr "Chargement des entraînements..."
+
+msgid "Processed {count} workouts..."
+msgstr "{count} entraînements traités..."
+
+msgid "Loaded {count} workouts total."
+msgstr "{count} entraînements chargés au total."
+
+msgid "Building workout index..."
+msgstr "Construction de l'index des entraînements..."
+
+msgid "Preparing dashboard update..."
+msgstr "Préparation de la mise à jour du tableau de bord..."
+
+msgid "Finished parsing the Apple Health export file."
+msgstr "Analyse du fichier d'export Apple Health terminée."
+
+msgid "Error during parsing: {error}"
+msgstr "Erreur pendant l'analyse : {error}"
+
+msgid "Initializing..."
+msgstr "Initialisation..."
+
 # Trends period selector
 msgid "Aggregate by:"
 msgstr "Agréger par :"

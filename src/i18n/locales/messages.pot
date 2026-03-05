@@ -91,6 +91,37 @@ msgstr ""
 msgid "Error parsing file: {error}"
 msgstr ""
 
+# File loading progress
+msgid "Preparing file load..."
+msgstr ""
+
+msgid "Starting to parse the Apple Health export file..."
+msgstr ""
+
+msgid "Loading the workouts..."
+msgstr ""
+
+msgid "Processed {count} workouts..."
+msgstr ""
+
+msgid "Loaded {count} workouts total."
+msgstr ""
+
+msgid "Building workout index..."
+msgstr ""
+
+msgid "Preparing dashboard update..."
+msgstr ""
+
+msgid "Finished parsing the Apple Health export file."
+msgstr ""
+
+msgid "Error during parsing: {error}"
+msgstr ""
+
+msgid "Initializing..."
+msgstr ""
+
 # Trends period selector
 msgid "Aggregate by:"
 msgstr ""

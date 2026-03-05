@@ -591,3 +591,37 @@ class TestLoadWorkoutsFromFile:
 
         assert any(msg.startswith("Processed 100 workouts") for _progress, msg in events)
         assert any(progress == 22 for progress, msg in events if msg.startswith("Processed "))
+
+    def test_load_workouts_from_file_translates_parser_progress_messages(self) -> None:
+        """Parser progress text should be translated before reaching UI callback."""
+
+        events: list[tuple[int, str]] = []
+
+        with patch(
+            "ui.layout.t", side_effect=lambda message, **kwargs: f"tr:{message.format(**kwargs)}"
+        ):
+            with patch("ui.layout.ExportParser") as parser_class_mock:
+                parser_instance_mock = MagicMock()
+
+                def _parse_side_effect(_file_path: str) -> Any:
+                    parser_cb = parser_class_mock.call_args.kwargs["progress_callback"]
+                    parser_cb("Processed 3 workouts...")
+                    return SimpleNamespace(workouts=pd.DataFrame(), records_by_type={})
+
+                parser_instance_mock.parse.side_effect = _parse_side_effect
+                parser_class_mock.return_value.__enter__.return_value = parser_instance_mock
+                parser_class_mock.return_value.__exit__.return_value = None
+
+                with patch("ui.layout.WorkoutManager") as wm_class_mock:
+                    wm_instance_mock = MagicMock()
+                    wm_instance_mock.get_activity_types.return_value = []
+                    wm_class_mock.return_value = wm_instance_mock
+
+                    layout.load_workouts_from_file(
+                        "dummy.zip",
+                        progress_callback=lambda progress, message: events.append(
+                            (progress, message)
+                        ),
+                    )
+
+        assert any(msg == "tr:Processed 3 workouts..." for _progress, msg in events)
