@@ -213,7 +213,7 @@ msgid "January"
 msgstr "janvier"
 
 msgid "February"
-msgstr "fevrier"
+msgstr "février"
 
 msgid "March"
 msgstr "mars"
@@ -231,7 +231,7 @@ msgid "July"
 msgstr "juillet"
 
 msgid "August"
-msgstr "aout"
+msgstr "août"
 
 msgid "September"
 msgstr "septembre"
@@ -243,13 +243,13 @@ msgid "November"
 msgstr "novembre"
 
 msgid "December"
-msgstr "decembre"
+msgstr "décembre"
 
 msgid "Jan"
 msgstr "janv."
 
 msgid "Feb"
-msgstr "fevr."
+msgstr "févr."
 
 msgid "Mar"
 msgstr "mars"
@@ -264,7 +264,7 @@ msgid "Jul"
 msgstr "juil."
 
 msgid "Aug"
-msgstr "aout"
+msgstr "août"
 
 msgid "Sep"
 msgstr "sept."
@@ -276,7 +276,7 @@ msgid "Nov"
 msgstr "nov."
 
 msgid "Dec"
-msgstr "dec."
+msgstr "déc."
 
 # Generic activity labels
 msgid "All"
