@@ -26,7 +26,7 @@ _DOMAIN = "messages"
 _LOCALE_DIR = Path(__file__).parent / "locales"
 _logger = logging.getLogger(__name__)
 
-__all__ = ["DEFAULT_LANGUAGE", "LANGUAGES", "t"]
+__all__ = ["DEFAULT_LANGUAGE", "LANGUAGES", "t", "translate"]
 
 
 class _POTranslations(gettext.NullTranslations):
@@ -112,7 +112,15 @@ def t(message: str, **kwargs: str) -> str:
         # → "Count by month"   (English)
         # → "Nombre par mois"  (French)
     """
-    translation = _get_translation(get_language())
+    result = translate(message, language=get_language())
+    if kwargs:
+        return result.format(**kwargs)
+    return result
+
+
+def translate(message: str, language: str, **kwargs: str) -> str:
+    """Translate *message* into the provided *language* code."""
+    translation = _get_translation(language)
     result = translation.gettext(message)
     if kwargs:
         return result.format(**kwargs)

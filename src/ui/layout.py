@@ -1,7 +1,6 @@
 """UI layout components for Apple Health Analyzer application."""
 
 import asyncio
-import json
 import logging
 import time
 from collections.abc import Hashable, Mapping, Sequence
@@ -17,7 +16,7 @@ from i18n.activity_types import build_activity_select_options, translate_activit
 from logic.export_parser import ExportParser
 from logic.records_by_type import RecordsByType
 from logic.workout_manager import WorkoutManager
-from ui.helpers import format_integer, period_code_to_label
+from ui.helpers import format_integer, period_code_to_label, qdate_locale_json
 from ui.local_file_picker import LocalFilePicker
 
 # Get logger for this module
@@ -25,99 +24,6 @@ _logger = logging.getLogger(__name__)
 
 # CSS class constants
 ROW_CENTERED_CLASSES = "w-full justify-center gap-4"
-
-
-def _qdate_locale_js(language_code: str) -> str:
-    """Return a JSON locale object for Quasar QDate.
-
-    NiceGUI forwards this object to Quasar via ``:locale='...'``.
-    """
-    locale_by_language = {
-        "fr": {
-            "days": [
-                "dimanche",
-                "lundi",
-                "mardi",
-                "mercredi",
-                "jeudi",
-                "vendredi",
-                "samedi",
-            ],
-            "daysShort": ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
-            "months": [
-                "janvier",
-                "fevrier",
-                "mars",
-                "avril",
-                "mai",
-                "juin",
-                "juillet",
-                "aout",
-                "septembre",
-                "octobre",
-                "novembre",
-                "decembre",
-            ],
-            "monthsShort": [
-                "janv.",
-                "fevr.",
-                "mars",
-                "avr.",
-                "mai",
-                "juin",
-                "juil.",
-                "aout",
-                "sept.",
-                "oct.",
-                "nov.",
-                "dec.",
-            ],
-            "firstDayOfWeek": 1,
-        },
-        "en": {
-            "days": [
-                "Sunday",
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-            ],
-            "daysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-            "months": [
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-            ],
-            "monthsShort": [
-                "Jan",
-                "Feb",
-                "Mar",
-                "Apr",
-                "May",
-                "Jun",
-                "Jul",
-                "Aug",
-                "Sep",
-                "Oct",
-                "Nov",
-                "Dec",
-            ],
-            "firstDayOfWeek": 0,
-        },
-    }
-    locale = locale_by_language.get(language_code, locale_by_language["en"])
-    return json.dumps(locale)
 
 
 def handle_json_export() -> None:
@@ -214,7 +120,7 @@ def render_date_range_selector() -> None:
     """Render the date range selector with linked input and date picker."""
     with ui.row().classes("items-center gap-2"):
         min_date, max_date = state.workouts.get_date_bounds()
-        date_locale = _qdate_locale_js(get_language())
+        date_locale = qdate_locale_json(get_language())
 
         date_input = (
             ui.input(t("Date range"))

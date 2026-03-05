@@ -166,6 +166,118 @@ msgstr "Masse corporelle au fil du temps"
 msgid "VO2 Max over time"
 msgstr "VO2 Max au fil du temps"
 
+# QDate locale labels
+msgid "Sunday"
+msgstr "dimanche"
+
+msgid "Monday"
+msgstr "lundi"
+
+msgid "Tuesday"
+msgstr "mardi"
+
+msgid "Wednesday"
+msgstr "mercredi"
+
+msgid "Thursday"
+msgstr "jeudi"
+
+msgid "Friday"
+msgstr "vendredi"
+
+msgid "Saturday"
+msgstr "samedi"
+
+msgid "Sun"
+msgstr "dim."
+
+msgid "Mon"
+msgstr "lun."
+
+msgid "Tue"
+msgstr "mar."
+
+msgid "Wed"
+msgstr "mer."
+
+msgid "Thu"
+msgstr "jeu."
+
+msgid "Fri"
+msgstr "ven."
+
+msgid "Sat"
+msgstr "sam."
+
+msgid "January"
+msgstr "janvier"
+
+msgid "February"
+msgstr "fevrier"
+
+msgid "March"
+msgstr "mars"
+
+msgid "April"
+msgstr "avril"
+
+msgid "May"
+msgstr "mai"
+
+msgid "June"
+msgstr "juin"
+
+msgid "July"
+msgstr "juillet"
+
+msgid "August"
+msgstr "aout"
+
+msgid "September"
+msgstr "septembre"
+
+msgid "October"
+msgstr "octobre"
+
+msgid "November"
+msgstr "novembre"
+
+msgid "December"
+msgstr "decembre"
+
+msgid "Jan"
+msgstr "janv."
+
+msgid "Feb"
+msgstr "fevr."
+
+msgid "Mar"
+msgstr "mars"
+
+msgid "Apr"
+msgstr "avr."
+
+msgid "Jun"
+msgstr "juin"
+
+msgid "Jul"
+msgstr "juil."
+
+msgid "Aug"
+msgstr "aout"
+
+msgid "Sep"
+msgstr "sept."
+
+msgid "Oct"
+msgstr "oct."
+
+msgid "Nov"
+msgstr "nov."
+
+msgid "Dec"
+msgstr "dec."
+
 # Generic activity labels
 msgid "All"
 msgstr "Tout"
