@@ -155,6 +155,7 @@ def render_date_range_selector() -> None:
 def _change_language(language_code: str) -> None:
     """Store the selected language and reload the page to apply it."""
     app.storage.user["language"] = language_code
+    _logger.info("Language changed to '%s', reloading page.", language_code)
     ui.navigate.reload()
 
 
@@ -177,7 +178,7 @@ def render_header() -> None:
         with ui.button(icon="language").props("flat round"):
             with ui.menu():
                 for code, name in LANGUAGES.items():
-                    ui.menu_item(name, on_click=lambda c=code: _change_language(c))
+                    ui.menu_item(name, on_click=lambda _event, c=code: _change_language(c))
 
 
 def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):

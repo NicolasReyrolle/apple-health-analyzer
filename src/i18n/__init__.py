@@ -9,8 +9,11 @@ NiceGUI user storage and returns the appropriate translated string.
 """
 
 import gettext
+import logging
 from functools import lru_cache
 from pathlib import Path
+
+from babel.messages import pofile
 
 DEFAULT_LANGUAGE = "en"
 
@@ -21,8 +24,47 @@ LANGUAGES: dict[str, str] = {
 
 _DOMAIN = "messages"
 _LOCALE_DIR = Path(__file__).parent / "locales"
+_logger = logging.getLogger(__name__)
 
 __all__ = ["DEFAULT_LANGUAGE", "LANGUAGES", "t"]
+
+
+class _POTranslations(gettext.NullTranslations):
+    """Translation object backed by gettext ``.po`` files.
+
+    This is used as a development fallback when compiled ``.mo`` files are
+    not available yet.
+    """
+
+    def __init__(self, messages: dict[str, str]) -> None:
+        super().__init__()
+        self._messages = messages
+
+    def gettext(self, message: str) -> str:
+        translated = self._messages.get(message)
+        if translated:
+            return translated
+        return message
+
+
+def _load_po_translation(lang: str) -> gettext.NullTranslations:
+    """Load translations from a ``.po`` file for *lang* if present."""
+    po_path = _LOCALE_DIR / lang / "LC_MESSAGES" / f"{_DOMAIN}.po"
+    if not po_path.exists():
+        return gettext.NullTranslations()
+
+    with po_path.open("r", encoding="utf-8") as po_file:
+        catalog = pofile.read_po(po_file)
+
+    messages = {
+        message.id: message.string
+        for message in catalog
+        if isinstance(message.id, str)
+        and isinstance(message.string, str)
+        and message.id
+        and message.string
+    }
+    return _POTranslations(messages)
 
 
 @lru_cache(maxsize=None)
@@ -37,7 +79,8 @@ def _get_translation(lang: str) -> gettext.NullTranslations:
     try:
         return gettext.translation(_DOMAIN, localedir=str(_LOCALE_DIR), languages=[lang])
     except FileNotFoundError:
-        return gettext.NullTranslations()
+        _logger.debug("No compiled .mo catalog for '%s'; trying .po fallback", lang)
+        return _load_po_translation(lang)
 
 
 def get_language() -> str:
