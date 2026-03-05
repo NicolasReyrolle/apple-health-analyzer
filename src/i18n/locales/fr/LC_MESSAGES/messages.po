@@ -165,3 +165,263 @@ msgstr "Masse corporelle au fil du temps"
 
 msgid "VO2 Max over time"
 msgstr "VO2 Max au fil du temps"
+
+# Generic activity labels
+msgid "All"
+msgstr "Tout"
+
+msgid "Others"
+msgstr "Autres"
+
+# HKWorkoutActivityType labels
+msgid "American Football"
+msgstr "Football américain"
+
+msgid "Archery"
+msgstr "Tir à l'arc"
+
+msgid "Australian Football"
+msgstr "Football australien"
+
+msgid "Badminton"
+msgstr "Badminton"
+
+msgid "Baseball"
+msgstr "Baseball"
+
+msgid "Basketball"
+msgstr "Basket-ball"
+
+msgid "Barre"
+msgstr "Barre"
+
+msgid "Bowling"
+msgstr "Bowling"
+
+msgid "Boxing"
+msgstr "Boxe"
+
+msgid "Cardio Dance"
+msgstr "Danse cardio"
+
+msgid "Climbing"
+msgstr "Escalade"
+
+msgid "Cooldown"
+msgstr "Retour au calme"
+
+msgid "Core Training"
+msgstr "Gainage"
+
+msgid "Cricket"
+msgstr "Cricket"
+
+msgid "Cross Country Skiing"
+msgstr "Ski de fond"
+
+msgid "Cross Training"
+msgstr "Entraînement croisé"
+
+msgid "Curling"
+msgstr "Curling"
+
+msgid "Cycling"
+msgstr "Cyclisme"
+
+msgid "Dance"
+msgstr "Danse"
+
+msgid "Dance Inspired Training"
+msgstr "Entraînement inspiré de la danse"
+
+msgid "Disc Sports"
+msgstr "Sports de disque"
+
+msgid "Downhill Skiing"
+msgstr "Ski alpin"
+
+msgid "Elliptical"
+msgstr "Elliptique"
+
+msgid "Equestrian Sports"
+msgstr "Sports équestres"
+
+msgid "Fencing"
+msgstr "Escrime"
+
+msgid "Fishing"
+msgstr "Pêche"
+
+msgid "Fitness Gaming"
+msgstr "Jeux de fitness"
+
+msgid "Flexibility"
+msgstr "Souplesse"
+
+msgid "Functional Strength Training"
+msgstr "Renforcement fonctionnel"
+
+msgid "Golf"
+msgstr "Golf"
+
+msgid "Gymnastics"
+msgstr "Gymnastique"
+
+msgid "Hand Cycling"
+msgstr "Handbike"
+
+msgid "Handball"
+msgstr "Handball"
+
+msgid "High Intensity Interval Training"
+msgstr "Entraînement fractionné à haute intensité"
+
+msgid "Hiking"
+msgstr "Randonnée"
+
+msgid "Hockey"
+msgstr "Hockey"
+
+msgid "Hunting"
+msgstr "Chasse"
+
+msgid "Jump Rope"
+msgstr "Corde à sauter"
+
+msgid "Kickboxing"
+msgstr "Kick-boxing"
+
+msgid "Lacrosse"
+msgstr "Lacrosse"
+
+msgid "Martial Arts"
+msgstr "Arts martiaux"
+
+msgid "Mind And Body"
+msgstr "Corps et esprit"
+
+msgid "Mixed Cardio"
+msgstr "Cardio mixte"
+
+msgid "Mixed Metabolic Cardio Training"
+msgstr "Cardio métabolique mixte"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "Paddle Sports"
+msgstr "Sports de pagaie"
+
+msgid "Pickleball"
+msgstr "Pickleball"
+
+msgid "Pilates"
+msgstr "Pilates"
+
+msgid "Play"
+msgstr "Jeu"
+
+msgid "Preparation And Recovery"
+msgstr "Préparation et récupération"
+
+msgid "Racquetball"
+msgstr "Racquetball"
+
+msgid "Rowing"
+msgstr "Aviron"
+
+msgid "Rugby"
+msgstr "Rugby"
+
+msgid "Running"
+msgstr "Course à pied"
+
+msgid "Sailing"
+msgstr "Voile"
+
+msgid "Skating Sports"
+msgstr "Sports de glisse"
+
+msgid "Snowboarding"
+msgstr "Snowboard"
+
+msgid "Snow Sports"
+msgstr "Sports de neige"
+
+msgid "Soccer"
+msgstr "Football"
+
+msgid "Social Dance"
+msgstr "Danse sociale"
+
+msgid "Softball"
+msgstr "Softball"
+
+msgid "Squash"
+msgstr "Squash"
+
+msgid "Stair Climbing"
+msgstr "Montée d'escaliers"
+
+msgid "Stairs"
+msgstr "Escaliers"
+
+msgid "Step Training"
+msgstr "Step"
+
+msgid "Surfing Sports"
+msgstr "Sports de glisse sur vagues"
+
+msgid "Swim Bike Run"
+msgstr "Natation Vélo Course"
+
+msgid "Swimming"
+msgstr "Natation"
+
+msgid "Table Tennis"
+msgstr "Tennis de table"
+
+msgid "Tai Chi"
+msgstr "Tai-chi"
+
+msgid "Tennis"
+msgstr "Tennis"
+
+msgid "Track And Field"
+msgstr "Athlétisme"
+
+msgid "Traditional Strength Training"
+msgstr "Musculation traditionnelle"
+
+msgid "Transition"
+msgstr "Transition"
+
+msgid "Underwater Diving"
+msgstr "Plongée sous-marine"
+
+msgid "Volleyball"
+msgstr "Volley-ball"
+
+msgid "Walking"
+msgstr "Marche"
+
+msgid "Water Fitness"
+msgstr "Aquagym"
+
+msgid "Water Polo"
+msgstr "Water-polo"
+
+msgid "Water Sports"
+msgstr "Sports nautiques"
+
+msgid "Wheelchair Run Pace"
+msgstr "Fauteuil roulant allure course"
+
+msgid "Wheelchair Walk Pace"
+msgstr "Fauteuil roulant allure marche"
+
+msgid "Wrestling"
+msgstr "Lutte"
+
+msgid "Yoga"
+msgstr "Yoga"

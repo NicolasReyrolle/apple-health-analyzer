@@ -12,6 +12,7 @@ from nicegui import app, ui
 from app_state import state
 from assets import APP_ICON_BASE64
 from i18n import LANGUAGES, t
+from i18n.activity_types import build_activity_select_options, translate_activity_value_map
 from logic.export_parser import ExportParser
 from logic.records_by_type import RecordsByType
 from logic.workout_manager import WorkoutManager
@@ -86,7 +87,7 @@ def render_activity_select() -> None:
     """Render the activity type selection dropdown."""
 
     ui.select(
-        options=state.activity_options,
+        options=build_activity_select_options(state.activity_options),
         on_change=refresh_data,
         value=state.selected_activity_type,
         label=t("Activity Type"),
@@ -153,10 +154,14 @@ def render_date_range_selector() -> None:
 
 
 def _change_language(language_code: str) -> None:
-    """Store the selected language and reload the page to apply it."""
+    """Store the selected language and refresh translated UI in place."""
     app.storage.user["language"] = language_code
-    _logger.info("Language changed to '%s', reloading page.", language_code)
-    ui.navigate.reload()
+    _logger.info("Language changed to '%s', refreshing UI.", language_code)
+    render_activity_select.refresh()
+    render_date_range_selector.refresh()
+    render_activity_graphs.refresh()
+    render_trends_graphs.refresh()
+    render_health_data_tab.refresh()
 
 
 def render_header() -> None:
@@ -196,7 +201,7 @@ def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):
                 ui.label(unit).classes("text-xs text-gray-400")
 
 
-def render_pie_rose_graph(label: str, values: dict[str, int], unit: str = "") -> None:
+def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: str = "") -> None:
     """Render a pie/rose graph for the given values."""
 
     chart_data = [{"value": v, "name": k} for k, v in values.items()]
@@ -455,29 +460,37 @@ def render_activity_graphs() -> None:
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_pie_rose_graph(
             t("Count by activity"),
-            state.workouts.get_count_by_activity(
-                start_date=state.start_date, end_date=state.end_date
+            translate_activity_value_map(
+                state.workouts.get_count_by_activity(
+                    start_date=state.start_date, end_date=state.end_date
+                )
             ),
         )
         render_pie_rose_graph(
             t("Distance by activity"),
-            state.workouts.get_distance_by_activity(
-                start_date=state.start_date, end_date=state.end_date
+            translate_activity_value_map(
+                state.workouts.get_distance_by_activity(
+                    start_date=state.start_date, end_date=state.end_date
+                )
             ),
             "km",
         )
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_pie_rose_graph(
             t("Calories by activity"),
-            state.workouts.get_calories_by_activity(
-                start_date=state.start_date, end_date=state.end_date
+            translate_activity_value_map(
+                state.workouts.get_calories_by_activity(
+                    start_date=state.start_date, end_date=state.end_date
+                )
             ),
             "kcal",
         )
         render_pie_rose_graph(
             t("Duration by activity"),
-            state.workouts.get_duration_by_activity(
-                start_date=state.start_date, end_date=state.end_date
+            translate_activity_value_map(
+                state.workouts.get_duration_by_activity(
+                    start_date=state.start_date, end_date=state.end_date
+                )
             ),
             "h",
         )
@@ -486,8 +499,10 @@ def render_activity_graphs() -> None:
         # values can be small and would show as 0.0X km, making the chart less readable
         render_pie_rose_graph(
             t("Elevation by activity"),
-            state.workouts.get_elevation_by_activity(
-                start_date=state.start_date, end_date=state.end_date
+            translate_activity_value_map(
+                state.workouts.get_elevation_by_activity(
+                    start_date=state.start_date, end_date=state.end_date
+                )
             ),
             "m",
         )

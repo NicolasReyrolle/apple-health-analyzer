@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from types import TracebackType
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -140,3 +141,36 @@ def test_render_trends_tab_radio_calls_refresh_on_change() -> None:
     assert radio_mock.call_count == 1
     radio_instance = radio_instances[0]
     assert radio_instance.on_change == render_graphs_mock.refresh
+
+
+def test_change_language_refreshes_ui_without_reload_or_file_load() -> None:
+    """Language switch should refresh safe subcomponents only, without reload side effects."""
+
+    fake_app = SimpleNamespace(storage=SimpleNamespace(user={}))
+
+    with patch("ui.layout.app", fake_app):
+        with patch("ui.layout.render_activity_select.refresh") as activity_refresh:
+            with patch("ui.layout.render_date_range_selector.refresh") as date_refresh:
+                with patch("ui.layout.render_activity_graphs.refresh") as activity_graphs_refresh:
+                    with patch("ui.layout.render_trends_graphs.refresh") as trends_refresh:
+                        with patch("ui.layout.render_health_data_tab.refresh") as health_refresh:
+                            with patch("ui.layout.ui.navigate.reload") as reload_mock:
+                                with patch("ui.layout.load_file") as load_file_mock:
+                                    change_language = getattr(layout, "_change_language")
+                                    change_language("fr")
+
+    assert fake_app.storage.user["language"] == "fr"
+    activity_refresh.assert_called_once()
+    date_refresh.assert_called_once()
+    activity_graphs_refresh.assert_called_once()
+    trends_refresh.assert_called_once()
+    health_refresh.assert_called_once()
+    reload_mock.assert_not_called()
+    load_file_mock.assert_not_called()
+
+
+def test_top_level_layout_functions_are_not_refreshable() -> None:
+    """Top-level NiceGUI layout functions must stay non-refreshable to avoid startup crashes."""
+
+    assert not hasattr(layout.render_header, "refresh")
+    assert not hasattr(layout.render_left_drawer, "refresh")
