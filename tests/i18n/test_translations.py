@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 from babel.messages.pofile import read_po
 
+import i18n as i18n_module
 from i18n import DEFAULT_LANGUAGE, LANGUAGES, t
 
 _LOCALE_DIR = Path(__file__).resolve().parents[2] / "src" / "i18n" / "locales"
@@ -145,3 +146,34 @@ class TestLanguageConstants:
         """At minimum, English and French must be supported."""
         assert "en" in LANGUAGES
         assert "fr" in LANGUAGES
+
+
+class TestTranslationFallbackInternals:
+    """Directly exercise gettext fallback paths used by t()."""
+
+    def test_t_uses_po_fallback_when_compiled_catalog_is_missing(self, tmp_path: Path) -> None:
+        """When gettext.translation fails, t() should load .po fallback translations."""
+        locale_dir = tmp_path / "locales"
+        po_dir = locale_dir / "zz" / "LC_MESSAGES"
+        po_dir.mkdir(parents=True)
+        po_content = """msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\\n"
+
+msgid "Hello"
+msgstr "Salut"
+"""
+        (po_dir / "messages.po").write_text(po_content, encoding="utf-8")
+
+        get_translation = getattr(i18n_module, "_get_translation")
+        get_translation.cache_clear()
+        with (
+            patch("i18n._LOCALE_DIR", locale_dir),
+            patch("i18n.get_language", return_value="zz"),
+            patch("i18n.gettext.translation", side_effect=FileNotFoundError),
+        ):
+            assert t("Hello") == "Salut"
+            # Unknown keys should pass through unchanged in _POTranslations.gettext.
+            assert t("Unknown key") == "Unknown key"
+
+        get_translation.cache_clear()

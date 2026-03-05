@@ -50,3 +50,18 @@ def test_translate_activity_value_map_translates_keys_only() -> None:
     translated = translate_activity_value_map({"TaiChi": 2, "Others": 1})
 
     assert translated == {"Tai Chi": 2, "Others": 1}
+
+
+def test_build_activity_select_options_disambiguates_duplicate_labels() -> None:
+    """Duplicate display labels should be disambiguated using the raw value."""
+    options = build_activity_select_options(["Running", "HKWorkoutActivityTypeRunning"])
+
+    assert options["Running"] == "Running"
+    assert options["HKWorkoutActivityTypeRunning"] == "Running (HKWorkoutActivityTypeRunning)"
+
+
+def test_translate_activity_value_map_merges_label_collisions() -> None:
+    """When two raw labels map to same display label, their values should be summed."""
+    translated = translate_activity_value_map({"Running": 2, "HKWorkoutActivityTypeRunning": 3})
+
+    assert translated == {"Running": 5}

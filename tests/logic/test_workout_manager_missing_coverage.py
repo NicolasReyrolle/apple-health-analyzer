@@ -225,6 +225,54 @@ class TestCountByActivityMissingColumn:
         assert result == {}
 
 
+class TestAggregateByPeriodInternalBranches:
+    """Tests for internal _aggregate_by_period edge branches."""
+
+    def test_aggregate_by_period_returns_empty_when_filtered_workouts_are_empty(self) -> None:
+        """Date filters that remove all workouts should return an empty dictionary."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2024-01-01")],
+                    "duration": [3600],
+                }
+            )
+        )
+
+        result = workouts._aggregate_by_period(  # pylint: disable=protected-access
+            column="duration",
+            period="M",
+            aggregation=lambda grouped: grouped.sum(),
+            transformation=lambda s: s,
+            start_date=datetime(2030, 1, 1),
+            end_date=datetime(2030, 1, 31),
+        )
+
+        assert result == {}
+
+    def test_aggregate_by_period_returns_empty_when_aggregation_result_is_empty(self) -> None:
+        """Empty aggregation output should return an empty dictionary."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2024-01-01")],
+                    "duration": [3600],
+                }
+            )
+        )
+
+        result = workouts._aggregate_by_period(  # pylint: disable=protected-access
+            column="duration",
+            period="M",
+            aggregation=lambda _grouped: pd.Series(dtype=float),
+            transformation=lambda s: s,
+        )
+
+        assert result == {}
+
+
 class TestDistanceByActivityEdgeCases:
     """Test suite for edge cases in get_distance_by_activity."""
 
