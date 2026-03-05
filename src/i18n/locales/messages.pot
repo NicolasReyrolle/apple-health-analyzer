@@ -15,10 +15,6 @@ msgstr ""
 msgid "Apple Health Analyzer"
 msgstr ""
 
-# Header
-msgid "Language"
-msgstr ""
-
 # Left drawer
 msgid "Activities"
 msgstr ""
