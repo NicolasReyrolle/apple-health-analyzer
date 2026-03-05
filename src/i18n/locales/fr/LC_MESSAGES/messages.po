@@ -1,0 +1,570 @@
+# French translations for Apple Health Analyzer
+# Copyright (C) 2026 Nicolas Reyrolle
+# This file is distributed under the same license as the Apple Health Analyzer package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Apple Health Analyzer 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-05 13:00+0000\n"
+"PO-Revision-Date: 2026-03-05 13:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+# App title
+msgid "Apple Health Analyzer"
+msgstr "Analyseur de santé Apple"
+
+# Header
+msgid "Language"
+msgstr "Langue"
+
+# Left drawer
+msgid "Activities"
+msgstr "Activités"
+
+msgid "Activity Type"
+msgstr "Type d'activité"
+
+msgid "Date range"
+msgstr "Plage de dates"
+
+msgid "Export data"
+msgstr "Exporter les données"
+
+msgid "to JSON"
+msgstr "en JSON"
+
+msgid "to CSV"
+msgstr "en CSV"
+
+# Main body
+msgid "Apple Health export file"
+msgstr "Fichier d'export Apple Health"
+
+msgid "Select an Apple Health export file..."
+msgstr "Sélectionner un fichier d'export Apple Health..."
+
+msgid "Browse"
+msgstr "Parcourir"
+
+msgid "Load"
+msgstr "Charger"
+
+# Tabs
+msgid "Overview"
+msgstr "Vue d'ensemble"
+
+msgid "Trends"
+msgstr "Tendances"
+
+msgid "Health Data"
+msgstr "Données de santé"
+
+# Stat cards
+msgid "Count"
+msgstr "Nombre"
+
+msgid "Distance"
+msgstr "Distance"
+
+msgid "Duration"
+msgstr "Durée"
+
+msgid "Elevation"
+msgstr "Dénivelé"
+
+msgid "Calories"
+msgstr "Calories"
+
+# Notifications
+msgid "No file selected"
+msgstr "Aucun fichier sélectionné"
+
+msgid "Please select an Apple Health export file first."
+msgstr "Veuillez d'abord sélectionner un fichier d'export Apple Health."
+
+msgid "File parsed successfully."
+msgstr "Fichier analysé avec succès."
+
+msgid "Error parsing file: {error}"
+msgstr "Erreur lors de l'analyse : {error}"
+
+# File loading progress
+msgid "Preparing file load..."
+msgstr "Préparation du chargement du fichier..."
+
+msgid "Starting to parse the Apple Health export file..."
+msgstr "Début de l'analyse du fichier d'export Apple Health..."
+
+msgid "Loading the workouts..."
+msgstr "Chargement des entraînements..."
+
+msgid "Processed {count} workouts..."
+msgstr "{count} entraînements traités..."
+
+msgid "Loaded {count} workouts total."
+msgstr "{count} entraînements chargés au total."
+
+msgid "Building workout index..."
+msgstr "Construction de l'index des entraînements..."
+
+msgid "Preparing dashboard update..."
+msgstr "Préparation de la mise à jour du tableau de bord..."
+
+msgid "Finished parsing the Apple Health export file."
+msgstr "Analyse du fichier d'export Apple Health terminée."
+
+msgid "Error during parsing: {error}"
+msgstr "Erreur pendant l'analyse : {error}"
+
+msgid "Initializing..."
+msgstr "Initialisation..."
+
+# Trends period selector
+msgid "Aggregate by:"
+msgstr "Agréger par :"
+
+msgid "Week"
+msgstr "Semaine"
+
+msgid "Month"
+msgstr "Mois"
+
+msgid "Quarter"
+msgstr "Trimestre"
+
+msgid "Year"
+msgstr "Année"
+
+# Period labels used in chart titles (lowercase)
+msgid "week"
+msgstr "semaine"
+
+msgid "month"
+msgstr "mois"
+
+msgid "quarter"
+msgstr "trimestre"
+
+msgid "year"
+msgstr "année"
+
+# Activity charts
+msgid "Count by activity"
+msgstr "Nombre par activité"
+
+msgid "Distance by activity"
+msgstr "Distance par activité"
+
+msgid "Calories by activity"
+msgstr "Calories par activité"
+
+msgid "Duration by activity"
+msgstr "Durée par activité"
+
+msgid "Elevation by activity"
+msgstr "Dénivelé par activité"
+
+# Trends charts ({period} is replaced at runtime with the translated period label)
+msgid "Count by {period}"
+msgstr "Nombre par {period}"
+
+msgid "Distance by {period}"
+msgstr "Distance par {period}"
+
+msgid "Calories by {period}"
+msgstr "Calories par {period}"
+
+msgid "Duration by {period}"
+msgstr "Durée par {period}"
+
+msgid "Elevation by {period}"
+msgstr "Dénivelé par {period}"
+
+# Health data charts
+msgid "Resting HR frequency over time"
+msgstr "Fréquence cardiaque au repos au fil du temps"
+
+msgid "Body Mass over time"
+msgstr "Masse corporelle au fil du temps"
+
+msgid "VO2 Max over time"
+msgstr "VO2 Max au fil du temps"
+
+# QDate locale labels
+msgid "Sunday"
+msgstr "dimanche"
+
+msgid "Monday"
+msgstr "lundi"
+
+msgid "Tuesday"
+msgstr "mardi"
+
+msgid "Wednesday"
+msgstr "mercredi"
+
+msgid "Thursday"
+msgstr "jeudi"
+
+msgid "Friday"
+msgstr "vendredi"
+
+msgid "Saturday"
+msgstr "samedi"
+
+msgid "Sun"
+msgstr "dim."
+
+msgid "Mon"
+msgstr "lun."
+
+msgid "Tue"
+msgstr "mar."
+
+msgid "Wed"
+msgstr "mer."
+
+msgid "Thu"
+msgstr "jeu."
+
+msgid "Fri"
+msgstr "ven."
+
+msgid "Sat"
+msgstr "sam."
+
+msgid "January"
+msgstr "janvier"
+
+msgid "February"
+msgstr "février"
+
+msgid "March"
+msgstr "mars"
+
+msgid "April"
+msgstr "avril"
+
+msgid "May"
+msgstr "mai"
+
+msgid "June"
+msgstr "juin"
+
+msgid "July"
+msgstr "juillet"
+
+msgid "August"
+msgstr "août"
+
+msgid "September"
+msgstr "septembre"
+
+msgid "October"
+msgstr "octobre"
+
+msgid "November"
+msgstr "novembre"
+
+msgid "December"
+msgstr "décembre"
+
+msgid "Jan"
+msgstr "janv."
+
+msgid "Feb"
+msgstr "févr."
+
+msgid "Mar"
+msgstr "mars"
+
+msgid "Apr"
+msgstr "avr."
+
+msgid "Jun"
+msgstr "juin"
+
+msgid "Jul"
+msgstr "juil."
+
+msgid "Aug"
+msgstr "août"
+
+msgid "Sep"
+msgstr "sept."
+
+msgid "Oct"
+msgstr "oct."
+
+msgid "Nov"
+msgstr "nov."
+
+msgid "Dec"
+msgstr "déc."
+
+# Generic activity labels
+msgid "All"
+msgstr "Tout"
+
+msgid "Others"
+msgstr "Autres"
+
+# HKWorkoutActivityType labels
+msgid "American Football"
+msgstr "Football américain"
+
+msgid "Archery"
+msgstr "Tir à l'arc"
+
+msgid "Australian Football"
+msgstr "Football australien"
+
+msgid "Badminton"
+msgstr "Badminton"
+
+msgid "Baseball"
+msgstr "Baseball"
+
+msgid "Basketball"
+msgstr "Basket-ball"
+
+msgid "Barre"
+msgstr "Barre"
+
+msgid "Bowling"
+msgstr "Bowling"
+
+msgid "Boxing"
+msgstr "Boxe"
+
+msgid "Cardio Dance"
+msgstr "Danse cardio"
+
+msgid "Climbing"
+msgstr "Escalade"
+
+msgid "Cooldown"
+msgstr "Retour au calme"
+
+msgid "Core Training"
+msgstr "Gainage"
+
+msgid "Cricket"
+msgstr "Cricket"
+
+msgid "Cross Country Skiing"
+msgstr "Ski de fond"
+
+msgid "Cross Training"
+msgstr "Entraînement croisé"
+
+msgid "Curling"
+msgstr "Curling"
+
+msgid "Cycling"
+msgstr "Cyclisme"
+
+msgid "Dance"
+msgstr "Danse"
+
+msgid "Dance Inspired Training"
+msgstr "Entraînement inspiré de la danse"
+
+msgid "Disc Sports"
+msgstr "Sports de disque"
+
+msgid "Downhill Skiing"
+msgstr "Ski alpin"
+
+msgid "Elliptical"
+msgstr "Elliptique"
+
+msgid "Equestrian Sports"
+msgstr "Sports équestres"
+
+msgid "Fencing"
+msgstr "Escrime"
+
+msgid "Fishing"
+msgstr "Pêche"
+
+msgid "Fitness Gaming"
+msgstr "Jeux de fitness"
+
+msgid "Flexibility"
+msgstr "Souplesse"
+
+msgid "Functional Strength Training"
+msgstr "Renforcement fonctionnel"
+
+msgid "Golf"
+msgstr "Golf"
+
+msgid "Gymnastics"
+msgstr "Gymnastique"
+
+msgid "Hand Cycling"
+msgstr "Handbike"
+
+msgid "Handball"
+msgstr "Handball"
+
+msgid "High Intensity Interval Training"
+msgstr "Entraînement fractionné à haute intensité"
+
+msgid "Hiking"
+msgstr "Randonnée"
+
+msgid "Hockey"
+msgstr "Hockey"
+
+msgid "Hunting"
+msgstr "Chasse"
+
+msgid "Jump Rope"
+msgstr "Corde à sauter"
+
+msgid "Kickboxing"
+msgstr "Kick-boxing"
+
+msgid "Lacrosse"
+msgstr "Lacrosse"
+
+msgid "Martial Arts"
+msgstr "Arts martiaux"
+
+msgid "Mind And Body"
+msgstr "Corps et esprit"
+
+msgid "Mixed Cardio"
+msgstr "Cardio mixte"
+
+msgid "Mixed Metabolic Cardio Training"
+msgstr "Cardio métabolique mixte"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "Paddle Sports"
+msgstr "Sports de pagaie"
+
+msgid "Pickleball"
+msgstr "Pickleball"
+
+msgid "Pilates"
+msgstr "Pilates"
+
+msgid "Play"
+msgstr "Jeu"
+
+msgid "Preparation And Recovery"
+msgstr "Préparation et récupération"
+
+msgid "Racquetball"
+msgstr "Racquetball"
+
+msgid "Rowing"
+msgstr "Aviron"
+
+msgid "Rugby"
+msgstr "Rugby"
+
+msgid "Running"
+msgstr "Course à pied"
+
+msgid "Sailing"
+msgstr "Voile"
+
+msgid "Skating Sports"
+msgstr "Sports de glisse"
+
+msgid "Snowboarding"
+msgstr "Snowboard"
+
+msgid "Snow Sports"
+msgstr "Sports de neige"
+
+msgid "Soccer"
+msgstr "Football"
+
+msgid "Social Dance"
+msgstr "Danse sociale"
+
+msgid "Softball"
+msgstr "Softball"
+
+msgid "Squash"
+msgstr "Squash"
+
+msgid "Stair Climbing"
+msgstr "Montée d'escaliers"
+
+msgid "Stairs"
+msgstr "Escaliers"
+
+msgid "Step Training"
+msgstr "Step"
+
+msgid "Surfing Sports"
+msgstr "Sports de glisse sur vagues"
+
+msgid "Swim Bike Run"
+msgstr "Natation Vélo Course"
+
+msgid "Swimming"
+msgstr "Natation"
+
+msgid "Table Tennis"
+msgstr "Tennis de table"
+
+msgid "Tai Chi"
+msgstr "Tai-chi"
+
+msgid "Tennis"
+msgstr "Tennis"
+
+msgid "Track And Field"
+msgstr "Athlétisme"
+
+msgid "Traditional Strength Training"
+msgstr "Musculation traditionnelle"
+
+msgid "Transition"
+msgstr "Transition"
+
+msgid "Underwater Diving"
+msgstr "Plongée sous-marine"
+
+msgid "Volleyball"
+msgstr "Volley-ball"
+
+msgid "Walking"
+msgstr "Marche"
+
+msgid "Water Fitness"
+msgstr "Aquagym"
+
+msgid "Water Polo"
+msgstr "Water-polo"
+
+msgid "Water Sports"
+msgstr "Sports nautiques"
+
+msgid "Wheelchair Run Pace"
+msgstr "Fauteuil roulant allure course"
+
+msgid "Wheelchair Walk Pace"
+msgstr "Fauteuil roulant allure marche"
+
+msgid "Wrestling"
+msgstr "Lutte"
+
+msgid "Yoga"
+msgstr "Yoga"

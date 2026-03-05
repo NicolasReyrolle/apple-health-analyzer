@@ -61,7 +61,8 @@ class RecordsByType:
             return pd.DataFrame(columns=["period", "avg", "min", "max", "count"])
 
         work = df[[date_col, value_col]].copy()
-        work[date_col] = pd.to_datetime(work[date_col], errors="coerce")
+        # Parse dates using the ISO8601 parser to avoid per-row inference warnings.
+        work[date_col] = pd.to_datetime(work[date_col], format="ISO8601", errors="coerce")
         if isinstance(work[date_col].dtype, pd.DatetimeTZDtype):
             work[date_col] = work[date_col].dt.tz_localize(None)
         work[value_col] = pd.to_numeric(work[value_col], errors="coerce")

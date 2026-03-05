@@ -13,6 +13,9 @@
 - ✅ **Trends period aggregation** (week/month/quarter/year selector)
 - ✅ **Health Data tab** with period-based charts for resting heart rate, body mass, and VO2 max
 - ✅ Gap-aware health-data time series (missing periods shown explicitly, not coerced to zero)
+- ✅ Multilingual support (EN/FR) via gettext (`.pot`/`.po`/`.mo`) with runtime language switching
+- ✅ Localized progress/loading status text in the UI (parser remains language-agnostic internally)
+- ✅ Localized date-picker day/month labels sourced from gettext catalogs
 - ✅ Comprehensive test coverage for all metrics methods and filtering features
 
 ### Work In Progress

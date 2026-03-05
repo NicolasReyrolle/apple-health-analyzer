@@ -15,6 +15,7 @@ A modern, graphical tool to parse, analyze, and export your Apple Health data. O
 - **Date Range Filtering**: Analyze specific time periods using the date range picker to focus on your desired date ranges.
 - **Trends Period Aggregation**: Switch the Trends tab aggregation between week, month, quarter, or year.
 - **Gap-Aware Time Series**: Missing periods are preserved in health-data charts, so the x-axis remains continuous and missing measurements are explicit (not coerced to zero).
+- **Multilingual UI (EN/FR)**: gettext-based translations for labels, tabs, date picker locale labels, notifications, and loading/progress status messages.
 - **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
 - All processing happens locally on your machine.
 - **Modern UI**: Dark/Light mode support with a responsive layout.
@@ -161,6 +162,18 @@ isort src tests --profile=black
 mypy src tests
 pylint src tests
 ```
+
+### Translations
+
+Translation workflows (updating `messages.pot`, editing `.po`, adding a new language, and compiling `.mo`) are documented in:
+
+- `src/i18n/locales/README.md`
+
+Runtime behavior notes:
+
+- Language is stored per user session and can be changed from the header language menu.
+- Loading/progress messages are localized in the UI while parser internals remain language-agnostic.
+- Date picker day/month labels are sourced from gettext catalogs (no hardcoded translated strings in Python).
 
 ### Windows-Specific Notes
 

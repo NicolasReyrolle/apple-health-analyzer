@@ -2,7 +2,8 @@
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from types import TracebackType
+from typing import Any, Dict, List, Type, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -352,6 +353,88 @@ class TestAddDrivesToggle:
 
             # Verify it created the attribute on our mock picker
             assert hasattr(picker, "drives_toggle")
+
+    def test_add_drives_toggle_handles_import_error_on_windows(self) -> None:
+        """Windows systems without win32api should skip drive toggle creation."""
+
+        class _Picker:
+            pass
+
+        picker = _Picker()
+        real_import = __import__
+
+        def _import_side_effect(name: str, *args: Any, **kwargs: Any) -> Any:
+            if name == "win32api":
+                raise ImportError("win32api not installed")
+            return real_import(name, *args, **kwargs)
+
+        with (
+            patch("ui.local_file_picker.platform.system", return_value="Windows"),
+            patch("builtins.__import__", side_effect=_import_side_effect),
+        ):
+            local_file_picker.add_drives_toggle(cast(Any, picker))
+
+        assert not hasattr(picker, "drives_toggle")
+
+
+class TestLocalFilePickerInit:
+    """Tests for constructor path handling branches."""
+
+    def test_init_expands_upper_limit_when_provided(self) -> None:
+        """Constructor should expand upper_limit path when a value is provided."""
+
+        class _DummyChain:
+            """Dummy class to allow method chaining in patched UI components."""
+
+            def __enter__(self):
+                return self
+
+            def __exit__(
+                self,
+                exc_type: Type[BaseException] | None,
+                exc: BaseException | None,
+                tb: TracebackType | None,
+            ) -> bool:
+                return False
+
+            def classes(self, *_args: Any, **_kwargs: Any):
+                """Dummy method to allow chaining."""
+                return self
+
+            def on(self, *_args: Any, **_kwargs: Any):
+                """Dummy method to allow chaining."""
+                return self
+
+            def props(self, *_args: Any, **_kwargs: Any):
+                """Dummy method to allow chaining."""
+                return self
+
+        def _dialog_enter(self: Any) -> Any:
+            return self
+
+        def _dialog_exit(
+            self: Any,
+            exc_type: Type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> bool:
+            del self, exc_type, exc, tb
+            return False
+
+        with (
+            patch("ui.local_file_picker.ui.dialog.__init__", return_value=None),
+            patch.object(local_file_picker, "__enter__", _dialog_enter, create=True),
+            patch.object(local_file_picker, "__exit__", _dialog_exit, create=True),
+            patch("ui.local_file_picker.ui.card", return_value=_DummyChain()),
+            patch("ui.local_file_picker.ui.aggrid", return_value=_DummyChain()),
+            patch("ui.local_file_picker.ui.row", return_value=_DummyChain()),
+            patch("ui.local_file_picker.ui.button", return_value=_DummyChain()),
+            patch.object(local_file_picker, "add_drives_toggle"),
+            patch.object(local_file_picker, "update_grid"),
+        ):
+            picker = local_file_picker("~", upper_limit="~/upper")
+
+        assert picker.upper_limit == Path("~/upper").expanduser()
 
 
 class TestFileFilter:

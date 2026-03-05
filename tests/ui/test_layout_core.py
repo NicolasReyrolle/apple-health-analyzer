@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from types import TracebackType
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -41,6 +42,46 @@ class _DummyRadio:
 
     def props(self, *_args: Any, **_kwargs: Any) -> "_DummyRadio":
         """Mock props to enable chaining."""
+        return self
+
+
+class _DummyInput:
+    """Mock input component to test method chaining in render_date_range_selector."""
+
+    def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyInput":
+        """Mock classes to enable chaining."""
+        return self
+
+    def bind_enabled_from(self, *_args: Any, **_kwargs: Any) -> "_DummyInput":
+        """Mock bind_enabled_from to enable chaining."""
+        return self
+
+    def bind_value(self, *_args: Any, **_kwargs: Any) -> "_DummyInput":
+        """Mock bind_value to enable chaining."""
+        return self
+
+    def props(self, *_args: Any, **_kwargs: Any) -> "_DummyInput":
+        """Mock props to enable chaining."""
+        return self
+
+
+class _DummyDate:
+    """Mock date component to test method chaining in render_date_range_selector."""
+
+    def __init__(self) -> None:
+        self.props_arg = ""
+
+    def props(self, value: str) -> "_DummyDate":
+        """Mock props to capture arguments and enable chaining."""
+        self.props_arg = value
+        return self
+
+    def bind_value(self, *_args: Any, **_kwargs: Any) -> "_DummyDate":
+        """Mock bind_value to enable chaining."""
+        return self
+
+    def bind_enabled_from(self, *_args: Any, **_kwargs: Any) -> "_DummyDate":
+        """Mock bind_enabled_from to enable chaining."""
         return self
 
 
@@ -140,3 +181,100 @@ def test_render_trends_tab_radio_calls_refresh_on_change() -> None:
     assert radio_mock.call_count == 1
     radio_instance = radio_instances[0]
     assert radio_instance.on_change == render_graphs_mock.refresh
+
+
+def test_change_language_reloads_ui_without_triggering_file_load() -> None:
+    """Language switch should reload the page so all translated text updates."""
+
+    fake_app = SimpleNamespace(storage=SimpleNamespace(user={}))
+
+    with patch("ui.layout.app", fake_app):
+        with patch("ui.layout.ui.navigate.reload") as reload_mock:
+            with patch("ui.layout.load_file") as load_file_mock:
+                change_language = getattr(layout, "_change_language")
+                change_language("fr")
+
+    assert fake_app.storage.user["language"] == "fr"
+    reload_mock.assert_called_once()
+    load_file_mock.assert_not_called()
+
+
+def test_top_level_layout_functions_are_not_refreshable() -> None:
+    """Top-level NiceGUI layout functions must stay non-refreshable."""
+
+    assert not hasattr(layout.render_header, "refresh")
+    assert not hasattr(layout.render_left_drawer, "refresh")
+
+
+def test_render_date_range_selector_applies_french_calendar_locale() -> None:
+    """Date picker should receive FR locale data when active language is French."""
+
+    original_workouts: Any = state.workouts
+    workouts_mock = MagicMock()
+    workouts_mock.get_date_bounds.return_value = ("2024/01/01", "2024/12/31")
+
+    dummy_date = _DummyDate()
+
+    try:
+        state.workouts = workouts_mock
+        with patch("ui.layout.get_language", return_value="fr"):
+            with patch("ui.layout.ui.row", return_value=_DummyRow()):
+                with patch("ui.layout.ui.input", return_value=_DummyInput()):
+                    with patch("ui.layout.ui.date", return_value=dummy_date):
+                        layout.render_date_range_selector.func()
+
+        assert "firstDayOfWeek" in dummy_date.props_arg
+        assert '"firstDayOfWeek": 1' in dummy_date.props_arg
+        assert "janvier" in dummy_date.props_arg
+        assert "dimanche" in dummy_date.props_arg
+    finally:
+        state.workouts = original_workouts
+
+
+def test_render_date_range_selector_applies_english_calendar_locale() -> None:
+    """Date picker should receive EN locale data when active language is English."""
+
+    original_workouts: Any = state.workouts
+    workouts_mock = MagicMock()
+    workouts_mock.get_date_bounds.return_value = ("2024/01/01", "2024/12/31")
+
+    dummy_date = _DummyDate()
+
+    try:
+        state.workouts = workouts_mock
+        with patch("ui.layout.get_language", return_value="en"):
+            with patch("ui.layout.ui.row", return_value=_DummyRow()):
+                with patch("ui.layout.ui.input", return_value=_DummyInput()):
+                    with patch("ui.layout.ui.date", return_value=dummy_date):
+                        layout.render_date_range_selector.func()
+
+        assert "firstDayOfWeek" in dummy_date.props_arg
+        assert '"firstDayOfWeek": 0' in dummy_date.props_arg
+        assert "January" in dummy_date.props_arg
+        assert "Sunday" in dummy_date.props_arg
+    finally:
+        state.workouts = original_workouts
+
+
+def test_render_date_range_selector_unknown_language_falls_back_to_english() -> None:
+    """Unknown active language should fallback to English date locale configuration."""
+
+    original_workouts: Any = state.workouts
+    workouts_mock = MagicMock()
+    workouts_mock.get_date_bounds.return_value = ("2024/01/01", "2024/12/31")
+
+    dummy_date = _DummyDate()
+
+    try:
+        state.workouts = workouts_mock
+        with patch("ui.layout.get_language", return_value="xx"):
+            with patch("ui.layout.ui.row", return_value=_DummyRow()):
+                with patch("ui.layout.ui.input", return_value=_DummyInput()):
+                    with patch("ui.layout.ui.date", return_value=dummy_date):
+                        layout.render_date_range_selector.func()
+
+        assert '"firstDayOfWeek": 0' in dummy_date.props_arg
+        assert "January" in dummy_date.props_arg
+        assert "Sunday" in dummy_date.props_arg
+    finally:
+        state.workouts = original_workouts

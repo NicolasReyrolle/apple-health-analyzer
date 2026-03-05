@@ -244,3 +244,105 @@ class TestParseMetadataValue:  # pylint: disable=too-few-public-methods
         assert value == 55
         assert isinstance(value, int)
         assert unit is None
+
+    def test_parse_metadata_value_with_empty_input_returns_none_tuple(self) -> None:
+        """Empty metadata values should return (None, None)."""
+        assert ExportParser.parse_metadata_value("") == (None, None)
+
+
+class TestExportParserInternalBranches:
+    """Target branch coverage for parser internals via public parse()."""
+
+    def test_parse_with_broken_progress_callback_logs_debug_and_continues(
+        self,
+        create_health_zip: Callable[..., str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Progress callback errors should be swallowed and parser should continue."""
+        workout_xml = (
+            "<Workout "
+            "workoutActivityType='HKWorkoutActivityTypeRunning' "
+            "startDate='2024-01-01 10:00:00 +0000' "
+            "endDate='2024-01-01 10:30:00 +0000' "
+            "duration='30' "
+            "durationUnit='min' "
+            "/>"
+        )
+        xml_content = build_health_export_xml([workout_xml])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        def broken_callback(_message: str) -> None:
+            raise RuntimeError("boom")
+
+        parser = ExportParser(progress_callback=broken_callback)
+        with caplog.at_level("DEBUG"):
+            with parser:
+                result = parser.parse(str(zip_path))
+
+        assert len(result.workouts) == 1
+        assert any("Loading the workouts" in record.message for record in caplog.records)
+
+    def test_parse_emits_processed_progress_message_at_interval(
+        self,
+        create_health_zip: Callable[..., str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When workout count reaches interval, parser should emit processed progress message."""
+        monkeypatch.setattr("logic.export_parser.WORKOUT_PROGRESS_INTERVAL", 1)
+
+        workout_xml = (
+            "<Workout "
+            "workoutActivityType='HKWorkoutActivityTypeRunning' "
+            "startDate='2024-01-01 10:00:00 +0000' "
+            "endDate='2024-01-01 10:30:00 +0000' "
+            "duration='30' "
+            "durationUnit='min' "
+            "/>"
+        )
+        xml_content = build_health_export_xml([workout_xml])
+        zip_path = create_health_zip(xml_content=xml_content)
+        messages: list[str] = []
+
+        parser = ExportParser(progress_callback=messages.append)
+        with parser:
+            parser.parse(str(zip_path))
+
+        assert any(message.startswith("Processed 1 workouts") for message in messages)
+
+    def test_parse_ignores_record_without_type(self, create_health_zip: Callable[..., str]) -> None:
+        """Record entries missing a type should be ignored without failing parsing."""
+        xml_content = build_health_export_xml(
+            ["<Record startDate='2024-01-01 10:00:00 +0000' value='72' />"]
+        )
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        parser = ExportParser()
+        with parser:
+            result = parser.parse(str(zip_path))
+
+        assert not result.records_by_type
+
+    def test_parse_preserves_non_hk_metadata_keys(
+        self, create_health_zip: Callable[..., str]
+    ) -> None:
+        """Metadata keys without HK prefix should be preserved as-is."""
+        record_xml = (
+            "<Record "
+            "type='HKQuantityTypeIdentifierHeartRate' "
+            "startDate='2024-01-01 10:00:00 +0000' "
+            "value='72'"
+            ">"
+            "<MetadataEntry key='CustomKey' value='100 m' />"
+            "</Record>"
+        )
+        xml_content = build_health_export_xml([record_xml])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        parser = ExportParser()
+        with parser:
+            result = parser.parse(str(zip_path))
+
+        heart_rate_df = result.records_by_type["HeartRate"]
+        sample = heart_rate_df.iloc[0]
+        assert sample["CustomKey"] == 100.0
+        assert sample["CustomKeyUnit"] == "m"

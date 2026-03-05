@@ -149,6 +149,39 @@ class TestRecordsByTypeStatsByPeriod:
         assert list(result["min"]) == [1.111]
         assert list(result["max"]) == [1.239]
 
+    def test_stats_by_period_returns_empty_when_query_filter_removes_all_rows(self) -> None:
+        """Applying a filter that removes all rows should return an empty shaped frame."""
+        heart_rate_df = pd.DataFrame(
+            {
+                "startDate": ["2024-01-01", "2024-01-02"],
+                "value": [60, 70],
+                "HeartRateMotionContext": [1, 1],
+            }
+        )
+        records = RecordsByType({"HeartRate": heart_rate_df})
+
+        result = records.stats_by_period(
+            "HeartRate", period="M", query_filter="HeartRateMotionContext == 99"
+        )
+
+        assert list(result.columns) == ["period", "avg", "min", "max", "count"]
+        assert result.empty
+
+    def test_stats_by_period_returns_empty_when_dropna_removes_all_rows(self) -> None:
+        """Rows that become NaT/NaN should be dropped; empty result should be returned."""
+        heart_rate_df = pd.DataFrame(
+            {
+                "startDate": ["invalid-date", "also-invalid"],
+                "value": ["not-a-number", "still-not-a-number"],
+            }
+        )
+        records = RecordsByType({"HeartRate": heart_rate_df})
+
+        result = records.stats_by_period("HeartRate", period="M")
+
+        assert list(result.columns) == ["period", "avg", "min", "max", "count"]
+        assert result.empty
+
 
 class TestRecordsByTypeConvenienceStats:
     """Test convenience wrappers around stats_by_period."""

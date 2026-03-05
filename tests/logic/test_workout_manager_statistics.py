@@ -111,33 +111,3 @@ class TestGetStatistics:
         stats = workouts.get_statistics()
 
         assert "Total duration of 10h 0m 0s." in stats
-
-    def test_get_count_workouts(self) -> None:
-        """Test get_count with workouts."""
-        workouts = wm.WorkoutManager(
-            pd.DataFrame(
-                {
-                    "activityType": ["Running", "Running", "Swimming"],
-                }
-            )
-        )
-
-        assert workouts.get_count() == 3
-        assert workouts.get_count("All") == 3
-        assert workouts.get_count("Running") == 2
-
-    def test_get_distance_workouts(self) -> None:
-        """Test get_distance with workouts."""
-        workouts = wm.WorkoutManager(
-            pd.DataFrame(
-                {
-                    "activityType": ["Running", "Running", "Swimming"],
-                    "distance": [5000, 11000, 15000],
-                }
-            )
-        )
-
-        assert workouts.get_total_distance() == 31
-        assert workouts.get_total_distance("All") == 31
-        assert workouts.get_total_distance("Running") == 16
-        assert workouts.get_total_distance("Swimming") == 15

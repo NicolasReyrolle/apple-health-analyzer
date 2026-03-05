@@ -15,6 +15,7 @@ from app_state import state
 from tests.types_helper import StateAssertion
 from ui.helpers import format_integer
 from ui.layout import load_file
+from ui import layout as layout_module
 
 
 def is_valid_json(data_string: str) -> bool:
@@ -178,6 +179,31 @@ class TestFileLoading:
         await asyncio.sleep(0.2)
 
 
+class TestLanguageSwitching:
+    """Tests for runtime language switching behavior."""
+
+    async def test_switch_language_to_french_refreshes_header_and_body(self, user: User) -> None:
+        """Switching language should update translated header/body labels after reload."""
+        await user.open("/")
+
+        # Baseline English labels
+        await user.should_see("Apple Health Analyzer")
+        await user.should_see("Apple Health export file")
+
+        # Open the language menu and select French
+        user.find("language").click()
+        await asyncio.sleep(0.1)
+        change_language = cast(Callable[[str], None], getattr(layout_module, "_change_language"))
+        change_language("fr")
+
+        # _change_language triggers ui.navigate.reload(); wait for translated labels
+        await user.should_see("Analyseur de santé Apple", retries=50)
+        await user.should_see("Fichier d'export Apple Health", retries=50)
+
+        # Small delay before teardown
+        await asyncio.sleep(0.2)
+
+
 class TestExportFunctionality:
     """Tests for data export functionality."""
 
@@ -319,16 +345,22 @@ class TestActivityFiltering:
             return []
 
         if isinstance(options, list) and options and isinstance(options[0], dict):
-            return [
-                opt.get("label")  # type: ignore[union-attr]
-                for opt in options
-                if isinstance(opt, dict)
-            ]
+            labels: list[str] = []
+            for opt in options:
+                if isinstance(opt, dict):
+                    label = opt.get("label")  # type: ignore[misc]
+                    if label is not None:
+                        labels.append(str(label))  # type: ignore[arg-type]
+            return labels
 
         if isinstance(options, list):
             return [str(opt) for opt in options]
 
-        return []
+        # At this point, options must be a dict
+        labels = [str(key) for key in options.keys()]
+        labels.extend(str(value) for value in options.values() if value is not None)
+        # Remove duplicates while preserving order.
+        return list(dict.fromkeys(labels))
 
     async def _wait_for_activity_option(
         self, user: User, activity_name: str, max_attempts: int = 30
