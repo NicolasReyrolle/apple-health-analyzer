@@ -23,13 +23,18 @@ pip install -r requirements.txt
 
 ## Update Translations After UI/Text Changes
 
-When you add or change calls like `t("...")` in Python code:
+When you add or change calls like `t("...")` or `translate("...", language=...)` in Python code:
 
 1. Rebuild the POT template from source:
 
 ```bash
-pybabel extract -k t -o src/i18n/locales/messages.pot src
+pybabel extract -k t -k translate -o src/i18n/locales/messages.pot src
 ```
+
+Notes:
+
+- Keep translatable user-facing strings in gettext catalogs (`.po`/`.mo`), not hardcoded translated literals in `.py` files.
+- `translate(...)` is used in a few places that require an explicit language code (for example locale payload generation), so `-k translate` must be included during extraction.
 
 1. Update existing language files from the new template (example for French):
 
