@@ -112,9 +112,19 @@ def t(message: str, **kwargs: str) -> str:
         # → "Count by month"   (English)
         # → "Nombre par mois"  (French)
     """
-    result = translate(message, language=get_language())
+    lang = get_language()
+    result = translate(message, language=lang)
     if kwargs:
-        return result.format(**kwargs)
+        try:
+            return result.format(**kwargs)
+        except (KeyError, ValueError) as exc:
+            _logger.warning(
+                "Failed to format translation for message '%s' in language '%s': %s",
+                message,
+                lang,
+                exc,
+            )
+            return result
     return result
 
 
@@ -123,5 +133,14 @@ def translate(message: str, language: str, **kwargs: str) -> str:
     translation = _get_translation(language)
     result = translation.gettext(message)
     if kwargs:
-        return result.format(**kwargs)
+        try:
+            return result.format(**kwargs)
+        except (KeyError, ValueError) as exc:
+            _logger.warning(
+                "Failed to format translation for message '%s' in language '%s': %s",
+                message,
+                language,
+                exc,
+            )
+            return result
     return result

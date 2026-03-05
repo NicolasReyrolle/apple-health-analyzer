@@ -1,539 +1,535 @@
-# French translations for Apple Health Analyzer
+# Apple Health Analyzer - Message Catalog Template
 # Copyright (C) 2026 Nicolas Reyrolle
 # This file is distributed under the same license as the Apple Health Analyzer package.
-#
+#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: Apple Health Analyzer 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-03-05 13:00+0000\n"
-"PO-Revision-Date: 2026-03-05 13:00+0000\n"
-"Last-Translator: \n"
-"Language-Team: French\n"
-"Language: fr\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 # App title
 msgid "Apple Health Analyzer"
-msgstr "Analyseur de santé Apple"
+msgstr ""
 
 # Header
 msgid "Language"
-msgstr "Langue"
+msgstr ""
 
 # Left drawer
 msgid "Activities"
-msgstr "Activités"
+msgstr ""
 
 msgid "Activity Type"
-msgstr "Type d'activité"
+msgstr ""
 
 msgid "Date range"
-msgstr "Plage de dates"
+msgstr ""
 
 msgid "Export data"
-msgstr "Exporter les données"
+msgstr ""
 
 msgid "to JSON"
-msgstr "en JSON"
+msgstr ""
 
 msgid "to CSV"
-msgstr "en CSV"
+msgstr ""
 
 # Main body
 msgid "Apple Health export file"
-msgstr "Fichier d'export Apple Health"
+msgstr ""
 
 msgid "Select an Apple Health export file..."
-msgstr "Sélectionner un fichier d'export Apple Health..."
+msgstr ""
 
 msgid "Browse"
-msgstr "Parcourir"
+msgstr ""
 
 msgid "Load"
-msgstr "Charger"
+msgstr ""
 
 # Tabs
 msgid "Overview"
-msgstr "Vue d'ensemble"
+msgstr ""
 
 msgid "Trends"
-msgstr "Tendances"
+msgstr ""
 
 msgid "Health Data"
-msgstr "Données de santé"
+msgstr ""
 
 # Stat cards
 msgid "Count"
-msgstr "Nombre"
+msgstr ""
 
 msgid "Distance"
-msgstr "Distance"
+msgstr ""
 
 msgid "Duration"
-msgstr "Durée"
+msgstr ""
 
 msgid "Elevation"
-msgstr "Dénivelé"
+msgstr ""
 
 msgid "Calories"
-msgstr "Calories"
+msgstr ""
 
 # Notifications
 msgid "No file selected"
-msgstr "Aucun fichier sélectionné"
+msgstr ""
 
 msgid "Please select an Apple Health export file first."
-msgstr "Veuillez d'abord sélectionner un fichier d'export Apple Health."
+msgstr ""
 
 msgid "File parsed successfully."
-msgstr "Fichier analysé avec succès."
+msgstr ""
 
 msgid "Error parsing file: {error}"
-msgstr "Erreur lors de l'analyse : {error}"
+msgstr ""
 
 # Trends period selector
 msgid "Aggregate by:"
-msgstr "Agréger par :"
+msgstr ""
 
 msgid "Week"
-msgstr "Semaine"
+msgstr ""
 
 msgid "Month"
-msgstr "Mois"
+msgstr ""
 
 msgid "Quarter"
-msgstr "Trimestre"
+msgstr ""
 
 msgid "Year"
-msgstr "Année"
+msgstr ""
 
 # Period labels used in chart titles (lowercase)
 msgid "week"
-msgstr "semaine"
+msgstr ""
 
 msgid "month"
-msgstr "mois"
+msgstr ""
 
 msgid "quarter"
-msgstr "trimestre"
+msgstr ""
 
 msgid "year"
-msgstr "année"
+msgstr ""
 
 # Activity charts
 msgid "Count by activity"
-msgstr "Nombre par activité"
+msgstr ""
 
 msgid "Distance by activity"
-msgstr "Distance par activité"
+msgstr ""
 
 msgid "Calories by activity"
-msgstr "Calories par activité"
+msgstr ""
 
 msgid "Duration by activity"
-msgstr "Durée par activité"
+msgstr ""
 
 msgid "Elevation by activity"
-msgstr "Dénivelé par activité"
+msgstr ""
 
 # Trends charts ({period} is replaced at runtime with the translated period label)
 msgid "Count by {period}"
-msgstr "Nombre par {period}"
+msgstr ""
 
 msgid "Distance by {period}"
-msgstr "Distance par {period}"
+msgstr ""
 
 msgid "Calories by {period}"
-msgstr "Calories par {period}"
+msgstr ""
 
 msgid "Duration by {period}"
-msgstr "Durée par {period}"
+msgstr ""
 
 msgid "Elevation by {period}"
-msgstr "Dénivelé par {period}"
+msgstr ""
 
 # Health data charts
 msgid "Resting HR frequency over time"
-msgstr "Fréquence cardiaque au repos au fil du temps"
+msgstr ""
 
 msgid "Body Mass over time"
-msgstr "Masse corporelle au fil du temps"
+msgstr ""
 
 msgid "VO2 Max over time"
-msgstr "VO2 Max au fil du temps"
+msgstr ""
 
 # QDate locale labels
 msgid "Sunday"
-msgstr "dimanche"
+msgstr ""
 
 msgid "Monday"
-msgstr "lundi"
+msgstr ""
 
 msgid "Tuesday"
-msgstr "mardi"
+msgstr ""
 
 msgid "Wednesday"
-msgstr "mercredi"
+msgstr ""
 
 msgid "Thursday"
-msgstr "jeudi"
+msgstr ""
 
 msgid "Friday"
-msgstr "vendredi"
+msgstr ""
 
 msgid "Saturday"
-msgstr "samedi"
+msgstr ""
 
 msgid "Sun"
-msgstr "dim."
+msgstr ""
 
 msgid "Mon"
-msgstr "lun."
+msgstr ""
 
 msgid "Tue"
-msgstr "mar."
+msgstr ""
 
 msgid "Wed"
-msgstr "mer."
+msgstr ""
 
 msgid "Thu"
-msgstr "jeu."
+msgstr ""
 
 msgid "Fri"
-msgstr "ven."
+msgstr ""
 
 msgid "Sat"
-msgstr "sam."
+msgstr ""
 
 msgid "January"
-msgstr "janvier"
+msgstr ""
 
 msgid "February"
-msgstr "fevrier"
+msgstr ""
 
 msgid "March"
-msgstr "mars"
+msgstr ""
 
 msgid "April"
-msgstr "avril"
+msgstr ""
 
 msgid "May"
-msgstr "mai"
+msgstr ""
 
 msgid "June"
-msgstr "juin"
+msgstr ""
 
 msgid "July"
-msgstr "juillet"
+msgstr ""
 
 msgid "August"
-msgstr "aout"
+msgstr ""
 
 msgid "September"
-msgstr "septembre"
+msgstr ""
 
 msgid "October"
-msgstr "octobre"
+msgstr ""
 
 msgid "November"
-msgstr "novembre"
+msgstr ""
 
 msgid "December"
-msgstr "decembre"
+msgstr ""
 
 msgid "Jan"
-msgstr "janv."
+msgstr ""
 
 msgid "Feb"
-msgstr "fevr."
+msgstr ""
 
 msgid "Mar"
-msgstr "mars"
+msgstr ""
 
 msgid "Apr"
-msgstr "avr."
+msgstr ""
 
 msgid "Jun"
-msgstr "juin"
+msgstr ""
 
 msgid "Jul"
-msgstr "juil."
+msgstr ""
 
 msgid "Aug"
-msgstr "aout"
+msgstr ""
 
 msgid "Sep"
-msgstr "sept."
+msgstr ""
 
 msgid "Oct"
-msgstr "oct."
+msgstr ""
 
 msgid "Nov"
-msgstr "nov."
+msgstr ""
 
 msgid "Dec"
-msgstr "dec."
+msgstr ""
 
 # Generic activity labels
 msgid "All"
-msgstr "Tout"
+msgstr ""
 
 msgid "Others"
-msgstr "Autres"
+msgstr ""
 
 # HKWorkoutActivityType labels
 msgid "American Football"
-msgstr "Football américain"
+msgstr ""
 
 msgid "Archery"
-msgstr "Tir à l'arc"
+msgstr ""
 
 msgid "Australian Football"
-msgstr "Football australien"
+msgstr ""
 
 msgid "Badminton"
-msgstr "Badminton"
+msgstr ""
 
 msgid "Baseball"
-msgstr "Baseball"
+msgstr ""
 
 msgid "Basketball"
-msgstr "Basket-ball"
+msgstr ""
 
 msgid "Barre"
-msgstr "Barre"
+msgstr ""
 
 msgid "Bowling"
-msgstr "Bowling"
+msgstr ""
 
 msgid "Boxing"
-msgstr "Boxe"
+msgstr ""
 
 msgid "Cardio Dance"
-msgstr "Danse cardio"
+msgstr ""
 
 msgid "Climbing"
-msgstr "Escalade"
+msgstr ""
 
 msgid "Cooldown"
-msgstr "Retour au calme"
+msgstr ""
 
 msgid "Core Training"
-msgstr "Gainage"
+msgstr ""
 
 msgid "Cricket"
-msgstr "Cricket"
+msgstr ""
 
 msgid "Cross Country Skiing"
-msgstr "Ski de fond"
+msgstr ""
 
 msgid "Cross Training"
-msgstr "Entraînement croisé"
+msgstr ""
 
 msgid "Curling"
-msgstr "Curling"
+msgstr ""
 
 msgid "Cycling"
-msgstr "Cyclisme"
+msgstr ""
 
 msgid "Dance"
-msgstr "Danse"
+msgstr ""
 
 msgid "Dance Inspired Training"
-msgstr "Entraînement inspiré de la danse"
+msgstr ""
 
 msgid "Disc Sports"
-msgstr "Sports de disque"
+msgstr ""
 
 msgid "Downhill Skiing"
-msgstr "Ski alpin"
+msgstr ""
 
 msgid "Elliptical"
-msgstr "Elliptique"
+msgstr ""
 
 msgid "Equestrian Sports"
-msgstr "Sports équestres"
+msgstr ""
 
 msgid "Fencing"
-msgstr "Escrime"
+msgstr ""
 
 msgid "Fishing"
-msgstr "Pêche"
+msgstr ""
 
 msgid "Fitness Gaming"
-msgstr "Jeux de fitness"
+msgstr ""
 
 msgid "Flexibility"
-msgstr "Souplesse"
+msgstr ""
 
 msgid "Functional Strength Training"
-msgstr "Renforcement fonctionnel"
+msgstr ""
 
 msgid "Golf"
-msgstr "Golf"
+msgstr ""
 
 msgid "Gymnastics"
-msgstr "Gymnastique"
+msgstr ""
 
 msgid "Hand Cycling"
-msgstr "Handbike"
+msgstr ""
 
 msgid "Handball"
-msgstr "Handball"
+msgstr ""
 
 msgid "High Intensity Interval Training"
-msgstr "Entraînement fractionné à haute intensité"
+msgstr ""
 
 msgid "Hiking"
-msgstr "Randonnée"
+msgstr ""
 
 msgid "Hockey"
-msgstr "Hockey"
+msgstr ""
 
 msgid "Hunting"
-msgstr "Chasse"
+msgstr ""
 
 msgid "Jump Rope"
-msgstr "Corde à sauter"
+msgstr ""
 
 msgid "Kickboxing"
-msgstr "Kick-boxing"
+msgstr ""
 
 msgid "Lacrosse"
-msgstr "Lacrosse"
+msgstr ""
 
 msgid "Martial Arts"
-msgstr "Arts martiaux"
+msgstr ""
 
 msgid "Mind And Body"
-msgstr "Corps et esprit"
+msgstr ""
 
 msgid "Mixed Cardio"
-msgstr "Cardio mixte"
+msgstr ""
 
 msgid "Mixed Metabolic Cardio Training"
-msgstr "Cardio métabolique mixte"
+msgstr ""
 
 msgid "Other"
-msgstr "Autre"
+msgstr ""
 
 msgid "Paddle Sports"
-msgstr "Sports de pagaie"
+msgstr ""
 
 msgid "Pickleball"
-msgstr "Pickleball"
+msgstr ""
 
 msgid "Pilates"
-msgstr "Pilates"
+msgstr ""
 
 msgid "Play"
-msgstr "Jeu"
+msgstr ""
 
 msgid "Preparation And Recovery"
-msgstr "Préparation et récupération"
+msgstr ""
 
 msgid "Racquetball"
-msgstr "Racquetball"
+msgstr ""
 
 msgid "Rowing"
-msgstr "Aviron"
+msgstr ""
 
 msgid "Rugby"
-msgstr "Rugby"
+msgstr ""
 
 msgid "Running"
-msgstr "Course à pied"
+msgstr ""
 
 msgid "Sailing"
-msgstr "Voile"
+msgstr ""
 
 msgid "Skating Sports"
-msgstr "Sports de glisse"
+msgstr ""
 
 msgid "Snowboarding"
-msgstr "Snowboard"
+msgstr ""
 
 msgid "Snow Sports"
-msgstr "Sports de neige"
+msgstr ""
 
 msgid "Soccer"
-msgstr "Football"
+msgstr ""
 
 msgid "Social Dance"
-msgstr "Danse sociale"
+msgstr ""
 
 msgid "Softball"
-msgstr "Softball"
+msgstr ""
 
 msgid "Squash"
-msgstr "Squash"
+msgstr ""
 
 msgid "Stair Climbing"
-msgstr "Montée d'escaliers"
+msgstr ""
 
 msgid "Stairs"
-msgstr "Escaliers"
+msgstr ""
 
 msgid "Step Training"
-msgstr "Step"
+msgstr ""
 
 msgid "Surfing Sports"
-msgstr "Sports de glisse sur vagues"
+msgstr ""
 
 msgid "Swim Bike Run"
-msgstr "Natation Vélo Course"
+msgstr ""
 
 msgid "Swimming"
-msgstr "Natation"
+msgstr ""
 
 msgid "Table Tennis"
-msgstr "Tennis de table"
+msgstr ""
 
 msgid "Tai Chi"
-msgstr "Tai-chi"
+msgstr ""
 
 msgid "Tennis"
-msgstr "Tennis"
+msgstr ""
 
 msgid "Track And Field"
-msgstr "Athlétisme"
+msgstr ""
 
 msgid "Traditional Strength Training"
-msgstr "Musculation traditionnelle"
+msgstr ""
 
 msgid "Transition"
-msgstr "Transition"
+msgstr ""
 
 msgid "Underwater Diving"
-msgstr "Plongée sous-marine"
+msgstr ""
 
 msgid "Volleyball"
-msgstr "Volley-ball"
+msgstr ""
 
 msgid "Walking"
-msgstr "Marche"
+msgstr ""
 
 msgid "Water Fitness"
-msgstr "Aquagym"
+msgstr ""
 
 msgid "Water Polo"
-msgstr "Water-polo"
+msgstr ""
 
 msgid "Water Sports"
-msgstr "Sports nautiques"
+msgstr ""
 
 msgid "Wheelchair Run Pace"
-msgstr "Fauteuil roulant allure course"
+msgstr ""
 
 msgid "Wheelchair Walk Pace"
-msgstr "Fauteuil roulant allure marche"
+msgstr ""
 
 msgid "Wrestling"
-msgstr "Lutte"
+msgstr ""
 
 msgid "Yoga"
-msgstr "Yoga"
+msgstr ""

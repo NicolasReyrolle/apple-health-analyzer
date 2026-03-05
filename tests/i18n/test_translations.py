@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
@@ -124,6 +125,25 @@ class TestTranslationFunction:
         with patch("i18n.get_language", return_value="xx"):  # non-existent language
             result = t("Apple Health Analyzer")
         assert result == "Apple Health Analyzer"
+
+    def test_t_returns_unformatted_result_on_missing_kwarg(self) -> None:
+        """t() must not raise when a required format kwarg is missing; returns raw translated string."""
+        # "Count by {period}" needs kwarg 'period'; omitting it should not crash
+        result = t("Count by {period}")  # no period kwarg
+        assert result == "Count by {period}"
+
+    def test_t_returns_unformatted_result_on_bad_format_string(self, caplog: pytest.LogCaptureFixture) -> None:
+        """t() falls back to unformatted result when str.format raises, and logs a warning."""
+        with (
+            patch("i18n.get_language", return_value="en"),
+            patch("i18n._get_translation") as mock_trans,
+        ):
+            mock_trans.return_value.gettext.return_value = "Bad {missing_key}"
+            with caplog.at_level(logging.WARNING, logger="i18n"):
+                result = t("Bad {missing_key}", extra="ignored")
+        # Should return the unformatted translated string, not raise
+        assert result == "Bad {missing_key}"
+        assert any("Failed to format translation" in r.message for r in caplog.records)
 
     @pytest.mark.parametrize("lang", list(LANGUAGES.keys()))
     def test_t_never_returns_empty_string_for_known_msgids(self, lang: str) -> None:
