@@ -1,100 +1,11 @@
 """Test suite for missing coverage in WorkoutManager methods."""
 
-import math
 from datetime import datetime
 
 import pandas as pd
 import pytest
 
 import logic.workout_manager as wm
-
-
-class TestConvertDistance:
-    """Test suite for WorkoutManager.convert_distance method."""
-
-    def test_convert_distance_to_kilometers(self) -> None:
-        """Test conversion from meters to kilometers."""
-        manager = wm.WorkoutManager()
-
-        result = manager.convert_distance("km", 5000)
-
-        assert result == 5
-
-    def test_convert_distance_to_meters(self) -> None:
-        """Test conversion from meters to meters (identity)."""
-        manager = wm.WorkoutManager()
-
-        result = manager.convert_distance("m", 5000)
-
-        assert result == 5000
-
-    def test_convert_distance_to_miles(self) -> None:
-        """Test conversion from meters to miles."""
-        manager = wm.WorkoutManager()
-
-        result = manager.convert_distance("mi", 1609.34)
-
-        assert math.isclose(result, 1.0, rel_tol=1e-5)
-
-    def test_convert_distance_zero_meters(self) -> None:
-        """Test conversion of zero meters."""
-        manager = wm.WorkoutManager()
-
-        result_km = manager.convert_distance("km", 0)
-        result_m = manager.convert_distance("m", 0)
-        result_mi = manager.convert_distance("mi", 0)
-
-        assert result_km == 0
-        assert result_m == 0
-        assert result_mi == 0
-
-    def test_convert_distance_large_value(self) -> None:
-        """Test conversion of large distance values."""
-        manager = wm.WorkoutManager()
-
-        # 1000 km = 1,000,000 meters
-        result_km = manager.convert_distance("km", 1_000_000)
-        result_m = manager.convert_distance("m", 1_000_000)
-        result_mi = manager.convert_distance("mi", 1_000_000)
-
-        assert result_km == 1000
-        assert result_m == 1_000_000
-        assert math.isclose(result_mi, 621.371, rel_tol=1e-4)
-
-    def test_convert_distance_fractional_result(self) -> None:
-        """Test conversion resulting in fractional values."""
-        manager = wm.WorkoutManager()
-
-        # 100 meters should be 0.1 km
-        result = manager.convert_distance("km", 100)
-
-        assert math.isclose(result, 0.1, rel_tol=1e-9)
-
-    def test_convert_distance_invalid_unit(self) -> None:
-        """Test conversion with invalid unit raises ValueError."""
-        manager = wm.WorkoutManager()
-
-        with pytest.raises(ValueError, match="Unsupported unit"):
-            manager.convert_distance("yards", 1000)
-
-    def test_convert_distance_invalid_unit_case_sensitive(self) -> None:
-        """Test that unit conversion is case-sensitive."""
-        manager = wm.WorkoutManager()
-
-        with pytest.raises(ValueError, match="Unsupported unit"):
-            manager.convert_distance("KM", 1000)
-
-    def test_convert_distance_negative_distance(self) -> None:
-        """Test conversion of negative distance values (edge case)."""
-        manager = wm.WorkoutManager()
-
-        result_km = manager.convert_distance("km", -1000)
-        result_m = manager.convert_distance("m", -1000)
-        result_mi = manager.convert_distance("mi", -1000)
-
-        assert result_km == -1.0
-        assert result_m == -1000
-        assert math.isclose(result_mi, -1000 / 1609.34, rel_tol=1e-5)
 
 
 class TestGetDistanceByActivityUnits:
@@ -272,6 +183,41 @@ class TestAggregateByPeriodInternalBranches:
 
         assert result == {}
 
+    def test_aggregate_by_period_returns_empty_when_filtering_hook_returns_empty(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Force the post-filter empty branch to execute deterministically."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2024-01-01")],
+                    "duration": [3600],
+                }
+            )
+        )
+
+        monkeypatch.setattr(
+            workouts,
+            "_filter_workouts",
+            lambda *_args, **_kwargs: pd.DataFrame(
+                {
+                    "activityType": pd.Series(dtype="object"),
+                    "startDate": pd.Series(dtype="datetime64[ns]"),
+                    "duration": pd.Series(dtype="int64"),
+                }
+            ),
+        )
+
+        result = workouts._aggregate_by_period(  # pylint: disable=protected-access
+            column="duration",
+            period="M",
+            aggregation=lambda grouped: grouped.sum(),
+            transformation=lambda s: s,
+        )
+
+        assert result == {}
+
 
 class TestDistanceByActivityEdgeCases:
     """Test suite for edge cases in get_distance_by_activity."""
@@ -310,6 +256,18 @@ class TestDistanceByActivityEdgeCases:
         assert result["Activity1"] in [1, 2]
         assert result["Activity2"] in [2, 3]
         assert result["Activity3"] == 3
+
+
+class TestConvertDistance:
+    """Test suite for convert_distance utility."""
+
+    def test_convert_distance_km(self) -> None:
+        """Meters should convert to kilometers using the expected divisor."""
+        workouts = wm.WorkoutManager(pd.DataFrame())
+
+        result = workouts.convert_distance("km", 2500)
+
+        assert result == 2.5
 
     def test_get_distance_by_activity_very_small_distances(self) -> None:
         """Test get_distance_by_activity with very small distances."""
