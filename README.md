@@ -162,6 +162,12 @@ mypy src tests
 pylint src tests
 ```
 
+### Translations
+
+Translation workflows (updating `messages.pot`, editing `.po`, adding a new language, and compiling `.mo`) are documented in:
+
+- `src/i18n/locales/README.md`
+
 ### Windows-Specific Notes
 
 The test suite includes a specialized `conftest.py` that handles Windows "WinError 32" (PermissionError) by isolating storage and patching file locks during teardown.

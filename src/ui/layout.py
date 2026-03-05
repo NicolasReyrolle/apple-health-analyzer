@@ -1,6 +1,7 @@
 """UI layout components for Apple Health Analyzer application."""
 
 import asyncio
+import json
 import logging
 import time
 from collections.abc import Hashable, Mapping, Sequence
@@ -11,7 +12,7 @@ from nicegui import app, ui
 
 from app_state import state
 from assets import APP_ICON_BASE64
-from i18n import LANGUAGES, t
+from i18n import LANGUAGES, get_language, t
 from i18n.activity_types import build_activity_select_options, translate_activity_value_map
 from logic.export_parser import ExportParser
 from logic.records_by_type import RecordsByType
@@ -24,6 +25,99 @@ _logger = logging.getLogger(__name__)
 
 # CSS class constants
 ROW_CENTERED_CLASSES = "w-full justify-center gap-4"
+
+
+def _qdate_locale_js(language_code: str) -> str:
+    """Return a JSON locale object for Quasar QDate.
+
+    NiceGUI forwards this object to Quasar via ``:locale='...'``.
+    """
+    locale_by_language = {
+        "fr": {
+            "days": [
+                "dimanche",
+                "lundi",
+                "mardi",
+                "mercredi",
+                "jeudi",
+                "vendredi",
+                "samedi",
+            ],
+            "daysShort": ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
+            "months": [
+                "janvier",
+                "fevrier",
+                "mars",
+                "avril",
+                "mai",
+                "juin",
+                "juillet",
+                "aout",
+                "septembre",
+                "octobre",
+                "novembre",
+                "decembre",
+            ],
+            "monthsShort": [
+                "janv.",
+                "fevr.",
+                "mars",
+                "avr.",
+                "mai",
+                "juin",
+                "juil.",
+                "aout",
+                "sept.",
+                "oct.",
+                "nov.",
+                "dec.",
+            ],
+            "firstDayOfWeek": 1,
+        },
+        "en": {
+            "days": [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+            ],
+            "daysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            "months": [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ],
+            "monthsShort": [
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
+            ],
+            "firstDayOfWeek": 0,
+        },
+    }
+    locale = locale_by_language.get(language_code, locale_by_language["en"])
+    return json.dumps(locale)
 
 
 def handle_json_export() -> None:
@@ -120,6 +214,7 @@ def render_date_range_selector() -> None:
     """Render the date range selector with linked input and date picker."""
     with ui.row().classes("items-center gap-2"):
         min_date, max_date = state.workouts.get_date_bounds()
+        date_locale = _qdate_locale_js(get_language())
 
         date_input = (
             ui.input(t("Date range"))
@@ -132,6 +227,7 @@ def render_date_range_selector() -> None:
             on_change=refresh_data,
         ).props(
             f'range default-year-month="{max_date[:7]}" '
+            f":locale='{date_locale}' "
             f''':options="date => date >= '{min_date}' && date <= '{max_date}'"'''
         ).bind_value(
             date_input,
@@ -156,12 +252,10 @@ def render_date_range_selector() -> None:
 def _change_language(language_code: str) -> None:
     """Store the selected language and refresh translated UI in place."""
     app.storage.user["language"] = language_code
-    _logger.info("Language changed to '%s', refreshing UI.", language_code)
-    render_activity_select.refresh()
-    render_date_range_selector.refresh()
-    render_activity_graphs.refresh()
-    render_trends_graphs.refresh()
-    render_health_data_tab.refresh()
+    _logger.info("Language changed to '%s', reloading page.", language_code)
+    # NiceGUI top-level layout elements (header/drawer/body containers) cannot be
+    # nested in refreshable containers. Reloading ensures all translated UI text updates.
+    ui.navigate.reload()
 
 
 def render_header() -> None:
