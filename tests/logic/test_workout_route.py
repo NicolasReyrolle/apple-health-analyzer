@@ -1,0 +1,182 @@
+"""Unit tests for workout route domain models and calculations."""
+
+from datetime import datetime
+from pathlib import Path
+from zipfile import ZipFile
+
+import pytest
+
+from logic.export_parser import ExportParser
+from logic.workout_manager import WorkoutManager
+from logic.workout_route import RoutePoint, WorkoutRoute
+from tests.conftest import build_health_export_xml, load_export_fragment
+
+
+def _point(
+    iso_time: str,
+    latitude: float,
+    longitude: float,
+    altitude: float = 0.0,
+) -> RoutePoint:
+    """Build a RoutePoint from a UTC ISO datetime string."""
+    return RoutePoint(
+        time=datetime.fromisoformat(iso_time.replace("Z", "+00:00")),
+        latitude=latitude,
+        longitude=longitude,
+        altitude=altitude,
+    )
+
+
+class TestWorkoutRoute:
+    """Test WorkoutRoute calculations and helpers."""
+
+    def test_empty_route_metrics(self) -> None:
+        """An empty route should report zeroed metrics."""
+        route = WorkoutRoute(points=[])
+
+        assert route.is_empty
+        assert route.duration_seconds == 0.0
+        assert route.distance_meters == 0.0
+        assert route.elevation_gain_m == 0.0
+        assert route.elevation_loss_m == 0.0
+
+    def test_single_point_route_metrics(self) -> None:
+        """A route with one point has no duration, distance, or elevation changes."""
+        route = WorkoutRoute(points=[_point("2024-01-01T10:00:00Z", 48.8566, 2.3522, 100.0)])
+
+        assert not route.is_empty
+        assert route.duration_seconds == 0.0
+        assert route.distance_meters == 0.0
+        assert route.elevation_gain_m == 0.0
+        assert route.elevation_loss_m == 0.0
+
+    def test_duration_distance_and_elevation_metrics(self) -> None:
+        """Duration, distance, gain, and loss should be accumulated across segments."""
+        route = WorkoutRoute(
+            points=[
+                _point("2024-01-01T10:00:00Z", 48.8566, 2.3522, 100.0),
+                _point("2024-01-01T10:01:00Z", 48.8567, 2.3523, 105.0),
+                _point("2024-01-01T10:03:00Z", 48.8568, 2.3524, 103.0),
+            ]
+        )
+
+        assert route.duration_seconds == 180.0
+        assert route.distance_meters > 0.0
+        assert route.elevation_gain_m == pytest.approx(5.0)  # type: ignore[misc]
+        assert route.elevation_loss_m == pytest.approx(2.0)  # type: ignore[misc]
+
+    def test_to_dataframe_contains_expected_columns_and_values(self) -> None:
+        """to_dataframe should preserve point ordering and field values."""
+        point_a = _point("2024-01-01T10:00:00Z", 48.8566, 2.3522, 100.0)
+        point_b = _point("2024-01-01T10:01:00Z", 48.8567, 2.3523, 101.0)
+        route = WorkoutRoute(points=[point_a, point_b])
+
+        df = route.to_dataframe()
+
+        assert list(df.columns) == ["time", "latitude", "longitude", "altitude"]
+        assert len(df) == 2
+        assert df.iloc[0]["time"] == point_a.time
+        assert df.iloc[0]["latitude"] == point_a.latitude
+        assert df.iloc[0]["longitude"] == point_a.longitude
+        assert df.iloc[0]["altitude"] == point_a.altitude
+
+    def test_add_point_appends_to_route(self) -> None:
+        """add_point should append a new RoutePoint to the route."""
+        route = WorkoutRoute(points=[])
+        new_point = _point("2024-01-01T10:00:00Z", 48.8566, 2.3522, 100.0)
+
+        route.add_point(new_point)
+
+        assert len(route.points) == 1
+        assert route.points[0] == new_point
+        assert not route.is_empty
+
+
+class TestWorkoutRouteEndToEnd:
+    """End-to-end checks using real workout and GPX fixtures."""
+
+    def test_running_route_metrics_vs_workout_manager(self, tmp_path: Path) -> None:
+        """Compare route-derived metrics against workout/manager metrics from real fixtures.
+
+        Route and workout metrics are compared with explicit tolerances to account
+        for known calculation model differences (e.g., GPS polyline distance versus
+        workout summary values).
+        """
+
+        workout_xml = load_export_fragment("workout_running.xml")
+        route_file = (
+            Path(__file__).resolve().parents[1]
+            / "fixtures"
+            / "exports"
+            / "workout-routes"
+            / "route_2025-09-16_6.15pm.gpx"
+        )
+
+        zip_path = tmp_path / "running_with_route.zip"
+        with ZipFile(zip_path, "w") as zf:
+            zf.writestr("apple_health_export/export.xml", build_health_export_xml([workout_xml]))
+            zf.writestr(
+                "apple_health_export/workout-routes/route_2025-09-16_6.15pm.gpx",
+                route_file.read_bytes(),
+            )
+
+        parser = ExportParser()
+        with parser:
+            parsed = parser.parse(str(zip_path))
+
+        manager = WorkoutManager(parsed.workouts)
+        workouts = manager.workouts
+
+        assert len(workouts) == 1
+        workout = workouts.iloc[0]
+        route = workout["route"]
+
+        assert isinstance(route, WorkoutRoute)
+        assert route.points
+
+        route_metrics = {
+            "distance_m": route.distance_meters,
+            "duration_s": route.duration_seconds,
+            "elevation_gain_m": route.elevation_gain_m,
+        }
+        manager_metrics = {
+            "distance_m": float(manager.get_total_distance("Running", unit="m")),
+            "duration_s": float(workout["duration"]),
+            "elevation_gain_m": float(manager.get_total_elevation("Running", unit="m")),
+        }
+
+        # Sanity checks ensure the comparison is meaningful and based on parsed data.
+        assert route_metrics["distance_m"] > 0
+        assert route_metrics["duration_s"] > 0
+        assert route_metrics["elevation_gain_m"] >= 0
+        assert manager_metrics["distance_m"] > 0
+        assert manager_metrics["duration_s"] > 0
+        assert manager_metrics["elevation_gain_m"] >= 0
+
+        tolerance = 0.01  # 1% relative tolerance
+
+        assert route_metrics["distance_m"] == pytest.approx(  # type: ignore[misc]
+            manager_metrics["distance_m"],
+            rel=tolerance,
+        )
+        assert route_metrics["duration_s"] == pytest.approx(  # type: ignore[misc]
+            manager_metrics["duration_s"],
+            rel=tolerance,
+        )
+
+        # Elevation comparison uses ratio bounds instead of percent tolerance because these
+        # metrics are fundamentally different:
+        # - route.elevation_gain_m:
+        #       raw point-to-point GPS altitude deltas (noisy, ~±5-10m per sample)
+        # - manager.elevation_gain_m:
+        #       Apple's processed health metric (barometer-filtered, sensor-fused)
+        # Raw GPS accumulates small per-point errors (~±2m) across 100+ track points, resulting in
+        # 30-50% higher values than devices with barometric pressure smoothing. Ratio bounds of
+        # 0.70-1.50 acknowledge this inherent measurement method variance
+        # while ensuring data integrity.
+        elevation_ratio = route_metrics["elevation_gain_m"] / manager_metrics["elevation_gain_m"]
+        assert 0.70 <= elevation_ratio <= 1.50, (
+            f"Elevation ratio {elevation_ratio:.2f} outside bounds [0.70, 1.50]. "
+            f"Route: {route_metrics['elevation_gain_m']:.2f}m, "
+            f"Manager: {manager_metrics['elevation_gain_m']:.2f}m"
+        )
