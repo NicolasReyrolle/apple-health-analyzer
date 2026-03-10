@@ -1,6 +1,5 @@
 """Models representing the structured data extracted from the Apple Health export."""
 
-from datetime import datetime
 from typing import Optional, TypedDict
 
 import pandas as pd
@@ -23,12 +22,3 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     routeFile: Optional[str]
     route: Optional[pd.DataFrame]
     distance: Optional[int]  # Total distance in meters
-
-
-class WorkoutRoute(TypedDict):
-    """Type definition for workout route structure."""
-
-    time: datetime
-    latitude: float
-    longitude: float
-    altitude: float

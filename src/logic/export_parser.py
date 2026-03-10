@@ -11,8 +11,9 @@ from zipfile import ZipFile
 import pandas as pd
 from defusedxml.ElementTree import iterparse
 
-from logic.models import WorkoutRecord, WorkoutRoute
+from logic.models import WorkoutRecord
 from logic.parsed_health_data import ParsedHealthData
+from logic.workout_route import WorkoutRoute
 
 _logger = logging.getLogger(__name__)
 
