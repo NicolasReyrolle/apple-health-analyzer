@@ -147,6 +147,11 @@ Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`)
 python tests/fixtures/update_export_sample.py
 ```
 
+This rebuilds `tests/fixtures/export_sample.zip` with:
+
+- `apple_health_export/export.xml` generated from top-level `tests/fixtures/exports/*.xml` fragments.
+- Every file found in subfolders under `tests/fixtures/exports/` (for example `workout-routes/`), preserved under the same relative paths inside `apple_health_export/`.
+
 ### Code Quality
 
 We maintain strict coding standards. Before submitting a PR, ensure your code passes:

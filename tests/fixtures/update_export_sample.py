@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Iterable
 
 INTERNAL_XML_PATH = "apple_health_export/export.xml"
+INTERNAL_EXPORT_ROOT = "apple_health_export"
 DEFAULT_EXPORT_DATE = "2026-01-20 22:00:00 +0100"
 
 
@@ -32,11 +33,24 @@ def load_fragments(exports_dir: Path) -> list[str]:
     return [fragment.read_text(encoding="utf-8") for fragment in fragment_files]
 
 
-def write_export_zip(output_zip: Path, xml_content: str) -> None:
-    """Write the export XML into a ZIP at the expected internal path."""
+def iter_subfolder_files(exports_dir: Path) -> list[Path]:
+    """Return all files inside exports subfolders, preserving sorted deterministic order."""
+    return sorted(
+        path
+        for path in exports_dir.rglob("*")
+        if path.is_file() and len(path.relative_to(exports_dir).parts) > 1
+    )
+
+
+def write_export_zip(output_zip: Path, xml_content: str, exports_dir: Path) -> None:
+    """Write export XML and nested exports assets into the output ZIP."""
     output_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
         zipf.writestr(INTERNAL_XML_PATH, xml_content)
+
+        for file_path in iter_subfolder_files(exports_dir):
+            relative_path = file_path.relative_to(exports_dir).as_posix()
+            zipf.write(file_path, arcname=f"{INTERNAL_EXPORT_ROOT}/{relative_path}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -75,7 +89,7 @@ def main() -> int:
         return 1
 
     xml_content = build_health_export_xml(fragments, args.export_date)
-    write_export_zip(args.output_zip, xml_content)
+    write_export_zip(args.output_zip, xml_content, args.exports_dir)
     print(f"Wrote {args.output_zip}")
     return 0
 
