@@ -2,7 +2,7 @@
 
 from typing import Optional, TypedDict
 
-import pandas as pd
+from logic.workout_route import WorkoutRoute
 
 
 class WorkoutRecordRequired(TypedDict):
@@ -20,5 +20,5 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     endDate: Optional[str]
     source: Optional[str]
     routeFile: Optional[str]
-    route: Optional[pd.DataFrame]
+    route: Optional[WorkoutRoute]
     distance: Optional[int]  # Total distance in meters

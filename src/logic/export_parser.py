@@ -13,7 +13,7 @@ from defusedxml.ElementTree import iterparse
 
 from logic.models import WorkoutRecord
 from logic.parsed_health_data import ParsedHealthData
-from logic.workout_route import WorkoutRoute
+from logic.workout_route import WorkoutRoute, RoutePoint
 
 _logger = logging.getLogger(__name__)
 
@@ -323,11 +323,11 @@ class ExportParser:
                     record[f"{stat_attr}{stat_type}"] = float(stat_attr_str)
                     record[f"{stat_attr}{stat_type}Unit"] = child.get("unit")
 
-    def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[pd.DataFrame]:
+    def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[WorkoutRoute]:
         """Load GPX route file from the export zip."""
         try:
             with zipfile.open(f"apple_health_export{route_path}") as route_file:
-                rows: List[WorkoutRoute] = []
+                route: WorkoutRoute = WorkoutRoute(points=[])
                 for event, elem in iterparse(route_file, events=("start", "end")):
                     if event == "end" and elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt":
                         latitude: str = elem.get("lat") or "0.0"
@@ -340,16 +340,16 @@ class ExportParser:
                         altitude: str = ele_elem.text or "0.0" if ele_elem is not None else "0.0"
                         time_str: str = time_elem.text or "" if time_elem is not None else ""
 
-                        rows.append(
-                            {
-                                "time": datetime.fromisoformat(time_str.replace("Z", "+00:00")),
-                                "latitude": float(latitude),
-                                "longitude": float(longitude),
-                                "altitude": float(altitude),
-                            }
+                        route.add_point(
+                            RoutePoint(
+                                time=datetime.fromisoformat(time_str.replace("Z", "+00:00")),
+                                latitude=float(latitude),
+                                longitude=float(longitude),
+                                altitude=float(altitude),
+                            )
                         )
                         elem.clear()
-                return pd.DataFrame(rows)
+                return route
         except KeyError:
             self._log(f"Route file not found in export: {route_path}")
             return None

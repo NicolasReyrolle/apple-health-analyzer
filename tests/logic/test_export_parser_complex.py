@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from logic.export_parser import ExportParser, WorkoutRecord
+from logic.workout_route import WorkoutRoute
 from tests.conftest import build_health_export_xml, load_export_fragment
 
 
@@ -217,11 +218,11 @@ class TestLoadRoute:
             result = parser._load_route(zf, "/workout-routes/test_route.gpx")  # type: ignore[misc]
 
         assert result is not None
-        assert len(result) == 2
-        assert list(result.columns) == ["time", "latitude", "longitude", "altitude"]
-        assert result.iloc[0]["latitude"] == pytest.approx(48.8566)  # type: ignore[misc]
-        assert result.iloc[0]["longitude"] == pytest.approx(2.3522)  # type: ignore[misc]
-        assert result.iloc[0]["altitude"] == pytest.approx(100.5)  # type: ignore[misc]
+        assert len(result.points) == 2
+        assert result.duration_seconds == 60.0
+        assert result.distance_meters > 0.0
+        assert result.elevation_gain_m > 0.0
+        assert result.elevation_loss_m == 0.0
 
     def test_load_route_empty_gpx(self, tmp_path: Path) -> None:
         """Test loading an empty GPX file."""
@@ -242,7 +243,7 @@ class TestLoadRoute:
             result = parser._load_route(zf, "/workout-routes/empty_route.gpx")  # type: ignore[misc]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result.points) == 0
 
     def test_load_route_missing_ele_and_time(self, tmp_path: Path) -> None:
         """Test loading GPX with missing altitude and time elements."""
@@ -314,7 +315,7 @@ class TestProcessWorkoutRoute:
         assert record.get("routeFile") == "/workout-routes/test_route.gpx"
         # Verify route DataFrame is loaded
         assert record.get("route") is not None
-        assert isinstance(record.get("route"), pd.DataFrame)
+        assert isinstance(record.get("route"), WorkoutRoute)
 
     def test_process_workout_route_empty_route_element(self, tmp_path: Path) -> None:
         """Test processing an empty workout route element."""
