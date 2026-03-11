@@ -360,8 +360,37 @@ class ExportParser:
         """Process workout route child element."""
         for child in elem:
             if child.tag == "FileReference":
-                record["routeFile"] = child.get("path")
-                record["route"] = self._load_route(zipfile, child.get("path") or "")
+                route_path = child.get("path")
+                if not route_path:
+                    continue
+
+                route_part = self._load_route(zipfile, route_path)
+
+                route_files = record.get("routeFiles")
+                if not isinstance(route_files, list):
+                    route_files = []
+                    record["routeFiles"] = route_files
+                route_files.append(route_path)
+
+                # Backward compatibility: keep first route in legacy singular fields.
+                if "routeFile" not in record:
+                    record["routeFile"] = route_path
+
+                if route_part is None:
+                    continue
+
+                existing_route = record.get("route")
+                if isinstance(existing_route, WorkoutRoute):
+                    if (
+                        existing_route.points
+                        and route_part.points
+                        and existing_route.points[-1] == route_part.points[0]
+                    ):
+                        existing_route.points.extend(route_part.points[1:])
+                    else:
+                        existing_route.points.extend(route_part.points)
+                else:
+                    record["route"] = route_part
 
     def _process_metadata_entry(self, child: Element, record: WorkoutRecord) -> None:
         """Process metadata entry child element."""

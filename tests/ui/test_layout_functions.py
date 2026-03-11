@@ -13,7 +13,7 @@ from zipfile import ZipFile
 import pandas as pd
 
 from app_state import state
-from ui import layout
+from src.ui import layout
 
 
 def _translated_message(message: str, **kwargs: Any) -> str:
@@ -340,10 +340,12 @@ class TestBestSegmentsTabData:
 
             assert state.best_segments_rows == [
                 {
+                    "id": "1000",
                     "distance": "1.0 km",
                     "duration": "404.00 s",
                     "average_speed": "8.91 km/h",
                     "start_date": "2025-09-16",
+                    "children": [],
                 }
             ]
             workouts_mock.get_best_segments.assert_called_once_with(

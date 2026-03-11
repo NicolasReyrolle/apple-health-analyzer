@@ -1,6 +1,7 @@
 """Application state management for Apple Health Analyzer."""
 
 from datetime import datetime
+from typing import Any
 
 from nicegui import ui
 
@@ -36,7 +37,7 @@ class AppState:
             "elevation": "0",
             "calories": "0",
         }
-        self.best_segments_rows: list[dict[str, str]] = []
+        self.best_segments_rows: list[dict[str, Any]] = []
         self.best_segments_loading: bool = False
         self.best_segments_loaded: bool = False
         self.selected_main_tab: str = "summary"

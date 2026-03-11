@@ -70,6 +70,63 @@ class TestComplexRealWorldWorkout:
         # Verify the routeFile is captured
         assert workout["routeFile"] == "/workout-routes/route_2025-09-16_6.15pm.gpx"
 
+    def test_parse_workout_with_multiple_route_parts(self, tmp_path: Path) -> None:
+        """A workout containing multiple WorkoutRoute entries should keep all route parts."""
+        workout_fragment = load_export_fragment("workout_running_multiple_parts.xml")
+        route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
+        route_files = sorted(route_dir.glob("route_2025-09-26_*.gpx"))
+
+        zip_path = tmp_path / "running_multi_parts.zip"
+        with ZipFile(zip_path, "w") as zf:
+            xml_content = build_health_export_xml([workout_fragment])
+            zf.writestr("apple_health_export/export.xml", xml_content)
+            for route_file in route_files:
+                zf.writestr(
+                    f"apple_health_export/workout-routes/{route_file.name}",
+                    route_file.read_bytes(),
+                )
+
+        parser = ExportParser()
+        with parser:
+            health_data = parser.parse(str(zip_path))
+
+        assert len(health_data.workouts) == 1
+        workout = health_data.workouts.iloc[0]
+
+        assert workout["routeFile"] == "/workout-routes/route_2025-09-26_7.00pm.gpx"
+        assert isinstance(workout["route"], WorkoutRoute)
+
+        route_files_col = workout["routeFiles"]
+        assert isinstance(route_files_col, list)
+        assert len(route_files_col) == len(route_files)
+        assert route_files_col[0] == "/workout-routes/route_2025-09-26_7.00pm.gpx"
+        assert route_files_col[-1] == "/workout-routes/route_2025-09-26_7.18pm.gpx"
+
+        merged_route = workout["route"]
+        assert isinstance(merged_route, WorkoutRoute)
+
+        with ZipFile(zip_path, "r") as zf:
+            parser_for_parts = ExportParser()
+            loaded_parts = [
+                parser_for_parts._load_route(zf, f"/workout-routes/{route_file.name}")
+                for route_file in route_files
+            ]
+
+        route_parts = [part for part in loaded_parts if isinstance(part, WorkoutRoute)]
+        assert len(route_parts) == len(route_files)
+
+        expected_points = len(route_parts[0].points)
+        for route_part in route_parts[1:]:
+            expected_points += len(route_part.points)
+
+        # Account for deduplication at part boundaries when adjacent files share one point.
+        dedup_boundaries = 0
+        for previous, current in zip(route_parts, route_parts[1:]):
+            if previous.points and current.points and previous.points[-1] == current.points[0]:
+                dedup_boundaries += 1
+
+        assert len(merged_route.points) == expected_points - dedup_boundaries
+
     def test_workout_activity_stats_and_metadata_are_ignored(
         self, create_health_zip: Callable[..., str]
     ) -> None:

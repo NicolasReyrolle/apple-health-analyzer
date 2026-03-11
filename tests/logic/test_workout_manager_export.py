@@ -163,7 +163,11 @@ class TestColumnExclusion:
     def test_default_excluded_columns_constant(self) -> None:
         """Test that DEFAULT_EXCLUDED_COLUMNS is defined correctly."""
         assert hasattr(wm.WorkoutManager, "DEFAULT_EXCLUDED_COLUMNS")
-        assert wm.WorkoutManager.DEFAULT_EXCLUDED_COLUMNS == {"routeFile", "route"}
+        assert wm.WorkoutManager.DEFAULT_EXCLUDED_COLUMNS == {
+            "routeFile",
+            "route",
+            "routeFiles",
+        }
 
     def test_export_to_json_excludes_default_columns(self, tmp_path: Path) -> None:
         """Test that export_to_json excludes routeFile and route by default."""

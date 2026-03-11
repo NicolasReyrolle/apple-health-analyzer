@@ -119,3 +119,40 @@ class TestGetBestSegments:
         assert int(result.iloc[0]["distance"]) == 1000
         expected_duration = pytest.approx(375.0, rel=1e-3)  # type: ignore[misc]
         assert float(result.iloc[0]["duration_s"]) == expected_duration
+
+    def test_considers_each_route_part_separately(self) -> None:
+        """When route parts are merged, best segments are computed on the single merged route."""
+        start_time = datetime(2025, 9, 26, tzinfo=timezone.utc)
+        merged_route = WorkoutRoute(
+            points=[
+                RoutePoint(time=start_time, latitude=0.0, longitude=0.0, altitude=0.0),
+                RoutePoint(
+                    time=start_time + pd.Timedelta(seconds=410),
+                    latitude=0.0,
+                    longitude=0.01,
+                    altitude=0.0,
+                ),
+                RoutePoint(
+                    time=start_time + pd.Timedelta(seconds=670),
+                    latitude=0.0,
+                    longitude=0.02,
+                    altitude=0.0,
+                ),
+            ]
+        )
+
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-09-26")],
+                    "route": [merged_route],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(topn=2, distances=[1000])
+
+        assert len(result) == 1
+        assert list(result["distance"]) == [1000]
+        assert list(result["duration_s"]) == [pytest.approx(260.0)]
