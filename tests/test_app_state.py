@@ -153,7 +153,7 @@ class TestAppStateBestSegmentsState:
         """A new AppState should initialize best-segments and tab state fields."""
         app_state = AppState()
 
-        assert app_state.best_segments_rows == []
+        assert not app_state.best_segments_rows
         assert app_state.best_segments_loading is False
         assert app_state.best_segments_loaded is False
         assert app_state.selected_main_tab == "summary"
@@ -168,7 +168,7 @@ class TestAppStateBestSegmentsState:
 
         app_state.reset()
 
-        assert app_state.best_segments_rows == []
+        assert not app_state.best_segments_rows
         assert app_state.best_segments_loading is False
         assert app_state.best_segments_loaded is False
         assert app_state.selected_main_tab == "summary"

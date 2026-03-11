@@ -16,6 +16,11 @@ from app_state import state
 from ui import layout
 
 
+def _translated_message(message: str, **kwargs: Any) -> str:
+    """Test helper to mimic translation with formatting placeholders."""
+    return f"tr:{message.format(**kwargs)}"
+
+
 class _DummyRow:
     def __enter__(self):
         return self
@@ -304,9 +309,13 @@ class TestRenderGenericGraph:
 class TestBestSegmentsTabData:
     """Tests for best-segments computation and async loading."""
 
-    def test_build_best_segments_rows_formats_values(self) -> None:
-        """Rows should be formatted with km, seconds, speed, and yyyy-mm-dd date."""
+    async def test_load_best_segments_data_formats_values(self) -> None:
+        """Public loader should format rows with km, seconds, speed, and yyyy-mm-dd date."""
         original_workouts: Any = state.workouts
+        original_file_loaded = state.file_loaded
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
 
         workouts_mock = MagicMock()
         workouts_mock.get_best_segments.return_value = pd.DataFrame(
@@ -321,9 +330,15 @@ class TestBestSegmentsTabData:
 
         try:
             state.workouts = workouts_mock
-            rows = layout._build_best_segments_rows()
+            state.file_loaded = True
+            state.best_segments_rows = []
+            state.best_segments_loading = False
+            state.best_segments_loaded = False
 
-            assert rows == [
+            with patch("ui.layout.render_best_segments_tab.refresh"):
+                await layout.load_best_segments_data(force=True)
+
+            assert state.best_segments_rows == [
                 {
                     "distance": "1.0 km",
                     "duration": "404.00 s",
@@ -336,6 +351,10 @@ class TestBestSegmentsTabData:
             )
         finally:
             state.workouts = original_workouts
+            state.file_loaded = original_file_loaded
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
 
     async def test_load_best_segments_data_populates_rows(self) -> None:
         """Loader should set loading flags, populate rows, and mark data as loaded."""
@@ -693,9 +712,7 @@ class TestLoadWorkoutsFromFile:
 
         events: list[tuple[int, str]] = []
 
-        with patch(
-            "ui.layout.t", side_effect=lambda message, **kwargs: f"tr:{message.format(**kwargs)}"
-        ):
+        with patch("ui.layout.t", side_effect=_translated_message):
             with patch("ui.layout.ExportParser") as parser_class_mock:
                 parser_instance_mock = MagicMock()
 

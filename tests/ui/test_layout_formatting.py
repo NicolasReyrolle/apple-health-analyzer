@@ -1,7 +1,7 @@
 """Tests for UI formatting in layout refresh."""
 
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Coroutine, Optional, Union
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
@@ -153,7 +153,11 @@ def test_refresh_data_triggers_best_segments_load_when_tab_selected() -> None:
                     with patch("ui.layout.render_best_segments_tab.refresh"):
                         with patch("ui.layout.load_best_segments_data", new=AsyncMock()):
                             with patch("ui.layout.asyncio.create_task") as create_task_mock:
-                                create_task_mock.side_effect = lambda coro: (coro.close(), None)[1]
+
+                                def _close_coro(coro: Coroutine[Any, Any, None]) -> None:
+                                    coro.close()
+
+                                create_task_mock.side_effect = _close_coro
                                 refresh_data()
 
         assert state.best_segments_rows == []
