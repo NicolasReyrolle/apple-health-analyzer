@@ -19,7 +19,5 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     startDate: Optional[str]
     endDate: Optional[str]
     source: Optional[str]
-    routeFile: Optional[str]
     route: Optional[WorkoutRoute]
-    routeFiles: Optional[list[str]]
     distance: Optional[int]  # Total distance in meters

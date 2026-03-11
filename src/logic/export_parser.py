@@ -366,16 +366,6 @@ class ExportParser:
 
                 route_part = self._load_route(zipfile, route_path)
 
-                route_files = record.get("routeFiles")
-                if not isinstance(route_files, list):
-                    route_files = []
-                    record["routeFiles"] = route_files
-                route_files.append(route_path)
-
-                # Backward compatibility: keep first route in legacy singular fields.
-                if "routeFile" not in record:
-                    record["routeFile"] = route_path
-
                 if route_part is None:
                     continue
 

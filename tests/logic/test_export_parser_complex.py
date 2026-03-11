@@ -67,9 +67,6 @@ class TestComplexRealWorldWorkout:
         # Verify metadata entries for elevation
         assert workout["ElevationAscended"] == pytest.approx(65.75, abs=0.01)  # type: ignore[misc]
 
-        # Verify the routeFile is captured
-        assert workout["routeFile"] == "/workout-routes/route_2025-09-16_6.15pm.gpx"
-
     def test_parse_workout_with_multiple_route_parts(self, tmp_path: Path) -> None:
         """A workout containing multiple WorkoutRoute entries should keep all route parts."""
         workout_fragment = load_export_fragment("workout_running_multiple_parts.xml")
@@ -93,14 +90,7 @@ class TestComplexRealWorldWorkout:
         assert len(health_data.workouts) == 1
         workout = health_data.workouts.iloc[0]
 
-        assert workout["routeFile"] == "/workout-routes/route_2025-09-26_7.00pm.gpx"
         assert isinstance(workout["route"], WorkoutRoute)
-
-        route_files_col = workout["routeFiles"]
-        assert isinstance(route_files_col, list)
-        assert len(route_files_col) == len(route_files)
-        assert route_files_col[0] == "/workout-routes/route_2025-09-26_7.00pm.gpx"
-        assert route_files_col[-1] == "/workout-routes/route_2025-09-26_7.18pm.gpx"
 
         merged_route = workout["route"]
         assert isinstance(merged_route, WorkoutRoute)
@@ -368,9 +358,7 @@ class TestProcessWorkoutRoute:
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_route(route_elem, record, zf)  # type: ignore[misc]
 
-        # Verify routeFile is set
-        assert record.get("routeFile") == "/workout-routes/test_route.gpx"
-        # Verify route DataFrame is loaded
+        # Verify route data is loaded
         assert record.get("route") is not None
         assert isinstance(record.get("route"), WorkoutRoute)
 

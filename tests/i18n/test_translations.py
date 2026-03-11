@@ -54,19 +54,6 @@ class TestPoFiles:
         assert po_path.exists(), f"Missing .po file for language '{lang}': {po_path}"
 
     @pytest.mark.parametrize("lang", _TRANSLATED_LANGUAGES)
-    def test_mo_file_exists(self, lang: str) -> None:
-        """A compiled .mo file must exist next to each .po file."""
-        mo_path = _LOCALE_DIR / lang / "LC_MESSAGES" / "messages.mo"
-        assert mo_path.exists(), (
-            f"Missing compiled .mo file for '{lang}'. "
-            f'Run: python -c "from babel.messages.mofile import write_mo; '
-            f"from babel.messages.pofile import read_po; "
-            f"[write_mo(open(str(p).replace('.po','.mo'),'wb'), read_po(open(p,'rb'))) "
-            f"for p in ['{mo_path.with_suffix('.po')}']]\" "
-            f"or use Poedit to save the .po file."
-        )
-
-    @pytest.mark.parametrize("lang", _TRANSLATED_LANGUAGES)
     def test_all_pot_msgids_present_in_po(self, lang: str) -> None:
         """Every msgid in the .pot template must appear in the language .po file."""
         pot_msgids = _read_msgids_from_pot()

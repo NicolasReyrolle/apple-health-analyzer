@@ -16,7 +16,7 @@ A modern, graphical tool to parse, analyze, and export your Apple Health data. O
 - **Date Range Filtering**: Analyze specific time periods using the date range picker to focus on your desired date ranges.
 - **Trends Period Aggregation**: Switch the Trends tab aggregation between week, month, quarter, or year.
 - **Gap-Aware Time Series**: Missing periods are preserved in health-data charts, so the x-axis remains continuous and missing measurements are explicit (not coerced to zero).
-- **Route Parts Merging**: Workouts with multiple GPX route files are merged into a single continuous route for analysis, while original file names are retained in metadata.
+- **Route Parts Merging**: Workouts with multiple GPX route files are merged into a single continuous route for analysis.
 - **Multilingual UI (EN/FR)**: gettext-based translations for labels, tabs, date picker locale labels, notifications, and loading/progress status messages.
 - **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
 - All processing happens locally on your machine.

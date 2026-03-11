@@ -19,7 +19,7 @@
 - ✅ **Best Segments tab** with asynchronous loading, expandable rows, and localized labels
 - ✅ Standard running segment catalog from **100m to 100km**, including named half-marathon and marathon distances
 - ✅ Best-segment label formatting extracted to reusable UI helpers (`distance`, `duration`, `date`)
-- ✅ Multi-file workout route handling with merged route geometry and `routeFiles` metadata retention
+- ✅ Multi-file workout route handling with merged route geometry
 - ✅ Startup compilation of gettext catalogs (`.po` → `.mo`) with `.mo` files ignored in git
 - ✅ Comprehensive test coverage for all metrics methods and filtering features
 
@@ -84,7 +84,7 @@
 
 ### Priority 3: Route Visualization
 
-**Why:** The parser now merges split route files into a single route and retains source file metadata (`routeFiles`). Visualizing GPS routes would be valuable for runners/cyclists.
+**Why:** The parser now merges split route files into a single route. Visualizing GPS routes would be valuable for runners/cyclists.
 
 **Implementation:**
 

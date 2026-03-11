@@ -31,7 +31,7 @@ class WorkoutManager:
     """Class to manage workout data and metrics."""
 
     # Columns to exclude from exports by default
-    DEFAULT_EXCLUDED_COLUMNS = {"routeFile", "route", "routeFiles"}
+    DEFAULT_EXCLUDED_COLUMNS = {"route"}
     # Date format for string representations
     DATE_FORMAT = "%Y/%m/%d"
     # Default distances for best segment calculations (in meters)
