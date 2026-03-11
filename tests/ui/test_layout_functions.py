@@ -343,9 +343,9 @@ class TestBestSegmentsTabData:
                 {
                     "id": "1000",
                     "distance": "1.0 km",
-                    "duration": "6 m 44 s",
+                    "duration": "6 min 44 s",
                     "average_speed": "8.91 km/h",
-                    "start_date": "2025-09-16",
+                    "start_date": "09/16/2025",
                     "children": [],
                 }
             ]
@@ -408,6 +408,44 @@ class TestBestSegmentsTabData:
                 "1 h 23 min 20 s",
                 "2 h 46 min 40 s",
             ]
+        finally:
+            state.workouts = original_workouts
+            state.file_loaded = original_file_loaded
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
+
+    async def test_load_best_segments_data_formats_date_by_language(self) -> None:
+        """Date formatting should follow selected language (fr: dd/mm/yyyy)."""
+        original_workouts: Any = state.workouts
+        original_file_loaded = state.file_loaded
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
+
+        workouts_mock = MagicMock()
+        workouts_mock.get_best_segments.return_value = pd.DataFrame(
+            [
+                {
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "distance": 1000,
+                    "duration_s": 404.0,
+                }
+            ]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            state.file_loaded = True
+            state.best_segments_rows = []
+            state.best_segments_loading = False
+            state.best_segments_loaded = False
+
+            with patch("ui.layout.get_language", return_value="fr"):
+                with patch("ui.layout.render_best_segments_tab.refresh"):
+                    await layout.load_best_segments_data(force=True)
+
+            assert state.best_segments_rows[0]["start_date"] == "16/09/2025"
         finally:
             state.workouts = original_workouts
             state.file_loaded = original_file_loaded

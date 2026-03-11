@@ -106,6 +106,7 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
     _logger.debug("Calculating best segments for distances: %s", STANDARD_SEGMENT_DISTANCES)
     best_segments = state.workouts.get_best_segments(distances=STANDARD_SEGMENT_DISTANCES)
     _logger.debug("Best segments data:\n%s", best_segments)
+    language_code = get_language()
 
     def _format_distance_label(distance_m: float) -> str:
         rounded_distance = int(round(distance_m))
@@ -128,13 +129,18 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
             return f"{minutes} min {seconds} s"
         return f"{hours} h {minutes} min {seconds} s"
 
+    def _format_date_label(start_date: Any) -> str:
+        if language_code == "fr":
+            return start_date.strftime("%d/%m/%Y")
+        return start_date.strftime("%m/%d/%Y")
+
     def _format_entry(distance_m: float, duration_s: float, start_date: Any) -> dict[str, str]:
         average_speed = (distance_m / 1000) / (duration_s / 3600) if duration_s > 0 else 0.0
         return {
             "distance": _format_distance_label(distance_m),
             "duration": _format_duration_label(duration_s),
             "average_speed": f"{average_speed:.2f} km/h",
-            "start_date": start_date.strftime("%Y-%m-%d"),
+            "start_date": _format_date_label(start_date),
         }
 
     rows: list[dict[str, Any]] = []
