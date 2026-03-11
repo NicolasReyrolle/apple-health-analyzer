@@ -23,7 +23,7 @@ python tests/fixtures/update_export_sample.py --exports-dir tests/fixtures/expor
 
 ## GPX anonymization script
 
-The script `tests/fixtures/anonymize_gpx.py` anonymizes a GPX/XML route file by shifting all `trkpt` coordinates so the first point becomes `lat="0.000000"` and `lon="0.000000"`.
+The script `tests/fixtures/anonymize_gpx.py` anonymizes GPX/XML route files by applying a spherical rotation so geometry/distances are preserved while the first point is moved to `lat="0.000000"` and `lon="0.000000"`.
 
 Usage:
 
@@ -31,9 +31,31 @@ Usage:
 python tests/fixtures/anonymize_gpx.py tests/fixtures/exports/workout-routes/route_2025-09-16_6.15pm.gpx
 ```
 
+Single-track mode for split route files (continuity preserved between files):
+
+```bash
+python tests/fixtures/anonymize_gpx.py --single-track tests/fixtures/exports/workout-routes/route_2025-09-16_6.15pm.gpx tests/fixtures/exports/workout-routes/route_2025-09-16_6.25pm.gpx
+```
+
+Select all route files for one date:
+
+```bash
+python tests/fixtures/anonymize_gpx.py --date 16/09/2025 --single-track
+```
+
+Write anonymized copies to another folder instead of in-place:
+
+```bash
+python tests/fixtures/anonymize_gpx.py --single-track --output-dir tests/fixtures/output tests/fixtures/exports/workout-routes/route_2025-09-16_6.15pm.gpx
+```
+
 Behavior:
 
 - rewrites the input file in place
+- supports multiple input files in batch mode
+- supports date-based auto-selection with `--date` and `--routes-dir`
+- in `--single-track` mode, enforces continuity: first point of file N+1 equals last point of file N
+- optionally writes output to another directory with `--output-dir`
 - preserves the GPX namespace format (no forced `ns0:` prefixes)
 - exits with an error if no track point exists
 - exits with an error if the first point is already `0,0` (already anonymized)

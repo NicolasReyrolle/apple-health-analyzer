@@ -4,12 +4,13 @@ This folder contains gettext catalogs used by the app:
 
 - `messages.pot`: source template (all translatable English msgids)
 - `<lang>/LC_MESSAGES/messages.po`: editable translations for each language
-- `<lang>/LC_MESSAGES/messages.mo`: compiled binary catalogs used at runtime
+- `<lang>/LC_MESSAGES/messages.mo`: compiled binary catalogs used at runtime (generated automatically at startup)
 
 Current language example:
 
 - `fr/LC_MESSAGES/messages.po`
-- `fr/LC_MESSAGES/messages.mo`
+
+Note: `.mo` files are intentionally gitignored in this repository. The app compiles them on startup when missing or outdated.
 
 ## Prerequisites
 
@@ -44,7 +45,7 @@ pybabel update -i src/i18n/locales/messages.pot -d src/i18n/locales -D messages 
 
 1. Open `src/i18n/locales/fr/LC_MESSAGES/messages.po` and translate any new/changed entries.
 
-1. Compile the `.po` into `.mo`:
+1. (Optional) Compile the `.po` into `.mo` manually:
 
 ```bash
 pybabel compile -d src/i18n/locales -D messages -l fr
@@ -92,4 +93,5 @@ Make sure these files are committed:
 
 - `src/i18n/locales/messages.pot`
 - `src/i18n/locales/<lang>/LC_MESSAGES/messages.po`
-- `src/i18n/locales/<lang>/LC_MESSAGES/messages.mo`
+
+Do not commit compiled `.mo` files; they are generated at runtime.
