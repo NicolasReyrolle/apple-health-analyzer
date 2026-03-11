@@ -762,8 +762,6 @@ def render_best_segments_tab() -> None:
             {"name": "start_date", "label": "Date", "field": "start_date"},
         ]
 
-        _logger.debug("Rendering the best segments table")
-
         if state.best_segments_loading:
             with ui.row().classes("w-full items-center justify-center q-gutter-sm"):
                 ui.spinner(size="lg")

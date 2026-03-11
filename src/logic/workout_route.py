@@ -3,7 +3,7 @@ allowing for calculations of distance, elevation gain/loss, and duration."""
 
 # src/logic/workout_route.py
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from math import atan2, cos, radians, sin, sqrt
 import pandas as pd
@@ -24,6 +24,7 @@ class WorkoutRoute:
     """Represents a workout route as a sequence of GPS points."""
 
     points: list[RoutePoint]
+    _cumulative_distance_cache: list[float] | None = field(default=None, init=False, repr=False)
 
     @property
     def is_empty(self) -> bool:
@@ -69,6 +70,7 @@ class WorkoutRoute:
     def add_point(self, point: RoutePoint) -> None:
         """Add a new point to the workout route."""
         self.points.append(point)
+        self._cumulative_distance_cache = None
 
     @staticmethod
     def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -80,8 +82,38 @@ class WorkoutRoute:
         a = sin(dp / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
         return 2 * r * atan2(sqrt(a), sqrt(1 - a))
 
+    def _cumulative_distances(self) -> list[float]:
+        """Return cumulative route distances for each point.
+
+        The value at index ``i`` is the total traveled distance from the
+        first point up to point ``i``.
+        """
+        if self._cumulative_distance_cache is not None:
+            return self._cumulative_distance_cache
+
+        if len(self.points) < 2:
+            self._cumulative_distance_cache = [0.0] * len(self.points)
+            return self._cumulative_distance_cache
+
+        distances = [0.0]
+        for previous, current in zip(self.points, self.points[1:]):
+            segment_distance = self._haversine_m(
+                previous.latitude,
+                previous.longitude,
+                current.latitude,
+                current.longitude,
+            )
+            distances.append(distances[-1] + segment_distance)
+
+        self._cumulative_distance_cache = distances
+        return self._cumulative_distance_cache
+
     def find_fastest_segment(self, segment_length_m: float) -> float | None:
         """Find the fastest segment of the given length in meters.
+
+        Uses traveled route distance rather than straight-line displacement.
+        This matches how running segments are typically defined and allows a
+        sliding-window search with linear complexity.
 
         Returns:
             The duration in seconds of the fastest qualifying segment,
@@ -90,26 +122,28 @@ class WorkoutRoute:
         if self.is_empty or segment_length_m <= 0:
             return None
 
-        best_duration_s = 0.0
-        best_speed = 0.0
+        if len(self.points) < 2:
+            return None
 
-        for start_idx, start_point in enumerate(self.points):
-            for end_point in self.points[start_idx + 1 :]:
-                distance = self._haversine_m(
-                    start_point.latitude,
-                    start_point.longitude,
-                    end_point.latitude,
-                    end_point.longitude,
-                )
-                if distance >= segment_length_m:
-                    duration_s = (end_point.time - start_point.time).total_seconds()
-                    if duration_s > 0:
-                        speed = distance / duration_s
-                        if speed > best_speed:
-                            best_speed = speed
-                            best_duration_s = duration_s
+        cumulative_distances = self._cumulative_distances()
+        best_duration_s: float | None = None
+        end_idx = 1
+
+        for start_idx in range(len(self.points) - 1):
+            if end_idx <= start_idx:
+                end_idx = start_idx + 1
+
+            while end_idx < len(self.points):
+                route_distance = cumulative_distances[end_idx] - cumulative_distances[start_idx]
+                if route_distance >= segment_length_m:
                     break
+                end_idx += 1
 
-        if best_speed > 0:
-            return best_duration_s
-        return None
+            if end_idx == len(self.points):
+                break
+
+            duration_s = (self.points[end_idx].time - self.points[start_idx].time).total_seconds()
+            if duration_s > 0 and (best_duration_s is None or duration_s < best_duration_s):
+                best_duration_s = duration_s
+
+        return best_duration_s

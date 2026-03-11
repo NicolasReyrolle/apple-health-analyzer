@@ -90,7 +90,7 @@ class TestGetBestSegments:
         assert list(top2["duration_s"]) == expected_durations
 
     def test_with_real_fixture_running_route(self, tmp_path: Path) -> None:
-        """Existing real fixture should produce a known best 1000m segment duration."""
+        """Existing real fixture should produce a known best traveled 1000m segment."""
         workout_xml = load_export_fragment("workout_running.xml")
         route_file = (
             Path(__file__).resolve().parents[1]
@@ -117,5 +117,5 @@ class TestGetBestSegments:
 
         assert len(result) == 1
         assert int(result.iloc[0]["distance"]) == 1000
-        expected_duration = pytest.approx(404.0, rel=1e-3)  # type: ignore[misc]
+        expected_duration = pytest.approx(375.0, rel=1e-3)  # type: ignore[misc]
         assert float(result.iloc[0]["duration_s"]) == expected_duration

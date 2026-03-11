@@ -125,7 +125,7 @@ class TestWorkoutRoute:
         assert not route.is_empty
 
     def test_find_fastest_segment_from_real_gpx_fixture(self) -> None:
-        """find_fastest_segment should return the known best 1000m segment from fixture data."""
+        """find_fastest_segment should return the known best traveled 1000m segment."""
         route_path = (
             Path(__file__).resolve().parents[1]
             / "fixtures"
@@ -138,7 +138,7 @@ class TestWorkoutRoute:
         result = route.find_fastest_segment(1000.0)
 
         assert result is not None
-        assert result == pytest.approx(404.0)  # type: ignore[misc]
+        assert result == pytest.approx(375.0)  # type: ignore[misc]
 
     def test_find_fastest_segment_from_real_gpx_fixture_not_found(self) -> None:
         """find_fastest_segment should return None if no segment meets the required length."""
@@ -155,6 +155,7 @@ class TestWorkoutRoute:
         result = route.find_fastest_segment(10000.0)
 
         assert result is None
+
 
 class TestWorkoutRouteEndToEnd:
     """End-to-end checks using real workout and GPX fixtures."""
