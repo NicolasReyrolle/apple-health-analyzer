@@ -18,6 +18,7 @@ from nicegui import app, ui
 
 from app_state import state
 from assets import APP_ICON_BASE64
+from i18n import compile_message_catalogs
 from ui.layout import load_file, render_body, render_header, render_left_drawer
 
 
@@ -193,6 +194,12 @@ def cli_main() -> None:
         _logger.info("Dev file specified: %s", resolved_path)
 
     _logger.info("Starting Apple Health Analyzer with log level: %s", args.log_level)
+
+    compiled_catalogs = compile_message_catalogs()
+    if compiled_catalogs:
+        _logger.info("Compiled %d translation catalog(s)", compiled_catalogs)
+    else:
+        _logger.debug("Translation catalogs are up to date")
 
     secret = uuid.uuid4().hex if "pytest" in sys.modules else os.getenv("STORAGE_SECRET", "secret")
 

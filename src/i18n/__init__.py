@@ -12,8 +12,9 @@ import gettext
 import logging
 from functools import lru_cache
 from pathlib import Path
+from typing import cast
 
-from babel.messages import pofile
+from babel.messages import mofile, pofile
 
 DEFAULT_LANGUAGE = "en"
 
@@ -26,7 +27,13 @@ _DOMAIN = "messages"
 _LOCALE_DIR = Path(__file__).parent / "locales"
 _logger = logging.getLogger(__name__)
 
-__all__ = ["DEFAULT_LANGUAGE", "LANGUAGES", "t", "translate"]
+__all__ = [
+    "DEFAULT_LANGUAGE",
+    "LANGUAGES",
+    "compile_message_catalogs",
+    "t",
+    "translate",
+]
 
 
 class _POTranslations(gettext.NullTranslations):
@@ -67,6 +74,41 @@ def _load_po_translation(lang: str) -> gettext.NullTranslations:
     return _POTranslations(messages)
 
 
+def _compile_po_catalog(po_path: Path) -> bool:
+    """Compile one ``.po`` file to its sibling ``.mo`` file.
+
+    Returns ``True`` if the catalog was compiled, ``False`` if no compilation was needed.
+    """
+    mo_path = po_path.with_suffix(".mo")
+
+    if mo_path.exists() and mo_path.stat().st_mtime >= po_path.stat().st_mtime:
+        return False
+
+    with po_path.open("r", encoding="utf-8") as po_file:
+        catalog = pofile.read_po(po_file)
+    with mo_path.open("wb") as mo_file:
+        mofile.write_mo(mo_file, catalog)
+    return True
+
+
+def compile_message_catalogs() -> int:
+    """Compile all gettext ``.po`` catalogs under ``locales`` into ``.mo`` files.
+
+    Returns the number of catalogs that were (re)compiled.
+    """
+    compiled_count = 0
+    for po_path in _LOCALE_DIR.glob("*/LC_MESSAGES/*.po"):
+        try:
+            if _compile_po_catalog(po_path):
+                compiled_count += 1
+        except Exception as exc:  # pylint: disable=broad-except
+            _logger.warning("Failed to compile translation catalog '%s': %s", po_path, exc)
+
+    # Ensure subsequent translation lookups reload catalogs after recompilation.
+    _get_translation.cache_clear()
+    return compiled_count
+
+
 @lru_cache(maxsize=None)
 def _get_translation(lang: str) -> gettext.NullTranslations:
     """Load and cache the compiled ``.mo`` translation for *lang*.
@@ -92,7 +134,8 @@ def get_language() -> str:
     try:
         from nicegui import app  # pylint: disable=import-outside-toplevel
 
-        return str(app.storage.user.get("language", DEFAULT_LANGUAGE))
+        user_storage = cast(dict[str, object], app.storage.user)
+        return str(user_storage.get("language", DEFAULT_LANGUAGE))
     except Exception:  # pylint: disable=broad-except
         return DEFAULT_LANGUAGE
 
