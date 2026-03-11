@@ -13,7 +13,8 @@ from zipfile import ZipFile
 import pandas as pd
 
 from app_state import state
-from src.ui import layout
+from logic.workout_manager import STANDARD_SEGMENT_DISTANCES
+import ui.layout as layout
 
 
 def _translated_message(message: str, **kwargs: Any) -> str:
@@ -342,15 +343,71 @@ class TestBestSegmentsTabData:
                 {
                     "id": "1000",
                     "distance": "1.0 km",
-                    "duration": "404.00 s",
+                    "duration": "6 m 44 s",
                     "average_speed": "8.91 km/h",
                     "start_date": "2025-09-16",
                     "children": [],
                 }
             ]
             workouts_mock.get_best_segments.assert_called_once_with(
-                distances=[1000, 5000, 10000, 21097, 42195]
+                distances=STANDARD_SEGMENT_DISTANCES
             )
+        finally:
+            state.workouts = original_workouts
+            state.file_loaded = original_file_loaded
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
+
+    async def test_load_best_segments_data_formats_special_distance_labels(self) -> None:
+        """Distances under 1km are in meters, half/full marathon are shown by name."""
+        original_workouts: Any = state.workouts
+        original_file_loaded = state.file_loaded
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
+
+        workouts_mock = MagicMock()
+        workouts_mock.get_best_segments.return_value = pd.DataFrame(
+            [
+                {
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "distance": 100,
+                    "duration_s": 20.0,
+                },
+                {
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "distance": 21097,
+                    "duration_s": 5000.0,
+                },
+                {
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "distance": 42195,
+                    "duration_s": 10000.0,
+                },
+            ]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            state.file_loaded = True
+            state.best_segments_rows = []
+            state.best_segments_loading = False
+            state.best_segments_loaded = False
+
+            with patch("ui.layout.render_best_segments_tab.refresh"):
+                await layout.load_best_segments_data(force=True)
+
+            assert [row["distance"] for row in state.best_segments_rows] == [
+                "100 m",
+                "Semi-marathon",
+                "Marathon",
+            ]
+            assert [row["duration"] for row in state.best_segments_rows] == [
+                "20 s",
+                "1 h 23 min 20 s",
+                "2 h 46 min 40 s",
+            ]
         finally:
             state.workouts = original_workouts
             state.file_loaded = original_file_loaded

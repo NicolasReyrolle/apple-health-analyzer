@@ -9,6 +9,24 @@ import pandas as pd
 from logic.workout_route import WorkoutRoute
 
 
+STANDARD_SEGMENT_DISTANCES: list[int] = [
+    100,
+    200,
+    400,
+    800,
+    1000,
+    5000,
+    10000,
+    15000,
+    21097,
+    42195,
+    50000,
+    100000,
+]
+HALF_MARATHON_DISTANCE_M = 21097
+MARATHON_DISTANCE_M = 42195
+
+
 class WorkoutManager:
     """Class to manage workout data and metrics."""
 
@@ -17,7 +35,7 @@ class WorkoutManager:
     # Date format for string representations
     DATE_FORMAT = "%Y/%m/%d"
     # Default distances for best segment calculations (in meters)
-    DEFAULT_SEGMENT_DISTANCES = [1000, 5000, 10000, 21097, 42195]
+    DEFAULT_SEGMENT_DISTANCES = STANDARD_SEGMENT_DISTANCES
 
     def __init__(self, pd_workouts: Optional[pd.DataFrame] = None) -> None:
         if pd_workouts is None:

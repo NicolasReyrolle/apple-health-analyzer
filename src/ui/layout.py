@@ -16,7 +16,12 @@ from i18n import LANGUAGES, get_language, t
 from i18n.activity_types import build_activity_select_options, translate_activity_value_map
 from logic.export_parser import ExportParser
 from logic.records_by_type import RecordsByType
-from logic.workout_manager import WorkoutManager
+from logic.workout_manager import (
+    HALF_MARATHON_DISTANCE_M,
+    MARATHON_DISTANCE_M,
+    STANDARD_SEGMENT_DISTANCES,
+    WorkoutManager,
+)
 from ui.helpers import format_integer, period_code_to_label, qdate_locale_json
 from ui.local_file_picker import LocalFilePicker
 
@@ -98,16 +103,36 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
     Returns one row per distance (the #1 record). Runner-up records are stored
     in a ``children`` list so the table can expand them on demand.
     """
-    standard_distances = [1000, 5000, 10000, 21097, 42195]
-    _logger.debug("Calculating best segments for distances: %s", standard_distances)
-    best_segments = state.workouts.get_best_segments(distances=standard_distances)
+    _logger.debug("Calculating best segments for distances: %s", STANDARD_SEGMENT_DISTANCES)
+    best_segments = state.workouts.get_best_segments(distances=STANDARD_SEGMENT_DISTANCES)
     _logger.debug("Best segments data:\n%s", best_segments)
+
+    def _format_distance_label(distance_m: float) -> str:
+        rounded_distance = int(round(distance_m))
+        if rounded_distance == HALF_MARATHON_DISTANCE_M:
+            return "Semi-marathon"
+        if rounded_distance == MARATHON_DISTANCE_M:
+            return "Marathon"
+        if rounded_distance < 1000:
+            return f"{rounded_distance} m"
+        return f"{distance_m / 1000:.1f} km"
+
+    def _format_duration_label(duration_s: float) -> str:
+        total_seconds = max(0, int(round(duration_s)))
+        hours, remaining = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remaining, 60)
+
+        if total_seconds < 60:
+            return f"{seconds} s"
+        if total_seconds < 3600:
+            return f"{minutes} min {seconds} s"
+        return f"{hours} h {minutes} min {seconds} s"
 
     def _format_entry(distance_m: float, duration_s: float, start_date: Any) -> dict[str, str]:
         average_speed = (distance_m / 1000) / (duration_s / 3600) if duration_s > 0 else 0.0
         return {
-            "distance": f"{distance_m / 1000:.1f} km",
-            "duration": f"{duration_s:.2f} s",
+            "distance": _format_distance_label(distance_m),
+            "duration": _format_duration_label(duration_s),
             "average_speed": f"{average_speed:.2f} km/h",
             "start_date": start_date.strftime("%Y-%m-%d"),
         }
