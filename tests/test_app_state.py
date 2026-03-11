@@ -144,3 +144,31 @@ class TestAppStateDateProperties:
         app_state = AppState()
         app_state.date_range_text = "2024-01-01 -    "
         assert app_state.end_date is None
+
+
+class TestAppStateBestSegmentsState:
+    """Tests for AppState defaults related to best-segment UI state."""
+
+    def test_defaults_include_best_segments_fields(self) -> None:
+        """A new AppState should initialize best-segments and tab state fields."""
+        app_state = AppState()
+
+        assert app_state.best_segments_rows == []
+        assert app_state.best_segments_loading is False
+        assert app_state.best_segments_loaded is False
+        assert app_state.selected_main_tab == "summary"
+
+    def test_reset_restores_best_segments_fields(self) -> None:
+        """reset should restore best-segments cache flags and selected tab."""
+        app_state = AppState()
+        app_state.best_segments_rows = [{"distance": "1.0 km"}]
+        app_state.best_segments_loading = True
+        app_state.best_segments_loaded = True
+        app_state.selected_main_tab = "best_segments"
+
+        app_state.reset()
+
+        assert app_state.best_segments_rows == []
+        assert app_state.best_segments_loading is False
+        assert app_state.best_segments_loaded is False
+        assert app_state.selected_main_tab == "summary"

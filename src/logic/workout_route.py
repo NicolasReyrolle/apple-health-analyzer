@@ -79,3 +79,37 @@ class WorkoutRoute:
         dl = radians(lon2 - lon1)
         a = sin(dp / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
         return 2 * r * atan2(sqrt(a), sqrt(1 - a))
+
+    def find_fastest_segment(self, segment_length_m: float) -> float | None:
+        """Find the fastest segment of the given length in meters.
+
+        Returns:
+            The duration in seconds of the fastest qualifying segment,
+            or None if no valid segment exists.
+        """
+        if self.is_empty or segment_length_m <= 0:
+            return None
+
+        best_duration_s = 0.0
+        best_speed = 0.0
+
+        for start_idx, start_point in enumerate(self.points):
+            for end_point in self.points[start_idx + 1 :]:
+                distance = self._haversine_m(
+                    start_point.latitude,
+                    start_point.longitude,
+                    end_point.latitude,
+                    end_point.longitude,
+                )
+                if distance >= segment_length_m:
+                    duration_s = (end_point.time - start_point.time).total_seconds()
+                    if duration_s > 0:
+                        speed = distance / duration_s
+                        if speed > best_speed:
+                            best_speed = speed
+                            best_duration_s = duration_s
+                    break
+
+        if best_speed > 0:
+            return best_duration_s
+        return None

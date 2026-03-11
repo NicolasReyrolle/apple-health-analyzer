@@ -36,6 +36,10 @@ class AppState:
             "elevation": "0",
             "calories": "0",
         }
+        self.best_segments_rows: list[dict[str, str]] = []
+        self.best_segments_loading: bool = False
+        self.best_segments_loaded: bool = False
+        self.selected_main_tab: str = "summary"
 
         self.selected_activity_type: str = "All"
         self.activity_options: list[str] = ["All"]

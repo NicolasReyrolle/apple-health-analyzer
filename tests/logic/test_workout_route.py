@@ -3,6 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 from zipfile import ZipFile
+import xml.etree.ElementTree as ET
 
 import pytest
 
@@ -25,6 +26,38 @@ def _point(
         longitude=longitude,
         altitude=altitude,
     )
+
+
+def _load_gpx_route(gpx_path: Path) -> WorkoutRoute:
+    """Load a WorkoutRoute from a GPX file fixture."""
+    namespace = {"gpx": "http://www.topografix.com/GPX/1/1"}
+    root = ET.parse(gpx_path).getroot()
+    points: list[RoutePoint] = []
+
+    for trkpt in root.findall(".//gpx:trkpt", namespace):
+        ele = trkpt.find("gpx:ele", namespace)
+        point_time = trkpt.find("gpx:time", namespace)
+        lat_value = trkpt.get("lat")
+        lon_value = trkpt.get("lon")
+        if (
+            ele is None
+            or ele.text is None
+            or point_time is None
+            or point_time.text is None
+            or lat_value is None
+            or lon_value is None
+        ):
+            continue
+        points.append(
+            RoutePoint(
+                time=datetime.fromisoformat(point_time.text.replace("Z", "+00:00")),
+                latitude=float(lat_value),
+                longitude=float(lon_value),
+                altitude=float(ele.text),
+            )
+        )
+
+    return WorkoutRoute(points=points)
 
 
 class TestWorkoutRoute:
@@ -91,6 +124,37 @@ class TestWorkoutRoute:
         assert route.points[0] == new_point
         assert not route.is_empty
 
+    def test_find_fastest_segment_from_real_gpx_fixture(self) -> None:
+        """find_fastest_segment should return the known best 1000m segment from fixture data."""
+        route_path = (
+            Path(__file__).resolve().parents[1]
+            / "fixtures"
+            / "exports"
+            / "workout-routes"
+            / "route_2025-09-16_6.15pm.gpx"
+        )
+        route = _load_gpx_route(route_path)
+
+        result = route.find_fastest_segment(1000.0)
+
+        assert result is not None
+        assert result == pytest.approx(404.0)  # type: ignore[misc]
+
+    def test_find_fastest_segment_from_real_gpx_fixture_not_found(self) -> None:
+        """find_fastest_segment should return None if no segment meets the required length."""
+        route_path = (
+            Path(__file__).resolve().parents[1]
+            / "fixtures"
+            / "exports"
+            / "workout-routes"
+            / "route_2025-09-16_6.15pm.gpx"
+        )
+        route = _load_gpx_route(route_path)
+
+        # Distance is approx 8km so we should not find a result
+        result = route.find_fastest_segment(10000.0)
+
+        assert result is None
 
 class TestWorkoutRouteEndToEnd:
     """End-to-end checks using real workout and GPX fixtures."""

@@ -6,6 +6,8 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
 import pandas as pd
 
+from logic.workout_route import WorkoutRoute
+
 
 class WorkoutManager:
     """Class to manage workout data and metrics."""
@@ -14,6 +16,8 @@ class WorkoutManager:
     DEFAULT_EXCLUDED_COLUMNS = {"routeFile", "route"}
     # Date format for string representations
     DATE_FORMAT = "%Y/%m/%d"
+    # Default distances for best segment calculations (in meters)
+    DEFAULT_SEGMENT_DISTANCES = [1000, 5000, 10000, 21097, 42195]
 
     def __init__(self, pd_workouts: Optional[pd.DataFrame] = None) -> None:
         if pd_workouts is None:
@@ -884,3 +888,59 @@ class WorkoutManager:
             min(start_dates).strftime(self.DATE_FORMAT),  # type: ignore[arg-type,union-attr]
             max(start_dates).strftime(self.DATE_FORMAT),  # type: ignore[arg-type,union-attr]
         )
+
+    def get_best_segments(
+        self, topn: int = 5, distances: Optional[list[int]] = None
+    ) -> pd.DataFrame:
+        """Return a DataFrame of best segments across all running workouts for a defined list of
+        distances for the Top-N values of each segment distance.
+        The segments are defined as the fastest time for a given distance
+        Args:
+            topn: Number of top segments to return for each distance
+            distances: List of distances (in meters) to consider for segment analysis
+                (defaults to DEFAULT_SEGMENT_DISTANCES)
+
+        Returns:
+            DataFrame with columns: startDate, distance, duration_s
+        """
+        if distances is None:
+            distances = self.DEFAULT_SEGMENT_DISTANCES
+
+        if topn <= 0:
+            return pd.DataFrame(columns=["startDate", "distance", "duration_s"])
+
+        # Filter workouts to only include runs
+        runs = self.workouts[self.workouts["activityType"] == "Running"]
+        if runs.empty:
+            return pd.DataFrame(columns=["startDate", "distance", "duration_s"])
+
+        # Prepare a list to store results
+        results: List[List[Any]] = []
+
+        for run in runs.itertuples():
+            route_obj: Any = run.route if hasattr(run, "route") else None
+            if not isinstance(route_obj, WorkoutRoute):
+                continue  # skips None / wrong types safely
+
+            route: WorkoutRoute = route_obj
+
+            # Iterate over each distance
+            for distance in distances:
+                duration_s = route.find_fastest_segment(float(distance))
+                if duration_s is None:
+                    continue
+
+                results.append([run.startDate, distance, duration_s])
+
+        # Keep a stable schema even when no segments are found.
+        if not results:
+            return pd.DataFrame(columns=["startDate", "distance", "duration_s"])
+
+        # Create a DataFrame from results
+        df = pd.DataFrame(results, columns=["startDate", "distance", "duration_s"])
+
+        # Sort by distance and duration
+        df = df.sort_values(["distance", "duration_s"], ascending=[True, True])
+        df = df.groupby("distance").head(topn).reset_index(drop=True)
+
+        return df

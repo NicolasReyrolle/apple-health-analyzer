@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from types import TracebackType
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from zipfile import ZipFile
 
 import pandas as pd
@@ -299,6 +299,102 @@ class TestRenderGenericGraph:
         series = chart_options["series"]
         assert len(series) == 1
         assert series[0]["type"] == "bar"
+
+
+class TestBestSegmentsTabData:
+    """Tests for best-segments computation and async loading."""
+
+    def test_build_best_segments_rows_formats_values(self) -> None:
+        """Rows should be formatted with km, seconds, speed, and yyyy-mm-dd date."""
+        original_workouts: Any = state.workouts
+
+        workouts_mock = MagicMock()
+        workouts_mock.get_best_segments.return_value = pd.DataFrame(
+            [
+                {
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "distance": 1000,
+                    "duration_s": 404.0,
+                }
+            ]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            rows = layout._build_best_segments_rows()
+
+            assert rows == [
+                {
+                    "distance": "1.0 km",
+                    "duration": "404.00 s",
+                    "average_speed": "8.91 km/h",
+                    "start_date": "2025-09-16",
+                }
+            ]
+            workouts_mock.get_best_segments.assert_called_once_with(
+                distances=[1000, 5000, 10000, 21097, 42195]
+            )
+        finally:
+            state.workouts = original_workouts
+
+    async def test_load_best_segments_data_populates_rows(self) -> None:
+        """Loader should set loading flags, populate rows, and mark data as loaded."""
+        original_file_loaded = state.file_loaded
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
+
+        expected_rows = [{"distance": "1.0 km"}]
+
+        try:
+            state.file_loaded = True
+            state.best_segments_rows = []
+            state.best_segments_loading = False
+            state.best_segments_loaded = False
+
+            with patch("ui.layout.render_best_segments_tab.refresh") as refresh_mock:
+                with patch(
+                    "ui.layout.asyncio.to_thread", new=AsyncMock(return_value=expected_rows)
+                ):
+                    await layout.load_best_segments_data()
+
+            assert state.best_segments_rows == expected_rows
+            assert state.best_segments_loaded is True
+            assert state.best_segments_loading is False
+            assert refresh_mock.call_count == 2
+        finally:
+            state.file_loaded = original_file_loaded
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
+
+    async def test_load_best_segments_data_returns_early_when_file_not_loaded(self) -> None:
+        """Loader should do nothing when no export file is loaded."""
+        original_file_loaded = state.file_loaded
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
+
+        try:
+            state.file_loaded = False
+            state.best_segments_rows = [{"distance": "existing"}]
+            state.best_segments_loading = False
+            state.best_segments_loaded = False
+
+            with patch("ui.layout.render_best_segments_tab.refresh") as refresh_mock:
+                with patch("ui.layout.asyncio.to_thread", new=AsyncMock()) as to_thread_mock:
+                    await layout.load_best_segments_data()
+
+            assert state.best_segments_rows == [{"distance": "existing"}]
+            assert state.best_segments_loading is False
+            assert state.best_segments_loaded is False
+            refresh_mock.assert_not_called()
+            to_thread_mock.assert_not_called()
+        finally:
+            state.file_loaded = original_file_loaded
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
 
 
 class TestRenderHealthDataTab:

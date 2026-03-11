@@ -78,9 +78,70 @@ def refresh_data() -> None:
     state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
 
+    # Invalidate best-segments cache: it is lazily recomputed when the tab is opened.
+    state.best_segments_rows = []
+    state.best_segments_loaded = False
+
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()
     render_health_data_tab.refresh()
+    render_best_segments_tab.refresh()
+
+    # If user is already on the tab, load asynchronously after invalidation.
+    if state.selected_main_tab == "best_segments":
+        asyncio.create_task(load_best_segments_data())
+
+
+def _build_best_segments_rows() -> list[dict[str, str]]:
+    """Compute and format best segments rows for tab rendering."""
+    standard_distances = [1000, 5000, 10000, 21097, 42195]
+    _logger.debug("Calculating best segments for distances: %s", standard_distances)
+    best_segments = state.workouts.get_best_segments(distances=standard_distances)
+    _logger.debug("Best segments data:\n%s", best_segments)
+
+    rows: list[dict[str, str]] = []
+    for best_segment in best_segments.itertuples(index=False):
+        distance = float(getattr(best_segment, "distance", 0.0))
+        duration_s = float(getattr(best_segment, "duration_s", 0.0))
+        average_speed = (distance / 1000) / (duration_s / 3600) if duration_s > 0 else 0.0
+        start_date = getattr(best_segment, "startDate", None)
+
+        if start_date is None:
+            continue
+
+        rows.append(
+            {
+                "distance": f"{distance/1000:.1f} km",
+                "duration": f"{duration_s:.2f} s",
+                "average_speed": f"{average_speed:.2f} km/h",
+                "start_date": start_date.strftime("%Y-%m-%d"),
+            }
+        )
+
+    return rows
+
+
+async def load_best_segments_data(force: bool = False) -> None:
+    """Load best segments asynchronously for the tab, with concurrency guard."""
+    if state.best_segments_loading:
+        return
+    if state.best_segments_loaded and not force:
+        return
+    if not state.file_loaded:
+        return
+
+    state.best_segments_loading = True
+    render_best_segments_tab.refresh()
+
+    try:
+        rows = await asyncio.to_thread(_build_best_segments_rows)
+        state.best_segments_rows = rows
+        state.best_segments_loaded = True
+    except Exception:  # pylint: disable=broad-except
+        _logger.exception("Failed to load best segments data")
+    finally:
+        state.best_segments_loading = False
+        render_best_segments_tab.refresh()
 
 
 @ui.refreshable
@@ -454,14 +515,25 @@ def render_body() -> None:
         state, "loading_status"
     ).bind_visibility_from(state, "loading")
 
-    with ui.tabs().classes("w-full") as tabs:
-        tab_summary = ui.tab(t("Overview"))
-        tab_activities = ui.tab(t("Activities")).bind_enabled_from(state, "file_loaded")
-        tab_trends = ui.tab(t("Trends")).bind_enabled_from(state, "file_loaded")
-        tab_health_data = ui.tab(t("Health Data")).bind_enabled_from(state, "file_loaded")
+    def _on_tab_change(event: Any) -> None:
+        value = getattr(event, "value", None)
+        tab_name = str(getattr(value, "name", value)) if value is not None else ""
+        state.selected_main_tab = tab_name
+        if tab_name == "best_segments":
+            asyncio.create_task(load_best_segments_data())
+
+    with ui.tabs(on_change=_on_tab_change).classes("w-full") as tabs:
+        tab_summary = ui.tab("summary", t("Overview"))
+        ui.tab("activities", t("Activities")).bind_enabled_from(state, "file_loaded")
+        ui.tab("trends", t("Trends")).bind_enabled_from(state, "file_loaded")
+        ui.tab("health_data", t("Health Data")).bind_enabled_from(state, "file_loaded")
+        ui.tab("best_segments", t("Best Segments")).bind_enabled_from(state, "file_loaded")
+
+    # Ensure Overview is selected by default when rendering the page.
+    tabs.value = tab_summary
 
     with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
-        with ui.tab_panel(tab_summary):
+        with ui.tab_panel("summary"):
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Count"), state.metrics_display, "count")
                 stat_card(t("Distance"), state.metrics_display, "distance", "km")
@@ -470,14 +542,17 @@ def render_body() -> None:
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Calories"), state.metrics_display, "calories", "kcal")
 
-        with ui.tab_panel(tab_activities):
+        with ui.tab_panel("activities"):
             render_activity_graphs()
 
-        with ui.tab_panel(tab_trends):
+        with ui.tab_panel("trends"):
             render_trends_tab()
 
-        with ui.tab_panel(tab_health_data):
+        with ui.tab_panel("health_data"):
             render_health_data_tab()
+
+        with ui.tab_panel("best_segments"):
+            render_best_segments_tab()
 
 
 @ui.refreshable
@@ -670,3 +745,34 @@ def render_health_data_tab() -> None:
             "ml/kg/min",
             graph_type="line",
         )
+
+
+@ui.refreshable
+def render_best_segments_tab() -> None:
+    """Render the best segment for a list of standard running distances
+    show in a table format"""
+    with ui.card().classes(ROW_CENTERED_CLASSES):
+        ui.label(t("Best segments for standard running distances")).classes(
+            "text-sm text-gray-500 uppercase"
+        )
+        columns = [
+            {"name": "distance", "label": "Distance", "field": "distance"},
+            {"name": "duration", "label": "Duration", "field": "duration"},
+            {"name": "average_speed", "label": "Average Speed", "field": "average_speed"},
+            {"name": "start_date", "label": "Date", "field": "start_date"},
+        ]
+
+        _logger.debug("Rendering the best segments table")
+
+        if state.best_segments_loading:
+            with ui.row().classes("w-full items-center justify-center q-gutter-sm"):
+                ui.spinner(size="lg")
+                ui.label(t("Loading best segments..."))
+            return
+
+        if not state.best_segments_loaded:
+            ui.label(t("Open this tab to load best segments.")).classes("text-gray-500")
+            return
+
+        _logger.debug("Table rendered with %d rows", len(state.best_segments_rows))
+        ui.table(columns=columns, rows=state.best_segments_rows).classes("w-full")
