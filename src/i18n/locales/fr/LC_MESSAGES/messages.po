@@ -66,6 +66,9 @@ msgstr "Tendances"
 msgid "Health Data"
 msgstr "Données de santé"
 
+msgid "Best Segments"
+msgstr "Meilleurs segments"
+
 # Stat cards
 msgid "Count"
 msgstr "Nombre"
@@ -81,6 +84,27 @@ msgstr "Dénivelé"
 
 msgid "Calories"
 msgstr "Calories"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Average Speed"
+msgstr "Vitesse moyenne"
+
+msgid "Best segments for standard running distances"
+msgstr "Meilleurs segments pour les distances standards en course à pied"
+
+msgid "Loading best segments..."
+msgstr "Chargement des meilleurs segments..."
+
+msgid "Open this tab to load best segments."
+msgstr "Ouvrez cet onglet pour charger les meilleurs segments."
+
+msgid "Semi-marathon"
+msgstr "Semi-marathon"
+
+msgid "Marathon"
+msgstr "Marathon"
 
 # Notifications
 msgid "No file selected"

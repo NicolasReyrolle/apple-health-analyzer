@@ -111,9 +111,9 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
     def _format_distance_label(distance_m: float) -> str:
         rounded_distance = int(round(distance_m))
         if rounded_distance == HALF_MARATHON_DISTANCE_M:
-            return "Semi-marathon"
+            return t("Semi-marathon")
         if rounded_distance == MARATHON_DISTANCE_M:
-            return "Marathon"
+            return t("Marathon")
         if rounded_distance < 1000:
             return f"{rounded_distance} m"
         return f"{distance_m / 1000:.1f} km"
@@ -807,10 +807,14 @@ def render_best_segments_tab() -> None:
             "text-sm text-gray-500 uppercase"
         )
         columns = [
-            {"name": "distance", "label": "Distance", "field": "distance"},
-            {"name": "duration", "label": "Duration", "field": "duration"},
-            {"name": "average_speed", "label": "Average Speed", "field": "average_speed"},
-            {"name": "start_date", "label": "Date", "field": "start_date"},
+            {"name": "distance", "label": t("Distance"), "field": "distance"},
+            {"name": "duration", "label": t("Duration"), "field": "duration"},
+            {
+                "name": "average_speed",
+                "label": t("Average Speed"),
+                "field": "average_speed",
+            },
+            {"name": "start_date", "label": t("Date"), "field": "start_date"},
         ]
 
         if state.best_segments_loading:
