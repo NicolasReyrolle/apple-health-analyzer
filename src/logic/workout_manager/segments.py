@@ -155,6 +155,11 @@ class WorkoutManagerSegmentsMixin:
         if topn <= 0:
             return self._empty_best_segments_frame()
 
+        required_columns = {"activityType", "startDate"}
+        if not isinstance(self.workouts, pd.DataFrame) or not required_columns.issubset(
+            self.workouts.columns
+        ):
+            return self._empty_best_segments_frame()
         runs = self.workouts[self.workouts["activityType"] == "Running"]
         if runs.empty:
             return self._empty_best_segments_frame()
