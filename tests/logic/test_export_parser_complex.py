@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from logic.export_parser import ExportParser, WorkoutRecord
+from logic.workout_route import WorkoutRoute
 from tests.conftest import build_health_export_xml, load_export_fragment
 
 
@@ -66,8 +67,89 @@ class TestComplexRealWorldWorkout:
         # Verify metadata entries for elevation
         assert workout["ElevationAscended"] == pytest.approx(65.75, abs=0.01)  # type: ignore[misc]
 
-        # Verify the routeFile is captured
-        assert workout["routeFile"] == "/workout-routes/route_2025-09-16_6.15pm.gpx"
+    def test_parse_workout_with_multiple_route_parts(self, tmp_path: Path) -> None:
+        """A workout containing multiple WorkoutRoute entries should preserve route parts.
+
+        Analytics should use route_parts (window-bounded parts), while route remains
+        as a backward-compatible merged representation.
+        """
+        workout_fragment = load_export_fragment("workout_running_multiple_parts.xml")
+        route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
+        route_files = sorted(route_dir.glob("route_2025-09-26_*.gpx"))
+
+        zip_path = tmp_path / "running_multi_parts.zip"
+        with ZipFile(zip_path, "w") as zf:
+            xml_content = build_health_export_xml([workout_fragment])
+            zf.writestr("apple_health_export/export.xml", xml_content)
+            for route_file in route_files:
+                zf.writestr(
+                    f"apple_health_export/workout-routes/{route_file.name}",
+                    route_file.read_bytes(),
+                )
+
+        parser = ExportParser()
+        with parser:
+            health_data = parser.parse(str(zip_path))
+
+        assert len(health_data.workouts) == 1
+        workout = health_data.workouts.iloc[0]
+
+        assert isinstance(workout["route"], WorkoutRoute)
+        assert isinstance(workout["route_parts"], list)
+
+        merged_route = workout["route"]
+        assert isinstance(merged_route, WorkoutRoute)
+
+        route_parts = [part for part in workout["route_parts"] if isinstance(part, WorkoutRoute)]
+        assert route_parts
+        assert len(route_parts) == len(route_files)
+
+        expected_points = len(route_parts[0].points)
+        for route_part in route_parts[1:]:
+            expected_points += len(route_part.points)
+
+        # Account for deduplication at part boundaries when adjacent files share one point.
+        dedup_boundaries = 0
+        for previous, current in zip(route_parts, route_parts[1:]):
+            if previous.points and current.points and previous.points[-1] == current.points[0]:
+                dedup_boundaries += 1
+
+        assert len(merged_route.points) == expected_points - dedup_boundaries
+
+    def test_route_windows_without_matching_points_are_skipped(self, tmp_path: Path) -> None:
+        """WorkoutRoute windows with no points are intentionally dropped from route_parts."""
+        workout_fragment = load_export_fragment("workout_running_too_fast.xml")
+        route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
+        route_files = sorted(route_dir.glob("route_2024-12-26_*.gpx"))
+
+        zip_path = tmp_path / "running_too_fast.zip"
+        with ZipFile(zip_path, "w") as zf:
+            xml_content = build_health_export_xml([workout_fragment])
+            zf.writestr("apple_health_export/export.xml", xml_content)
+            for route_file in route_files:
+                zf.writestr(
+                    f"apple_health_export/workout-routes/{route_file.name}",
+                    route_file.read_bytes(),
+                )
+
+        parser = ExportParser()
+        with parser:
+            health_data = parser.parse(str(zip_path))
+
+        assert len(health_data.workouts) == 1
+        workout = health_data.workouts.iloc[0]
+        route_parts = [part for part in workout["route_parts"] if isinstance(part, WorkoutRoute)]
+        assert route_parts
+
+        missing_window_start = pd.Timestamp("2024-12-26 14:53:58 +0100").to_pydatetime()
+        missing_window_end = pd.Timestamp("2024-12-26 14:54:27 +0100").to_pydatetime()
+        points_in_missing_window = [
+            point
+            for route_part in route_parts
+            for point in route_part.points
+            if missing_window_start <= point.time <= missing_window_end
+        ]
+        assert points_in_missing_window == []
 
     def test_workout_activity_stats_and_metadata_are_ignored(
         self, create_health_zip: Callable[..., str]
@@ -217,11 +299,11 @@ class TestLoadRoute:
             result = parser._load_route(zf, "/workout-routes/test_route.gpx")  # type: ignore[misc]
 
         assert result is not None
-        assert len(result) == 2
-        assert list(result.columns) == ["time", "latitude", "longitude", "altitude"]
-        assert result.iloc[0]["latitude"] == pytest.approx(48.8566)  # type: ignore[misc]
-        assert result.iloc[0]["longitude"] == pytest.approx(2.3522)  # type: ignore[misc]
-        assert result.iloc[0]["altitude"] == pytest.approx(100.5)  # type: ignore[misc]
+        assert len(result.points) == 2
+        assert result.duration_seconds == 60.0
+        assert result.distance_meters > 0.0
+        assert result.elevation_gain_m > 0.0
+        assert result.elevation_loss_m == 0.0
 
     def test_load_route_empty_gpx(self, tmp_path: Path) -> None:
         """Test loading an empty GPX file."""
@@ -242,7 +324,7 @@ class TestLoadRoute:
             result = parser._load_route(zf, "/workout-routes/empty_route.gpx")  # type: ignore[misc]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result.points) == 0
 
     def test_load_route_missing_ele_and_time(self, tmp_path: Path) -> None:
         """Test loading GPX with missing altitude and time elements."""
@@ -310,11 +392,9 @@ class TestProcessWorkoutRoute:
         with ZipFile(zip_path, "r") as zf:
             parser._process_workout_route(route_elem, record, zf)  # type: ignore[misc]
 
-        # Verify routeFile is set
-        assert record.get("routeFile") == "/workout-routes/test_route.gpx"
-        # Verify route DataFrame is loaded
+        # Verify route data is loaded
         assert record.get("route") is not None
-        assert isinstance(record.get("route"), pd.DataFrame)
+        assert isinstance(record.get("route"), WorkoutRoute)
 
     def test_process_workout_route_empty_route_element(self, tmp_path: Path) -> None:
         """Test processing an empty workout route element."""

@@ -8,9 +8,11 @@ from typing import Optional
 from zipfile import ZipFile
 
 import pandas as pd
+import pytest
 
 import logic.export_parser as ep
 import logic.workout_manager as wm
+from logic.workout_manager.export import WorkoutManagerExportMixin
 
 
 def create_test_zip(zip_path: Path, xml_content: bytes) -> None:
@@ -163,10 +165,10 @@ class TestColumnExclusion:
     def test_default_excluded_columns_constant(self) -> None:
         """Test that DEFAULT_EXCLUDED_COLUMNS is defined correctly."""
         assert hasattr(wm.WorkoutManager, "DEFAULT_EXCLUDED_COLUMNS")
-        assert wm.WorkoutManager.DEFAULT_EXCLUDED_COLUMNS == {"routeFile", "route"}
+        assert wm.WorkoutManager.DEFAULT_EXCLUDED_COLUMNS == {"route", "route_parts"}
 
     def test_export_to_json_excludes_default_columns(self, tmp_path: Path) -> None:
-        """Test that export_to_json excludes routeFile and route by default."""
+        """Test that export_to_json excludes route objects by default."""
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
@@ -177,13 +179,13 @@ class TestColumnExclusion:
         json_content = StringIO(parse_and_export_json(zip_path))
 
         data = json.load(json_content)
-        # Check that routeFile and route are not in the schema columns
+        # Check that route analysis payloads are not in the schema columns
         schema_fields = [field["name"] for field in data["schema"]["fields"]]
-        assert "routeFile" not in schema_fields
         assert "route" not in schema_fields
+        assert "route_parts" not in schema_fields
 
     def test_export_to_csv_excludes_default_columns(self, tmp_path: Path) -> None:
-        """Test that export_to_csv excludes routeFile and route by default."""
+        """Test that export_to_csv excludes route objects by default."""
         zip_path = tmp_path / "test_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
@@ -198,8 +200,8 @@ class TestColumnExclusion:
             csv_content = StringIO(parse_and_export_csv(zip_path))
 
         df = pd.read_csv(csv_content)  # type: ignore[misc]
-        assert "routeFile" not in df.columns
         assert "route" not in df.columns
+        assert "route_parts" not in df.columns
 
     def test_export_to_json_empty_exclude_set(self, tmp_path: Path) -> None:
         """Test that export_to_json with empty exclude_columns set includes all columns."""
@@ -675,3 +677,72 @@ class TestExportWithActivityAndDateFilters:
         csv_df = pd.read_csv(StringIO(csv_output))  # type: ignore[misc]
         assert len(csv_df) == 1
         assert set(csv_df["activityType"].tolist()) == {"Running"}
+
+
+class _ExportMixinStub(WorkoutManagerExportMixin):
+    """Concrete stub to exercise base mixin contracts."""
+
+    DATE_FORMAT = "%Y/%m/%d"
+    DEFAULT_EXCLUDED_COLUMNS: set[str] = set()
+
+    def __init__(self) -> None:
+        self.workouts = pd.DataFrame()
+
+    def _filter_workouts(  # type: ignore[override]
+        self,
+        activity_type: str = "All",
+        start_date: Optional[datetime | pd.Timestamp] = None,
+        end_date: Optional[datetime | pd.Timestamp] = None,
+    ) -> pd.DataFrame:
+        return super()._filter_workouts(activity_type, start_date, end_date)
+
+    def _get_filtered_columns(  # type: ignore[override]
+        self, exclude_columns: Optional[set[str]] = None
+    ) -> list[str]:
+        return super()._get_filtered_columns(exclude_columns)
+
+    def get_total_distance(  # type: ignore[override]
+        self,
+        activity_type: str = "All",
+        unit: str = "km",
+        start_date: Optional[datetime | pd.Timestamp] = None,
+        end_date: Optional[datetime | pd.Timestamp] = None,
+    ) -> int:
+        return super().get_total_distance(activity_type, unit, start_date, end_date)
+
+    def invoke_filter_workouts(self) -> pd.DataFrame:
+        """Public wrapper used to avoid protected-member access from tests."""
+        return self._filter_workouts()
+
+    def invoke_get_filtered_columns(self) -> list[str]:
+        """Public wrapper used to avoid protected-member access from tests."""
+        return self._get_filtered_columns()
+
+    def invoke_get_total_distance(self) -> int:
+        """Public wrapper for invoking base contract checks."""
+        return self.get_total_distance()
+
+
+class TestExportMixinContracts:
+    """Validate explicit NotImplementedError contracts in the base export mixin."""
+
+    def test_filter_workouts_contract_raises(self) -> None:
+        """Base _filter_workouts must raise until implemented by WorkoutManager."""
+        mixin = _ExportMixinStub()
+
+        with pytest.raises(NotImplementedError):
+            mixin.invoke_filter_workouts()
+
+    def test_get_filtered_columns_contract_raises(self) -> None:
+        """Base _get_filtered_columns must raise until implemented by WorkoutManager."""
+        mixin = _ExportMixinStub()
+
+        with pytest.raises(NotImplementedError):
+            mixin.invoke_get_filtered_columns()
+
+    def test_get_total_distance_contract_raises(self) -> None:
+        """Base get_total_distance must raise until implemented by WorkoutManager."""
+        mixin = _ExportMixinStub()
+
+        with pytest.raises(NotImplementedError):
+            mixin.invoke_get_total_distance()

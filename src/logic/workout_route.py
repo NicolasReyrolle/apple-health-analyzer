@@ -1,0 +1,204 @@
+"""WorkoutRoute represents a sequence of GPS points recorded during a workout,
+allowing for calculations of distance, elevation gain/loss, and duration."""
+
+# src/logic/workout_route.py
+from __future__ import annotations
+from dataclasses import dataclass, field
+from datetime import datetime
+from math import atan2, cos, radians, sin, sqrt
+import pandas as pd
+
+
+@dataclass(frozen=True)
+class RoutePoint:
+    """Represents a single GPS point in a workout route."""
+
+    time: datetime
+    latitude: float
+    longitude: float
+    altitude: float = 0.0
+    speed: float = 0.0  # GPS-measured speed in m/s; 0.0 means unknown/unavailable
+
+
+@dataclass
+class WorkoutRoute:
+    """Represents a workout route as a sequence of GPS points."""
+
+    # Maximum allowed relative deviation between route-derived distance and workout
+    # summary distance for normalization to be considered realistic.
+    #
+    # Example with default 0.10 (10%):
+    # - route=20.8km vs workout=21.1km -> scaling applied
+    # - route=15.0km vs workout=21.1km -> scaling rejected
+    MAX_REALISTIC_DISTANCE_SCALE_DEVIATION = 0.10
+
+    points: list[RoutePoint]
+    _cumulative_distance_cache: list[float] | None = field(default=None, init=False, repr=False)
+
+    @property
+    def is_empty(self) -> bool:
+        """Check if the workout route has no points."""
+        return len(self.points) == 0
+
+    @property
+    def duration_seconds(self) -> float:
+        """Calculate the total duration of the workout route in seconds."""
+        if len(self.points) < 2:
+            return 0.0
+        return (self.points[-1].time - self.points[0].time).total_seconds()
+
+    @property
+    def distance_meters(self) -> float:
+        """Calculate the total distance of the workout route in meters."""
+        cumulative_distances = self._cumulative_distances()
+        return cumulative_distances[-1] if cumulative_distances else 0.0
+
+    @property
+    def elevation_gain_m(self) -> float:
+        """Calculate the total elevation gain of the workout route in meters."""
+        return sum(max(0.0, b.altitude - a.altitude) for a, b in zip(self.points, self.points[1:]))
+
+    @property
+    def elevation_loss_m(self) -> float:
+        """Calculate the total elevation loss of the workout route in meters."""
+        return sum(max(0.0, a.altitude - b.altitude) for a, b in zip(self.points, self.points[1:]))
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Convert the workout route to a pandas DataFrame."""
+        return pd.DataFrame(
+            {
+                "time": [p.time for p in self.points],
+                "latitude": [p.latitude for p in self.points],
+                "longitude": [p.longitude for p in self.points],
+                "altitude": [p.altitude for p in self.points],
+            }
+        )
+
+    def add_point(self, point: RoutePoint) -> None:
+        """Add a new point to the workout route."""
+        self.points.append(point)
+        self._cumulative_distance_cache = None
+
+    @staticmethod
+    def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate the Haversine distance between two GPS points in meters."""
+        r = 6_371_000.0
+        p1, p2 = radians(lat1), radians(lat2)
+        dp = radians(lat2 - lat1)
+        dl = radians(lon2 - lon1)
+        a = sin(dp / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
+        return 2 * r * atan2(sqrt(a), sqrt(1 - a))
+
+    def _cumulative_distances(self) -> list[float]:
+        """Return cumulative route distances for each point.
+
+        The value at index ``i`` is the total traveled distance from the
+        first point up to point ``i``.
+        """
+        if self._cumulative_distance_cache is not None:
+            return self._cumulative_distance_cache
+
+        if len(self.points) < 2:
+            self._cumulative_distance_cache = [0.0] * len(self.points)
+            return self._cumulative_distance_cache
+
+        distances = [0.0]
+        for previous, current in zip(self.points, self.points[1:]):
+            avg_speed = (previous.speed + current.speed) / 2.0
+            delta_t = (current.time - previous.time).total_seconds()
+            if avg_speed > 0.0 and delta_t > 0.0:
+                segment_distance = avg_speed * delta_t
+            else:
+                segment_distance = self._haversine_m(
+                    previous.latitude,
+                    previous.longitude,
+                    current.latitude,
+                    current.longitude,
+                )
+            distances.append(distances[-1] + segment_distance)
+
+        self._cumulative_distance_cache = distances
+        return self._cumulative_distance_cache
+
+    @classmethod
+    def calculate_distance_scale_factor(
+        cls, route_distance_m: float, reference_distance_m: float | None
+    ) -> float:
+        """Return a route-distance normalization factor when the mismatch is realistic.
+
+        The reference distance comes from the workout summary. A modest adjustment helps
+        when GPX-derived distance slightly under/over-counts due to sampling, pauses, or
+        Apple Health export quirks. Large mismatches are treated as data quality issues and
+        therefore do not trigger scaling.
+
+        This factor is computed once per workout route and reused for all queried
+        segment distances (100m, 200m, 1km, 5km, half-marathon, etc.).
+        """
+        if reference_distance_m is None or route_distance_m <= 0 or reference_distance_m <= 0:
+            return 1.0
+
+        scale_factor = reference_distance_m / route_distance_m
+        deviation = abs(scale_factor - 1.0)
+        if deviation <= cls.MAX_REALISTIC_DISTANCE_SCALE_DEVIATION:
+            return scale_factor
+
+        return 1.0
+
+    def _find_segment_end_index(
+        self,
+        start_idx: int,
+        end_idx: int,
+        segment_length_m: float,
+        cumulative_distances: list[float],
+        distance_scale_factor: float,
+    ) -> int:
+        """Find the end index for a segment of the given length."""
+        current_end = max(end_idx, start_idx + 1)
+        while current_end < len(self.points):
+            route_distance = (
+                cumulative_distances[current_end] - cumulative_distances[start_idx]
+            ) * distance_scale_factor
+            if route_distance >= segment_length_m:
+                break
+            current_end += 1
+        return current_end
+
+    def find_fastest_segment(
+        self, segment_length_m: float, distance_scale_factor: float = 1.0
+    ) -> float | None:
+        """Find the fastest segment of the given length in meters.
+
+        Uses traveled route distance rather than straight-line displacement.
+        This matches how running segments are typically defined and allows a
+        sliding-window search with linear complexity.
+
+        Args:
+            segment_length_m: Requested segment length in meters.
+            distance_scale_factor: Multiplicative correction applied to route-distance
+                progression when route and workout summary distances differ by a
+                realistic margin. Set to ``1.0`` to disable scaling.
+
+        Returns:
+            The duration in seconds of the fastest qualifying segment,
+            or None if no valid segment exists.
+        """
+        if self.is_empty or segment_length_m <= 0 or len(self.points) < 2:
+            return None
+
+        cumulative_distances = self._cumulative_distances()
+        best_duration_s: float | None = None
+        end_idx = 1
+
+        for start_idx in range(len(self.points) - 1):
+            end_idx = self._find_segment_end_index(
+                start_idx, end_idx, segment_length_m, cumulative_distances, distance_scale_factor
+            )
+
+            if end_idx == len(self.points):
+                break
+
+            duration_s = (self.points[end_idx].time - self.points[start_idx].time).total_seconds()
+            if duration_s > 0 and (best_duration_s is None or duration_s < best_duration_s):
+                best_duration_s = duration_s
+
+        return best_duration_s

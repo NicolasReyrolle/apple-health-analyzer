@@ -54,19 +54,6 @@ class TestPoFiles:
         assert po_path.exists(), f"Missing .po file for language '{lang}': {po_path}"
 
     @pytest.mark.parametrize("lang", _TRANSLATED_LANGUAGES)
-    def test_mo_file_exists(self, lang: str) -> None:
-        """A compiled .mo file must exist next to each .po file."""
-        mo_path = _LOCALE_DIR / lang / "LC_MESSAGES" / "messages.mo"
-        assert mo_path.exists(), (
-            f"Missing compiled .mo file for '{lang}'. "
-            f'Run: python -c "from babel.messages.mofile import write_mo; '
-            f"from babel.messages.pofile import read_po; "
-            f"[write_mo(open(str(p).replace('.po','.mo'),'wb'), read_po(open(p,'rb'))) "
-            f"for p in ['{mo_path.with_suffix('.po')}']]\" "
-            f"or use Poedit to save the .po file."
-        )
-
-    @pytest.mark.parametrize("lang", _TRANSLATED_LANGUAGES)
     def test_all_pot_msgids_present_in_po(self, lang: str) -> None:
         """Every msgid in the .pot template must appear in the language .po file."""
         pot_msgids = _read_msgids_from_pot()
@@ -127,12 +114,15 @@ class TestTranslationFunction:
         assert result == "Apple Health Analyzer"
 
     def test_t_returns_unformatted_result_on_missing_kwarg(self) -> None:
-        """t() must not raise when a required format kwarg is missing; returns raw translated string."""
+        """t() must not raise when a required format kwarg is missing;
+        returns raw translated string."""
         # "Count by {period}" needs kwarg 'period'; omitting it should not crash
         result = t("Count by {period}")  # no period kwarg
         assert result == "Count by {period}"
 
-    def test_t_returns_unformatted_result_on_bad_format_string(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_t_returns_unformatted_result_on_bad_format_string(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """t() falls back to unformatted result when str.format raises, and logs a warning."""
         with (
             patch("i18n.get_language", return_value="en"),
@@ -187,6 +177,7 @@ msgstr "Salut"
 
         get_translation = getattr(i18n_module, "_get_translation")
         get_translation.cache_clear()
+
         with (
             patch("i18n._LOCALE_DIR", locale_dir),
             patch("i18n.get_language", return_value="zz"),
@@ -197,3 +188,39 @@ msgstr "Salut"
             assert t("Unknown key") == "Unknown key"
 
         get_translation.cache_clear()
+
+
+class TestTranslationModuleBranchCoverage:
+    """Target uncovered defensive branches in i18n module helpers."""
+
+    def test_compile_message_catalogs_logs_warning_when_catalog_compile_fails(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """compile_message_catalogs should continue and warn when one catalog fails."""
+        broken_po = tmp_path / "fr" / "LC_MESSAGES" / "messages.po"
+        broken_po.parent.mkdir(parents=True)
+        broken_po.write_text('msgid ""\nmsgstr ""\n', encoding="utf-8")
+
+        with (
+            patch("i18n._LOCALE_DIR", tmp_path),
+            patch("i18n._compile_po_catalog", side_effect=RuntimeError("boom")),
+            caplog.at_level(logging.WARNING, logger="i18n"),
+        ):
+            compiled_count = i18n_module.compile_message_catalogs()
+
+        assert compiled_count == 0
+        assert any("Failed to compile translation catalog" in r.message for r in caplog.records)
+
+    def test_translate_logs_warning_and_returns_unformatted_on_format_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """translate() should return raw result and log warning when kwargs are invalid."""
+        with (
+            patch("i18n._get_translation") as mock_get_translation,
+            caplog.at_level(logging.WARNING, logger="i18n"),
+        ):
+            mock_get_translation.return_value.gettext.return_value = "Value: {missing}"
+            result = i18n_module.translate("Value: {missing}", language="en", provided="x")
+
+        assert result == "Value: {missing}"
+        assert any("Failed to format translation" in r.message for r in caplog.records)

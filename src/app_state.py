@@ -1,6 +1,8 @@
 """Application state management for Apple Health Analyzer."""
 
+import asyncio
 from datetime import datetime
+from typing import Any
 
 from nicegui import ui
 
@@ -36,6 +38,11 @@ class AppState:
             "elevation": "0",
             "calories": "0",
         }
+        self.best_segments_rows: list[dict[str, Any]] = []
+        self.best_segments_loading: bool = False
+        self.best_segments_loaded: bool = False
+        self.best_segments_task: asyncio.Task[None] | None = None
+        self.selected_main_tab: str = "summary"
 
         self.selected_activity_type: str = "All"
         self.activity_options: list[str] = ["All"]

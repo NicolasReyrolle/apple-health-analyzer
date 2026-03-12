@@ -5,16 +5,23 @@ A modern, graphical tool to parse, analyze, and export your Apple Health data. O
 [![codecov](https://codecov.io/gh/NicolasReyrolle/apple-health-analyzer/graph/badge.svg?token=2yKEc6OOkx)](https://codecov.io/gh/NicolasReyrolle/apple-health-analyzer)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=NicolasReyrolle_apple-health-analyzer&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=NicolasReyrolle_apple-health-analyzer)
 
+## 👩‍💻 For Contributors
+
+If you are contributing or maintaining the project, see [MAINTAINERS.md](MAINTAINERS.md).
+
 ## ✨ Features
 
 - **ZIP Parsing**: Directly select and parse your `export.zip` file from Apple Health.
 - **Workout Extraction**: Focused on running workouts with detailed metrics (distance, duration, METs, heart rate, power, etc.).
 - **Visual Statistics**: Real-time summary of total activities, distance, duration, elevation, and calories with interactive charts (pie/rose charts for activity breakdown, bar charts with trend lines for time-based analysis).
 - **Health Data Insights**: Dedicated Health Data tab with period-based trends for resting heart rate, body mass, and VO2 max.
+- **Best Segments Tab**: Computes and displays best running segments from 100m to 100km with expandable runner-up rows, formatted durations, and localized labels.
+- **Robust Segment Distance Model**: Segment search uses GPX speed integration with safeguards for export edge cases (window clipping, final unpaired pause trimming, strict reversal-only trace splits, and realistic workout-level distance normalization).
 - **Activity Filtering**: Filter your workout data by activity type (Running, Cycling, Walking, etc.).
 - **Date Range Filtering**: Analyze specific time periods using the date range picker to focus on your desired date ranges.
 - **Trends Period Aggregation**: Switch the Trends tab aggregation between week, month, quarter, or year.
 - **Gap-Aware Time Series**: Missing periods are preserved in health-data charts, so the x-axis remains continuous and missing measurements are explicit (not coerced to zero).
+- **Route Parts Handling**: Workouts with multiple GPX route files are preserved as independent route parts for segment analysis and also exposed as a merged compatibility route.
 - **Multilingual UI (EN/FR)**: gettext-based translations for labels, tabs, date picker locale labels, notifications, and loading/progress status messages.
 - **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
 - All processing happens locally on your machine.
@@ -66,7 +73,7 @@ python -m nicegui src.apple_health_analyzer
 1. Click **Browse** to select your Apple Health `export.zip`.
 1. Click **Load** to parse the data.
 1. View the statistics in the **Overview** tab.
-1. Explore your data in the **Activities** tab (pie/rose charts grouped by activity type), **Trends** tab (weekly/monthly/quarterly/yearly bar charts with moving average trend lines), and **Health Data** tab (line charts for resting heart rate, body mass, and VO2 max).
+1. Explore your data in the **Activities** tab (pie/rose charts grouped by activity type), **Trends** tab (weekly/monthly/quarterly/yearly bar charts with moving average trend lines), **Health Data** tab (line charts for resting heart rate, body mass, and VO2 max), and **Best Segments** tab (standard race distances with expandable runner-ups).
 1. Use the **Activity filter** in the left drawer to focus on specific workout types.
 1. Use the **Date range picker** to analyze specific time periods.
 1. Use the **Aggregate by** selector in the **Trends** tab to change the period.
@@ -88,96 +95,34 @@ To analyze your data, you first need to export it from your iPhone:
 
 ## 🛠️ Development & Testing
 
-### Running Tests
+Maintainer and contributor documentation has moved to [MAINTAINERS.md](MAINTAINERS.md).
 
-The project uses `pytest` with specific configurations for asynchronous NiceGUI testing.
+If you are here to use the app, you can skip directly to the sections above.
 
-```bash
-pytest --cov=src tests/
-```
+### Best Segments algorithm (summary)
 
-### Developer Mode: Quick UI Testing
+Best segments are computed with a route-aware sliding-window search on running workouts:
 
-For rapid UI development and testing, you can launch the app with a pre-loaded Apple Health export file using the installed entry point (preferred):
+- GPX points are first clipped to each `WorkoutRoute` XML time window.
+- If a workout ends with `MotionPaused` and no later `MotionResumed`, points after that pause are excluded.
+- Route traces split only on strict timestamp reversal (`t[n+1] < t[n]`), so duplicated timestamps do not fragment long routes.
+- Traveled distance progression uses GPX speed integration (`speed × Δt`, trapezoidal between points), with haversine fallback when speed is unavailable.
+- A single workout-level distance normalization factor can be applied when route distance and workout summary distance differ only by a realistic margin; the same factor is reused for all queried segment distances.
+- Segment distances longer than the workout's reported distance are skipped.
 
-```bash
-apple-health-analyzer --dev-file tests/fixtures/export_sample.zip
-```
+### Workout manager package layout
 
-Alternatively, during development you can run the module directly:
+Workout management internals are organized in a dedicated package under `src/logic/workout_manager/`:
 
-```bash
-python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip
-```
+- `manager.py`: core `WorkoutManager` class and public distance constants.
+- `aggregations.py`: filtering, totals, and by-activity/by-period aggregations.
+- `export.py`: statistics and CSV/JSON export helpers.
+- `segments.py`: best-segment computation logic.
+- `__init__.py`: public compatibility exports.
 
-This is especially useful for:
+The import path remains unchanged for consumers:
 
-- Testing UI rendering with actual data without manual file selection
-- Quick iteration on UI components
-- Verifying data visualization and metrics display
-
-The app will automatically load the specified file on startup, skipping the file picker dialog.
-
-#### Enable Debug Logging
-
-To see detailed debug information about the dev file loading process:
-
-```bash
-apple-health-analyzer --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
-```
-
-Or during development:
-
-```bash
-python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
-```
-
-In normal (non-`--dev-file`) mode, debug logs are written to:
-
-- **Console**: Printed to stdout
-- **File**: `logs/apple_health_analyzer.log` (size-based rotation: 10MB max per file, 3 backup files)
-
-When running with `--dev-file`, logs are only written to the console; file logging is disabled to prevent reload loops.
-
-Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`)
-
-**Note**: First, generate the test fixture with:
-
-```bash
-python tests/fixtures/update_export_sample.py
-```
-
-### Code Quality
-
-We maintain strict coding standards. Before submitting a PR, ensure your code passes:
-
-- **Formatting**: `black` & `isort`.
-- **Linting**: `pylint` (configured for Windows compatibility).
-- **Typing**: `mypy` & `Pylance` (Strict mode).
-
-```bash
-# Run all checks
-black src tests --line-length=100
-isort src tests --profile=black
-mypy src tests
-pylint src tests
-```
-
-### Translations
-
-Translation workflows (updating `messages.pot`, editing `.po`, adding a new language, and compiling `.mo`) are documented in:
-
-- `src/i18n/locales/README.md`
-
-Runtime behavior notes:
-
-- Language is stored per user session and can be changed from the header language menu.
-- Loading/progress messages are localized in the UI while parser internals remain language-agnostic.
-- Date picker day/month labels are sourced from gettext catalogs (no hardcoded translated strings in Python).
-
-### Windows-Specific Notes
-
-The test suite includes a specialized `conftest.py` that handles Windows "WinError 32" (PermissionError) by isolating storage and patching file locks during teardown.
+- `from logic.workout_manager import WorkoutManager`
 
 ## 🔒 Security
 

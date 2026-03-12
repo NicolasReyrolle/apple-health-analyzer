@@ -18,6 +18,7 @@ from nicegui import app, ui
 
 from app_state import state
 from assets import APP_ICON_BASE64
+from i18n import compile_message_catalogs
 from ui.layout import load_file, render_body, render_header, render_left_drawer
 
 
@@ -36,6 +37,21 @@ class _ImmediateFlushHandler(logging.handlers.RotatingFileHandler):
 _logger = logging.getLogger(__name__)
 if not _logger.handlers:
     _logger.addHandler(logging.NullHandler())
+
+
+@app.on_startup
+def _compile_catalogs() -> None:
+    """Compile translation catalogs at startup.
+
+    Registered as an app-startup callback so that catalogs are compiled
+    regardless of whether the app is launched via the CLI entry point
+    (``cli_main``) or directly via ``python -m nicegui src.apple_health_analyzer``.
+    """
+    compiled_catalogs = compile_message_catalogs()
+    if compiled_catalogs:
+        _logger.info("Compiled %d translation catalog(s)", compiled_catalogs)
+    else:
+        _logger.debug("Translation catalogs are up to date")
 
 
 def setup_logging(log_level: str, enable_file_logging: bool = True) -> None:

@@ -16,11 +16,17 @@
 - ✅ Multilingual support (EN/FR) via gettext (`.pot`/`.po`/`.mo`) with runtime language switching
 - ✅ Localized progress/loading status text in the UI (parser remains language-agnostic internally)
 - ✅ Localized date-picker day/month labels sourced from gettext catalogs
+- ✅ **Best Segments tab** with asynchronous loading, expandable rows, and localized labels
+- ✅ Standard running segment catalog from **100m to 100km**, including named half-marathon and marathon distances
+- ✅ Best-segment label formatting extracted to reusable UI helpers (`distance`, `duration`, `date`)
+- ✅ Multi-file workout route handling with merged route geometry
+- ✅ Startup compilation of gettext catalogs (`.po` → `.mo`) with `.mo` files ignored in git
 - ✅ Comprehensive test coverage for all metrics methods and filtering features
 
 ### Work In Progress
 
 1. **Health Data breadth** - Additional record types and richer health analytics are still limited.
+2. **Best-segments analytics depth** - Current implementation focuses on fastest segments; richer split/pace analytics are still limited.
 
 ## Recommended Next Steps
 
@@ -67,13 +73,18 @@
    - Longest run, fastest pace, most elevation, etc.
    - Display as cards in Overview tab
 
+4. Best-segments UX enhancements:
+   - Add filters (distance subset, date range)
+   - Optional route context links for segment entries
+   - Optional activity-type extension beyond running
+
 **Complexity:** Medium-High | **Impact:** Medium | **Estimated effort:** 8-12 hours
 
 ---
 
 ### Priority 3: Route Visualization
 
-**Why:** The data model includes `routeFile` and `route` fields (currently excluded from exports). Visualizing GPS routes would be valuable for runners/cyclists.
+**Why:** The parser now merges split route files into a single route. Visualizing GPS routes would be valuable for runners/cyclists.
 
 **Implementation:**
 

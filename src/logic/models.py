@@ -1,9 +1,8 @@
 """Models representing the structured data extracted from the Apple Health export."""
 
-from datetime import datetime
 from typing import Optional, TypedDict
 
-import pandas as pd
+from logic.workout_route import WorkoutRoute
 
 
 class WorkoutRecordRequired(TypedDict):
@@ -20,15 +19,6 @@ class WorkoutRecord(WorkoutRecordRequired, total=False):
     startDate: Optional[str]
     endDate: Optional[str]
     source: Optional[str]
-    routeFile: Optional[str]
-    route: Optional[pd.DataFrame]
+    route: Optional[WorkoutRoute]
+    route_parts: list[WorkoutRoute]
     distance: Optional[int]  # Total distance in meters
-
-
-class WorkoutRoute(TypedDict):
-    """Type definition for workout route structure."""
-
-    time: datetime
-    latitude: float
-    longitude: float
-    altitude: float

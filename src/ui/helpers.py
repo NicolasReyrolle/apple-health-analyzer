@@ -1,13 +1,20 @@
 """UI formatting and locale helpers."""
 
 import json
-
-from typing import Optional
+from typing import Optional, Protocol
 
 from babel.core import default_locale
 from babel.numbers import format_decimal
 
 from i18n import translate
+
+
+class _SupportsStrftime(Protocol):
+    """Protocol for date-like objects exposing ``strftime``."""
+
+    def strftime(self, fmt: str, /) -> str:
+        """Return a formatted date string."""
+        raise NotImplementedError
 
 
 def _resolve_locale(locale_name: Optional[str] = None) -> str:
@@ -16,6 +23,20 @@ def _resolve_locale(locale_name: Optional[str] = None) -> str:
         return locale_name
     detected = default_locale()
     return detected or "en_US"
+
+
+def _normalize_language_code(language_code: str) -> str:
+    """Normalize language identifiers to base gettext language codes.
+
+    UI/session language values may appear as locale-like codes (e.g. ``fr_FR``),
+    while gettext catalogs are keyed by short language codes (e.g. ``fr``).
+    """
+    if not language_code:
+        return "en"
+    normalized = language_code.replace("-", "_").lower()
+    if "_" in normalized:
+        normalized = normalized.split("_", maxsplit=1)[0]
+    return normalized
 
 
 def format_integer(value: int, locale_name: Optional[str] = None) -> str:
@@ -38,8 +59,10 @@ def period_code_to_label(code: str) -> str:
 def qdate_locale_json(language_code: str) -> str:
     """Return Quasar QDate locale data serialized as JSON."""
 
+    normalized_language_code = _normalize_language_code(language_code)
+
     def tr(message: str) -> str:
-        return translate(message, language=language_code)
+        return translate(message, language=normalized_language_code)
 
     locale_by_language = {
         "fr": {
@@ -133,5 +156,44 @@ def qdate_locale_json(language_code: str) -> str:
             "firstDayOfWeek": 0,
         },
     }
-    locale = locale_by_language.get(language_code, locale_by_language["en"])
+    locale = locale_by_language.get(normalized_language_code, locale_by_language["en"])
     return json.dumps(locale)
+
+
+def format_distance_label(
+    distance_m: float,
+    language_code: str,
+    half_marathon_distance_m: int,
+    marathon_distance_m: int,
+) -> str:
+    """Format a best-segment distance label with special marathon names."""
+    normalized_language_code = _normalize_language_code(language_code)
+    rounded_distance = int(round(distance_m))
+    if rounded_distance == half_marathon_distance_m:
+        return translate("Half-marathon", language=normalized_language_code)
+    if rounded_distance == marathon_distance_m:
+        return translate("Marathon", language=normalized_language_code)
+    if rounded_distance < 1000:
+        return f"{rounded_distance} m"
+    return f"{distance_m / 1000:.1f} km"
+
+
+def format_duration_label(duration_s: float) -> str:
+    """Format a duration in seconds into a human-readable label."""
+    total_seconds = max(0, int(round(duration_s)))
+    hours, remaining = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remaining, 60)
+
+    if total_seconds < 60:
+        return f"{seconds} s"
+    if total_seconds < 3600:
+        return f"{minutes} min {seconds:02d} s"
+    return f"{hours} h {minutes:02d} min {seconds:02d} s"
+
+
+def format_date_label(start_date: _SupportsStrftime, language_code: str) -> str:
+    """Format a date label according to the selected language."""
+    normalized_language_code = _normalize_language_code(language_code)
+    if normalized_language_code == "fr":
+        return start_date.strftime("%d/%m/%Y")
+    return start_date.strftime("%m/%d/%Y")

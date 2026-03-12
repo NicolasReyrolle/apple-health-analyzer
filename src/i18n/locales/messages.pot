@@ -61,6 +61,9 @@ msgstr ""
 msgid "Health Data"
 msgstr ""
 
+msgid "Best Segments"
+msgstr ""
+
 # Stat cards
 msgid "Count"
 msgstr ""
@@ -75,6 +78,27 @@ msgid "Elevation"
 msgstr ""
 
 msgid "Calories"
+msgstr ""
+
+msgid "Date"
+msgstr ""
+
+msgid "Average Speed"
+msgstr ""
+
+msgid "Best segments for standard running distances"
+msgstr ""
+
+msgid "Loading best segments..."
+msgstr ""
+
+msgid "Open this tab to load best segments."
+msgstr ""
+
+msgid "Half-marathon"
+msgstr ""
+
+msgid "Marathon"
 msgstr ""
 
 # Notifications

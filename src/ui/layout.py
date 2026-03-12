@@ -16,8 +16,20 @@ from i18n import LANGUAGES, get_language, t
 from i18n.activity_types import build_activity_select_options, translate_activity_value_map
 from logic.export_parser import ExportParser
 from logic.records_by_type import RecordsByType
-from logic.workout_manager import WorkoutManager
-from ui.helpers import format_integer, period_code_to_label, qdate_locale_json
+from logic.workout_manager import (
+    HALF_MARATHON_DISTANCE_M,
+    MARATHON_DISTANCE_M,
+    STANDARD_SEGMENT_DISTANCES,
+    WorkoutManager,
+)
+from ui.helpers import (
+    format_date_label,
+    format_distance_label,
+    format_duration_label,
+    format_integer,
+    period_code_to_label,
+    qdate_locale_json,
+)
 from ui.local_file_picker import LocalFilePicker
 
 # Get logger for this module
@@ -25,6 +37,21 @@ _logger = logging.getLogger(__name__)
 
 # CSS class constants
 ROW_CENTERED_CLASSES = "w-full justify-center gap-4"
+BUTTON_FLAT_ROUND_PROPS = "flat round"
+LABEL_UPPERCASE_CLASSES = "text-sm text-gray-500 uppercase"
+
+
+def schedule_best_segments_load(force: bool = False) -> None:
+    """Schedule best-segments loading and keep a reference to the task."""
+
+    def _clear_completed_task(task: asyncio.Task[None]) -> None:
+        if state.best_segments_task is task:
+            state.best_segments_task = None
+
+    task: Any = asyncio.create_task(load_best_segments_data(force=force))
+    state.best_segments_task = task if hasattr(task, "add_done_callback") else None
+    if state.best_segments_task is not None:
+        state.best_segments_task.add_done_callback(_clear_completed_task)
 
 
 def handle_json_export() -> None:
@@ -78,9 +105,102 @@ def refresh_data() -> None:
     state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
 
+    # Invalidate best-segments cache and cancel any in-flight load for stale data.
+    best_segments_task: Any = getattr(state, "best_segments_task", None)
+    if isinstance(best_segments_task, asyncio.Task) and not best_segments_task.done():
+        best_segments_task.cancel()
+    # Ensure task and loading flag are reset so a new load can start after refresh.
+    state.best_segments_task = None
+    if hasattr(state, "best_segments_loading"):
+        state.best_segments_loading = False
+    state.best_segments_rows = []
+    state.best_segments_loaded = False
+
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()
     render_health_data_tab.refresh()
+    render_best_segments_tab.refresh()
+
+    # If user is already on the tab, load asynchronously after invalidation.
+    if state.selected_main_tab == "best_segments":
+        schedule_best_segments_load()
+
+
+def _build_best_segments_rows() -> list[dict[str, Any]]:
+    """Compute and format best segments rows for tab rendering.
+
+    Returns one row per distance (the #1 record). Runner-up records are stored
+    in a ``children`` list so the table can expand them on demand.
+    """
+    _logger.debug("Calculating best segments for distances: %s", STANDARD_SEGMENT_DISTANCES)
+    best_segments = state.workouts.get_best_segments(distances=STANDARD_SEGMENT_DISTANCES)
+    _logger.debug("Best segments data:\n%s", best_segments)
+    language_code = get_language()
+
+    def _format_entry(distance_m: float, duration_s: float, start_date: Any) -> dict[str, str]:
+        average_speed = (distance_m / 1000) / (duration_s / 3600) if duration_s > 0 else 0.0
+        return {
+            "distance": format_distance_label(
+                distance_m,
+                language_code,
+                HALF_MARATHON_DISTANCE_M,
+                MARATHON_DISTANCE_M,
+            ),
+            "duration": format_duration_label(duration_s),
+            "average_speed": f"{average_speed:.2f} km/h",
+            "start_date": format_date_label(start_date, language_code),
+        }
+
+    rows: list[dict[str, Any]] = []
+    for _, group_df in best_segments.groupby("distance", sort=True):
+        records = list(group_df.sort_values("duration_s").itertuples(index=False))
+        if not records:
+            continue
+
+        distance_m = float(getattr(records[0], "distance", 0.0))
+        start_date = getattr(records[0], "startDate", None)
+        if start_date is None:
+            continue
+
+        parent: dict[str, Any] = {
+            **_format_entry(distance_m, float(getattr(records[0], "duration_s", 0.0)), start_date),
+            "id": str(int(distance_m)),
+            "children": [
+                _format_entry(
+                    distance_m,
+                    float(getattr(record, "duration_s", 0.0)),
+                    getattr(record, "startDate"),
+                )
+                for record in records[1:]
+                if getattr(record, "startDate", None) is not None
+            ],
+        }
+        rows.append(parent)
+
+    return rows
+
+
+async def load_best_segments_data(force: bool = False) -> None:
+    """Load best segments asynchronously for the tab, with concurrency guard."""
+    if state.best_segments_loading:
+        return
+    if state.best_segments_loaded and not force:
+        return
+    if not state.file_loaded:
+        return
+
+    state.best_segments_loading = True
+    render_best_segments_tab.refresh()
+
+    try:
+        rows = await asyncio.to_thread(_build_best_segments_rows)
+        state.best_segments_rows = rows
+        state.best_segments_loaded = True
+    except Exception:  # pylint: disable=broad-except
+        _logger.exception("Failed to load best segments data")
+    finally:
+        state.best_segments_loading = False
+        render_best_segments_tab.refresh()
 
 
 @ui.refreshable
@@ -175,13 +295,13 @@ def render_header() -> None:
         # Toggle button with dynamic icon
         ui.button(icon="dark_mode", on_click=dark.enable).bind_visibility_from(
             dark, "value", backward=lambda v: not v
-        ).props("flat round")
+        ).props(BUTTON_FLAT_ROUND_PROPS)
         ui.button(icon="light_mode", on_click=dark.disable).bind_visibility_from(
             dark, "value"
-        ).props("flat round").classes("text-main")
+        ).props(BUTTON_FLAT_ROUND_PROPS).classes("text-main")
 
         # Language selector (globe icon)
-        with ui.button(icon="language").props("flat round"):
+        with ui.button(icon="language").props(BUTTON_FLAT_ROUND_PROPS):
             with ui.menu():
                 for code, name in LANGUAGES.items():
                     ui.menu_item(name, on_click=lambda _event, c=code: _change_language(c))
@@ -208,7 +328,7 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
     chart_data = [{"value": v, "name": k} for k, v in values.items()]
 
     with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
-        ui.label(label).classes("text-sm text-gray-500 uppercase")
+        ui.label(label).classes(LABEL_UPPERCASE_CLASSES)
         ui.echart(
             {
                 "tooltip": {"trigger": "item", "formatter": f"{{b}}: {{c}} {unit} ({{d}}%)"},
@@ -277,7 +397,7 @@ def render_generic_graph(
         )
 
     with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
-        ui.label(label).classes("text-sm text-gray-500 uppercase")
+        ui.label(label).classes(LABEL_UPPERCASE_CLASSES)
         ui.echart(
             {
                 "tooltip": {"trigger": "axis", "formatter": f"{{b}}: {{c}} {unit}"},
@@ -454,14 +574,25 @@ def render_body() -> None:
         state, "loading_status"
     ).bind_visibility_from(state, "loading")
 
-    with ui.tabs().classes("w-full") as tabs:
-        tab_summary = ui.tab(t("Overview"))
-        tab_activities = ui.tab(t("Activities")).bind_enabled_from(state, "file_loaded")
-        tab_trends = ui.tab(t("Trends")).bind_enabled_from(state, "file_loaded")
-        tab_health_data = ui.tab(t("Health Data")).bind_enabled_from(state, "file_loaded")
+    def _on_tab_change(event: Any) -> None:
+        value = getattr(event, "value", None)
+        tab_name = str(getattr(value, "name", value)) if value is not None else ""
+        state.selected_main_tab = tab_name
+        if tab_name == "best_segments":
+            schedule_best_segments_load()
 
-    with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
-        with ui.tab_panel(tab_summary):
+    with ui.tabs(on_change=_on_tab_change).classes("w-full") as tabs:
+        ui.tab("summary", t("Overview"))
+        ui.tab("activities", t("Activities")).bind_enabled_from(state, "file_loaded")
+        ui.tab("trends", t("Trends")).bind_enabled_from(state, "file_loaded")
+        ui.tab("health_data", t("Health Data")).bind_enabled_from(state, "file_loaded")
+        ui.tab("best_segments", t("Best Segments")).bind_enabled_from(state, "file_loaded")
+
+    # Restore the previously selected tab (defaults to "summary" on first render).
+    tabs.value = state.selected_main_tab or "summary"
+
+    with ui.tab_panels(tabs, value=state.selected_main_tab or "summary").classes("w-full"):
+        with ui.tab_panel("summary"):
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Count"), state.metrics_display, "count")
                 stat_card(t("Distance"), state.metrics_display, "distance", "km")
@@ -470,14 +601,17 @@ def render_body() -> None:
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Calories"), state.metrics_display, "calories", "kcal")
 
-        with ui.tab_panel(tab_activities):
+        with ui.tab_panel("activities"):
             render_activity_graphs()
 
-        with ui.tab_panel(tab_trends):
+        with ui.tab_panel("trends"):
             render_trends_tab()
 
-        with ui.tab_panel(tab_health_data):
+        with ui.tab_panel("health_data"):
             render_health_data_tab()
+
+        with ui.tab_panel("best_segments"):
+            render_best_segments_tab()
 
 
 @ui.refreshable
@@ -669,4 +803,83 @@ def render_health_data_tab() -> None:
             ),
             "ml/kg/min",
             graph_type="line",
+        )
+
+
+@ui.refreshable
+def render_best_segments_tab() -> None:
+    """Render the best segments for standard running distances in a table format."""
+    with ui.card().classes(ROW_CENTERED_CLASSES):
+        ui.label(t("Best segments for standard running distances")).classes(LABEL_UPPERCASE_CLASSES)
+        columns = [
+            {"name": "distance", "label": t("Distance"), "field": "distance"},
+            {"name": "duration", "label": t("Duration"), "field": "duration"},
+            {
+                "name": "average_speed",
+                "label": t("Average Speed"),
+                "field": "average_speed",
+            },
+            {"name": "start_date", "label": t("Date"), "field": "start_date"},
+        ]
+
+        if state.best_segments_loading:
+            with ui.row().classes("w-full items-center justify-center q-gutter-sm"):
+                ui.spinner(size="lg")
+                ui.label(t("Loading best segments..."))
+            return
+
+        if not state.best_segments_loaded:
+            ui.label(t("Open this tab to load best segments.")).classes("text-gray-500")
+            return
+
+        _logger.debug("Table rendered with %d rows", len(state.best_segments_rows))
+        table = ui.table(
+            columns=columns,
+            rows=state.best_segments_rows,
+            row_key="id",
+        ).classes("w-full")
+        table.add_slot(
+            "header",
+            r"""
+            <q-tr :props="props">
+                <q-th auto-width />
+                <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                    {{ col.label }}
+                </q-th>
+            </q-tr>
+            """,
+        )
+        table.add_slot(
+            "body",
+            r"""
+            <q-tr :props="props">
+                <q-td auto-width>
+                    <q-btn
+                        v-if="props.row.children && props.row.children.length"
+                        size="sm" flat round dense
+                        @click="props.expand = !props.expand"
+                        :icon="props.expand ? 'expand_less' : 'expand_more'" />
+                    <span v-else style="display:inline-block;width:28px" />
+                </q-td>
+                <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                    {{ col.value }}
+                </q-td>
+            </q-tr>
+            <q-tr v-show="props.expand" :props="props">
+                <q-td colspan="100%" class="bg-grey-1">
+                    <q-list dense>
+                        <q-item v-for="(child, i) in props.row.children" :key="i">
+                            <q-item-section>
+                                <span class="text-caption text-grey-9">
+                                    #{{ i + 2 }}&nbsp;&nbsp;
+                                    {{ child.duration }}&nbsp;&nbsp;
+                                    {{ child.average_speed }}&nbsp;&nbsp;
+                                    {{ child.start_date }}
+                                </span>
+                            </q-item-section>
+                        </q-item>
+                    </q-list>
+                </q-td>
+            </q-tr>
+            """,
         )

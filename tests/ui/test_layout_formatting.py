@@ -1,8 +1,8 @@
 """Tests for UI formatting in layout refresh."""
 
 from datetime import datetime
-from typing import Any, Optional, Union
-from unittest.mock import MagicMock, patch
+from typing import Any, Coroutine, Optional, Union
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 
@@ -81,7 +81,8 @@ def mock_refresh_data() -> None:
     with patch("ui.layout.render_activity_graphs.refresh"):
         with patch("ui.layout.render_trends_graphs.refresh"):
             with patch("ui.layout.render_health_data_tab.refresh"):
-                refresh_data()
+                with patch("ui.layout.render_best_segments_tab.refresh"):
+                    refresh_data()
 
 
 def test_refresh_data_passes_date_range_to_workouts() -> None:
@@ -124,3 +125,46 @@ def test_refresh_data_passes_date_range_to_workouts() -> None:
         state.workouts = original_workouts
         state.date_range_text = original_date_range
         state.selected_activity_type = original_activity
+
+
+def test_refresh_data_triggers_best_segments_load_when_tab_selected() -> None:
+    """refresh_data should schedule async best-segments loading from the active tab."""
+    original_workouts: Any = state.workouts
+    original_selected_tab = state.selected_main_tab
+    original_rows = state.best_segments_rows
+    original_loaded = state.best_segments_loaded
+
+    workouts_mock = MagicMock()
+    workouts_mock.get_count.return_value = 1
+    workouts_mock.get_total_distance.return_value = 2
+    workouts_mock.get_total_duration.return_value = 3
+    workouts_mock.get_total_elevation.return_value = 4
+    workouts_mock.get_total_calories.return_value = 5
+
+    try:
+        state.workouts = workouts_mock
+        state.selected_main_tab = "best_segments"
+        state.best_segments_rows = [{"distance": "old"}]
+        state.best_segments_loaded = True
+
+        with patch("ui.layout.render_activity_graphs.refresh"):
+            with patch("ui.layout.render_trends_graphs.refresh"):
+                with patch("ui.layout.render_health_data_tab.refresh"):
+                    with patch("ui.layout.render_best_segments_tab.refresh"):
+                        with patch("ui.layout.load_best_segments_data", new=AsyncMock()):
+                            with patch("ui.layout.asyncio.create_task") as create_task_mock:
+
+                                def _close_coro(coro: Coroutine[Any, Any, None]) -> None:
+                                    coro.close()
+
+                                create_task_mock.side_effect = _close_coro
+                                refresh_data()
+
+        assert state.best_segments_rows == []
+        assert state.best_segments_loaded is False
+        create_task_mock.assert_called_once()
+    finally:
+        state.workouts = original_workouts
+        state.selected_main_tab = original_selected_tab
+        state.best_segments_rows = original_rows
+        state.best_segments_loaded = original_loaded

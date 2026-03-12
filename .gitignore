@@ -137,3 +137,6 @@ Thumbs.db
 output/
 mutants/
 .nicegui/
+
+# gettext compiled catalogs
+src/i18n/locales/**/*.mo

@@ -11,8 +11,9 @@ from zipfile import ZipFile
 import pandas as pd
 from defusedxml.ElementTree import iterparse
 
-from logic.models import WorkoutRecord, WorkoutRoute
+from logic.models import WorkoutRecord
 from logic.parsed_health_data import ParsedHealthData
+from logic.workout_route import WorkoutRoute, RoutePoint
 
 _logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class ExportParser:
 
     def __init__(self, progress_callback: Optional[Callable[[str], None]] = None) -> None:
         self.progress_callback = progress_callback
+        self._route_cache: dict[str, Optional[WorkoutRoute]] = {}
 
     def __enter__(self) -> "ExportParser":
         return self
@@ -281,17 +283,60 @@ class ExportParser:
             "source": elem.get("sourceName"),
         }
 
+    @staticmethod
+    def _update_motion_timestamps(
+        event_type: str,
+        event_date: datetime,
+        last_paused: Optional[datetime],
+        last_resumed: Optional[datetime],
+    ) -> tuple[Optional[datetime], Optional[datetime]]:
+        """Update motion timestamps based on event type."""
+        if event_type == "HKWorkoutEventTypeMotionPaused":
+            if last_paused is None or event_date > last_paused:
+                last_paused = event_date
+        elif event_type == "HKWorkoutEventTypeMotionResumed":
+            if last_resumed is None or event_date > last_resumed:
+                last_resumed = event_date
+        return last_paused, last_resumed
+
+    @staticmethod
+    def _compute_active_end(elem: Element) -> Optional[datetime]:
+        """Return the last MotionPaused time if it is not followed by a MotionResumed.
+
+        When the user forgets to stop the watch before getting into a vehicle, the GPS
+        keeps recording at vehicle speed after the final pause.  Trimming route points
+        beyond this timestamp prevents impossible best-segment values.
+        """
+        last_paused: Optional[datetime] = None
+        last_resumed: Optional[datetime] = None
+        for child in elem:
+            if child.tag != "WorkoutEvent":
+                continue
+            event_type = child.get("type", "")
+            event_date = ExportParser._parse_health_datetime(child.get("date"))
+            if event_date is None:
+                continue
+            last_paused, last_resumed = ExportParser._update_motion_timestamps(
+                event_type, event_date, last_paused, last_resumed
+            )
+        if last_paused is None:
+            return None
+        if last_resumed is None or last_paused > last_resumed:
+            return last_paused
+        return None
+
     def _process_workout_children(
         self, elem: Element, record: WorkoutRecord, zipfile: ZipFile
     ) -> None:
         """Process child elements of workout (statistics and metadata)."""
+        active_end = self._compute_active_end(elem)
         for child in elem:
             if child.tag == "WorkoutStatistics":
                 self._process_workout_statistics(child, record)
             elif child.tag == "MetadataEntry":
                 self._process_metadata_entry(child, record)
             elif child.tag == "WorkoutRoute":
-                self._process_workout_route(child, record, zipfile)
+                self._process_workout_route(child, record, zipfile, active_end=active_end)
 
     @staticmethod
     def str_distance_to_meters(value: str, unit: Optional[str]) -> int:
@@ -322,45 +367,179 @@ class ExportParser:
                     record[f"{stat_attr}{stat_type}"] = float(stat_attr_str)
                     record[f"{stat_attr}{stat_type}Unit"] = child.get("unit")
 
-    def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[pd.DataFrame]:
+    @staticmethod
+    def _parse_gpx_speed(ext_elem: Optional[Element]) -> float:
+        """Extract speed value from GPX extensions element."""
+        if ext_elem is None:
+            return 0.0
+        speed_elem = ext_elem.find("{http://www.topografix.com/GPX/1/1}speed")
+        if speed_elem is None or not speed_elem.text:
+            return 0.0
+        try:
+            return float(speed_elem.text)
+        except ValueError:
+            return 0.0
+
+    @staticmethod
+    def _extract_gpx_point_data(elem: Element) -> tuple[str, str, str, str, float]:
+        """Extract coordinate and metadata from a GPX trackpoint element."""
+        latitude = elem.get("lat") or ""
+        longitude = elem.get("lon") or ""
+        if not latitude or not longitude:
+            _logger.debug(
+                "Skipping GPX trackpoint with missing latitude/longitude: %s", elem.attrib
+            )
+
+        ele_elem = elem.find("{http://www.topografix.com/GPX/1/1}ele")
+        time_elem = elem.find("{http://www.topografix.com/GPX/1/1}time")
+
+        altitude = (ele_elem.text or "0.0") if ele_elem is not None else "0.0"
+        time_str = (time_elem.text or "") if time_elem is not None else ""
+
+        ext_elem = elem.find("{http://www.topografix.com/GPX/1/1}extensions")
+        speed_val = ExportParser._parse_gpx_speed(ext_elem)
+
+        return latitude, longitude, altitude, time_str, speed_val
+
+    @staticmethod
+    def _create_route_point(
+        latitude: str, longitude: str, altitude: str, time_str: str, speed_val: float
+    ) -> RoutePoint:
+        """Create a RoutePoint from extracted GPX data."""
+        return RoutePoint(
+            time=datetime.fromisoformat(time_str.replace("Z", "+00:00")),
+            latitude=float(latitude),
+            longitude=float(longitude),
+            altitude=float(altitude),
+            speed=speed_val,
+        )
+
+    def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[WorkoutRoute]:
         """Load GPX route file from the export zip."""
         try:
             with zipfile.open(f"apple_health_export{route_path}") as route_file:
-                rows: List[WorkoutRoute] = []
+                route: WorkoutRoute = WorkoutRoute(points=[])
                 for event, elem in iterparse(route_file, events=("start", "end")):
                     if event == "end" and elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt":
-                        latitude: str = elem.get("lat") or "0.0"
-                        longitude: str = elem.get("lon") or "0.0"
-
-                        # Extract child elements (ele and time are not attributes)
-                        ele_elem = elem.find("{http://www.topografix.com/GPX/1/1}ele")
-                        time_elem = elem.find("{http://www.topografix.com/GPX/1/1}time")
-
-                        altitude: str = ele_elem.text or "0.0" if ele_elem is not None else "0.0"
-                        time_str: str = time_elem.text or "" if time_elem is not None else ""
-
-                        rows.append(
-                            {
-                                "time": datetime.fromisoformat(time_str.replace("Z", "+00:00")),
-                                "latitude": float(latitude),
-                                "longitude": float(longitude),
-                                "altitude": float(altitude),
-                            }
-                        )
+                        point_data = self._extract_gpx_point_data(elem)
+                        route.add_point(self._create_route_point(*point_data))
                         elem.clear()
-                return pd.DataFrame(rows)
+                return route
         except KeyError:
             self._log(f"Route file not found in export: {route_path}")
             return None
 
+    @staticmethod
+    def _parse_health_datetime(raw: Optional[str]) -> Optional[datetime]:
+        """Parse Apple Health datetime values like "YYYY-MM-DD HH:MM:SS +0100"."""
+        if raw is None:
+            return None
+        try:
+            return datetime.strptime(raw, "%Y-%m-%d %H:%M:%S %z")
+        except ValueError:
+            return None
+
+    def _load_route_cached(self, zipfile: ZipFile, route_path: str) -> Optional[WorkoutRoute]:
+        """Load GPX route once per file path for the current export parsing session."""
+        if route_path not in self._route_cache:
+            self._route_cache[route_path] = self._load_route(zipfile, route_path)
+        return self._route_cache[route_path]
+
+    @staticmethod
+    def _clip_route_to_window(
+        route: WorkoutRoute,
+        window_start: Optional[datetime],
+        window_end: Optional[datetime],
+    ) -> WorkoutRoute:
+        """Return route points clipped to WorkoutRoute time window.
+
+        Apple Health exports can reference the same GPX file from multiple adjacent
+        WorkoutRoute entries. We must keep only points that belong to the current
+        window to avoid creating artificial cross-window traces.
+        """
+        if window_start is None or window_end is None:
+            return WorkoutRoute(points=list(route.points))
+
+        clipped_points = [
+            point for point in route.points if window_start <= point.time <= window_end
+        ]
+        return WorkoutRoute(points=clipped_points)
+
+    @staticmethod
+    def _merge_route_parts(route_parts: list[WorkoutRoute]) -> Optional[WorkoutRoute]:
+        """Merge route parts as a compatibility route while preserving part boundaries.
+
+        Use ``route_parts`` for analytics. The merged ``route`` field remains available
+        for legacy consumers that expect a single route object.
+        """
+        if not route_parts:
+            return None
+
+        merged_points: list[RoutePoint] = []
+        for route_part in route_parts:
+            if not route_part.points:
+                continue
+
+            if merged_points and merged_points[-1] == route_part.points[0]:
+                merged_points.extend(route_part.points[1:])
+            else:
+                merged_points.extend(route_part.points)
+
+        return WorkoutRoute(points=merged_points) if merged_points else None
+
     def _process_workout_route(
-        self, elem: Element, record: WorkoutRecord, zipfile: ZipFile
+        self,
+        elem: Element,
+        record: WorkoutRecord,
+        zipfile: ZipFile,
+        active_end: Optional[datetime] = None,
     ) -> None:
-        """Process workout route child element."""
+        """Process one WorkoutRoute XML block as an independent time window.
+
+        Behavior is intentionally window-based to prevent unrealistic best-segment
+        calculations when adjacent windows reuse GPX files or when a window has no
+        matching GPX points.
+
+        ``active_end`` clips the window end to the last unpaired MotionPaused event,
+        which prevents vehicle-speed GPS points recorded after forgetting to stop the
+        watch from influencing best-segment calculations.
+        """
+        route_path: Optional[str] = None
         for child in elem:
             if child.tag == "FileReference":
-                record["routeFile"] = child.get("path")
-                record["route"] = self._load_route(zipfile, child.get("path") or "")
+                route_path = child.get("path")
+
+        if not route_path:
+            return
+
+        route_source = self._load_route_cached(zipfile, route_path)
+        if route_source is None:
+            return
+
+        window_start = self._parse_health_datetime(elem.get("startDate"))
+        window_end = self._parse_health_datetime(elem.get("endDate"))
+        if active_end is not None and window_end is not None:
+            window_end = min(window_end, active_end)
+        route_part = self._clip_route_to_window(route_source, window_start, window_end)
+
+        if not route_part.points:
+            self._log(
+                "Skipping WorkoutRoute window without GPX points: "
+                f"{elem.get('startDate')} -> {elem.get('endDate')} ({route_path})"
+            )
+            return
+
+        existing_parts = record.get("route_parts")
+        if isinstance(existing_parts, list):
+            existing_parts.append(route_part)
+            route_parts = existing_parts
+        else:
+            route_parts = [route_part]
+            record["route_parts"] = route_parts
+
+        merged_route = self._merge_route_parts(route_parts)
+        if merged_route is not None:
+            record["route"] = merged_route
 
     def _process_metadata_entry(self, child: Element, record: WorkoutRecord) -> None:
         """Process metadata entry child element."""
@@ -384,6 +563,7 @@ class ExportParser:
         """Parse the export file."""
 
         try:
+            self._route_cache.clear()
             self._log("Starting to parse the Apple Health export file...")
             with ZipFile(export_file, "r") as zipfile:
                 result = self._load_data(zipfile)
