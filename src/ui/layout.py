@@ -851,7 +851,7 @@ def render_best_segments_tab() -> None:
                     <q-list dense>
                         <q-item v-for="(child, i) in props.row.children" :key="i">
                             <q-item-section>
-                                <span class="text-caption text-grey-7">
+                                <span class="text-caption text-grey-9">
                                     #{{ i + 2 }}&nbsp;&nbsp;
                                     {{ child.duration }}&nbsp;&nbsp;
                                     {{ child.average_speed }}&nbsp;&nbsp;
