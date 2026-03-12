@@ -114,8 +114,7 @@ class TestTranslationFunction:
         assert result == "Apple Health Analyzer"
 
     def test_t_returns_unformatted_result_on_missing_kwarg(self) -> None:
-        """t() must not raise when a required format kwarg is missing; 
-        returns raw translated string."""
+        """t() must not raise when a required format kwarg is missing; returns raw translated string."""
         # "Count by {period}" needs kwarg 'period'; omitting it should not crash
         result = t("Count by {period}")  # no period kwarg
         assert result == "Count by {period}"
