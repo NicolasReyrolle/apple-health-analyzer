@@ -100,7 +100,7 @@ msgstr "Chargement des meilleurs segments..."
 msgid "Open this tab to load best segments."
 msgstr "Ouvrez cet onglet pour charger les meilleurs segments."
 
-msgid "Semi-marathon"
+msgid "Half-marathon"
 msgstr "Semi-marathon"
 
 msgid "Marathon"

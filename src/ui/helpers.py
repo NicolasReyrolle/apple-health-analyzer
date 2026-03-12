@@ -12,9 +12,9 @@ from i18n import translate
 class _SupportsStrftime(Protocol):
     """Protocol for date-like objects exposing ``strftime``."""
 
-    def strftime(self, format: str) -> str:
+    def strftime(self, fmt: str) -> str:
         """Return a formatted date string."""
-        ...
+        raise NotImplementedError
 
 
 def _resolve_locale(locale_name: Optional[str] = None) -> str:
@@ -153,7 +153,7 @@ def format_distance_label(
     """Format a best-segment distance label with special marathon names."""
     rounded_distance = int(round(distance_m))
     if rounded_distance == half_marathon_distance_m:
-        return translate("Semi-marathon", language=language_code)
+        return translate("Half-marathon", language=language_code)
     if rounded_distance == marathon_distance_m:
         return translate("Marathon", language=language_code)
     if rounded_distance < 1000:

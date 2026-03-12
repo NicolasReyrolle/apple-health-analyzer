@@ -95,7 +95,7 @@ msgstr ""
 msgid "Open this tab to load best segments."
 msgstr ""
 
-msgid "Semi-marathon"
+msgid "Half-marathon"
 msgstr ""
 
 msgid "Marathon"

@@ -400,7 +400,7 @@ class TestBestSegmentsTabData:
 
             assert [row["distance"] for row in state.best_segments_rows] == [
                 "100 m",
-                "Semi-marathon",
+                "Half-marathon",
                 "Marathon",
             ]
             assert [row["duration"] for row in state.best_segments_rows] == [

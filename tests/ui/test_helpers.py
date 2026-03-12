@@ -78,7 +78,7 @@ class TestBestSegmentLabelFormatters:
                 half_marathon_distance_m=21097,
                 marathon_distance_m=42195,
             )
-            == "fr:Semi-marathon"
+            == "fr:Half-marathon"
         )
         assert (
             helpers.format_distance_label(
