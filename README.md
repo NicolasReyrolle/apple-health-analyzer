@@ -110,6 +110,20 @@ Best segments are computed with a route-aware sliding-window search on running w
 - A single workout-level distance normalization factor can be applied when route distance and workout summary distance differ only by a realistic margin; the same factor is reused for all queried segment distances.
 - Segment distances longer than the workout's reported distance are skipped.
 
+### Workout manager package layout
+
+Workout management internals are organized in a dedicated package under `src/logic/workout_manager/`:
+
+- `manager.py`: core `WorkoutManager` class and public distance constants.
+- `aggregations.py`: filtering, totals, and by-activity/by-period aggregations.
+- `export.py`: statistics and CSV/JSON export helpers.
+- `segments.py`: best-segment computation logic.
+- `__init__.py`: public compatibility exports.
+
+The import path remains unchanged for consumers:
+
+- `from logic.workout_manager import WorkoutManager`
+
 ## 🔒 Security
 
 This application uses **streaming XML parsing** (`iterparse`) to remain memory-efficient even with large exports (GBs of data) and `defusedxml.ElementTree` to mitigate risks associated with untrusted XML data.

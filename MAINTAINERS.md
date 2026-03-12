@@ -78,6 +78,18 @@ The parser and segment logic intentionally use window-bounded route behavior:
 
 This behavior prevents unrealistic artifacts (for example impossible `100m` durations) when exports contain reused GPX file references or missing points in specific windows.
 
+## Workout Manager Package Structure
+
+The workout manager implementation is split into a dedicated package:
+
+- `src/logic/workout_manager/manager.py`: core `WorkoutManager` class and exported segment distance constants.
+- `src/logic/workout_manager/aggregations.py`: filtering, totals, and period/activity aggregations.
+- `src/logic/workout_manager/export.py`: summary statistics and CSV/JSON export.
+- `src/logic/workout_manager/segments.py`: best-segment search over running routes.
+- `src/logic/workout_manager/__init__.py`: public compatibility exports for `logic.workout_manager` imports.
+
+Keep importing from `logic.workout_manager` in app/tests unless there is a specific reason to target internal modules.
+
 ## Translations
 
 Translation workflows are documented in [src/i18n/locales/README.md](src/i18n/locales/README.md).
