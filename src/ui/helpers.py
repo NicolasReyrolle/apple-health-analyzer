@@ -12,7 +12,7 @@ from i18n import translate
 class _SupportsStrftime(Protocol):
     """Protocol for date-like objects exposing ``strftime``."""
 
-    def strftime(self, fmt: str) -> str:
+    def strftime(self, format: str) -> str:
         """Return a formatted date string."""
         raise NotImplementedError
 
