@@ -7,7 +7,8 @@ import math
 import sys
 from pathlib import Path
 from typing import Callable, TypeAlias
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as _stdlib_ET
+from defusedxml import ElementTree as ET
 
 GPX_NAMESPACE = "http://www.topografix.com/GPX/1/1"
 XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"
@@ -148,13 +149,13 @@ def anonymize_gpx(file_path: str) -> None:
         trkpt.set("lon", f"{new_lon:.6f}")
 
     # Preserve original namespace style instead of introducing ns0 prefixes.
-    ET.register_namespace("", GPX_NAMESPACE)
-    ET.register_namespace("xsi", XSI_NAMESPACE)
+    _stdlib_ET.register_namespace("", GPX_NAMESPACE)
+    _stdlib_ET.register_namespace("xsi", XSI_NAMESPACE)
     tree.write(file_path, encoding="utf-8", xml_declaration=True)
 
 
 def _transform_tree_with_rotation(
-    tree: ET.ElementTree[ET.Element[str]],
+    tree: _stdlib_ET.ElementTree[_stdlib_ET.Element[str]],
     rotate: RotateFn,
     forced_first_point: LatLon | None = None,
 ) -> LatLon | None:
@@ -225,8 +226,8 @@ def anonymize_gpx_single_track(
     target_vector = _lat_lon_to_vector(0.0, 0.0)
     rotate = _build_rotation(source_vector, target_vector)
 
-    ET.register_namespace("", GPX_NAMESPACE)
-    ET.register_namespace("xsi", XSI_NAMESPACE)
+    _stdlib_ET.register_namespace("", GPX_NAMESPACE)
+    _stdlib_ET.register_namespace("xsi", XSI_NAMESPACE)
 
     written_paths: list[Path] = []
     previous_last: LatLon | None = None
@@ -342,7 +343,7 @@ def main() -> int:
             anonymize_gpx_single_track(input_files, output_dir)
         else:
             _process_output_files(input_files, output_dir)
-    except (ET.ParseError, OSError, ValueError) as exc:
+    except (_stdlib_ET.ParseError, OSError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 

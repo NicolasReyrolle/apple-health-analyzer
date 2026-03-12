@@ -94,13 +94,19 @@ def _compile_po_catalog(po_path: Path) -> bool:
 def compile_message_catalogs() -> int:
     """Compile all gettext ``.po`` catalogs under ``locales`` into ``.mo`` files.
 
-    Returns the number of catalogs that were (re)compiled.
+    Returns the number of catalogs that were (re)compiled.  Permission errors
+    (e.g. read-only installed environments) are logged at DEBUG level so that
+    startup is not noisy in production deployments.
     """
     compiled_count = 0
     for po_path in _LOCALE_DIR.glob("*/LC_MESSAGES/*.po"):
         try:
             if _compile_po_catalog(po_path):
                 compiled_count += 1
+        except PermissionError:
+            _logger.debug(
+                "Cannot write compiled catalog for '%s': directory is not writable.", po_path
+            )
         except Exception as exc:  # pylint: disable=broad-except
             _logger.warning("Failed to compile translation catalog '%s': %s", po_path, exc)
 

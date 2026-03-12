@@ -389,8 +389,8 @@ class ExportParser:
         ele_elem = elem.find("{http://www.topografix.com/GPX/1/1}ele")
         time_elem = elem.find("{http://www.topografix.com/GPX/1/1}time")
 
-        altitude = ele_elem.text or "0.0" if ele_elem is not None else "0.0"
-        time_str = time_elem.text or "" if time_elem is not None else ""
+        altitude = (ele_elem.text or "0.0") if ele_elem is not None else "0.0"
+        time_str = (time_elem.text or "") if time_elem is not None else ""
 
         ext_elem = elem.find("{http://www.topografix.com/GPX/1/1}extensions")
         speed_val = ExportParser._parse_gpx_speed(ext_elem)
