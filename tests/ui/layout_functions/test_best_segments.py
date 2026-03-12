@@ -452,3 +452,111 @@ def test_render_body_tab_change_to_best_segments_schedules_async_load() -> None:
         on_change(SimpleNamespace(value=SimpleNamespace(name="best_segments")))
 
     create_task_mock.assert_called_once()
+
+
+def _make_render_body_stubs() -> (
+    tuple[list[DummyTabs], list[dict[str, Any]], SimpleNamespace]
+):
+    """Return (tabs_created, tab_panels_calls, fake_app) factories for render_body() patching."""
+    tabs_created: list[DummyTabs] = []
+    tab_panels_calls: list[dict[str, Any]] = []
+    fake_app = SimpleNamespace(storage=SimpleNamespace(user={"input_file_path": ""}))
+    return tabs_created, tab_panels_calls, fake_app
+
+
+def _make_tabs_factory(tabs_created: list[DummyTabs]) -> Any:
+    """Return a ui.tabs side_effect that appends each created tab container to tabs_created."""
+
+    def factory(on_change: Any = None) -> DummyTabs:
+        tabs = DummyTabs(on_change=on_change)
+        tabs_created.append(tabs)
+        return tabs
+
+    return factory
+
+
+def _make_tab_panels_factory(tab_panels_calls: list[dict[str, Any]]) -> Any:
+    """Return a ui.tab_panels side_effect that records each call's kwargs."""
+
+    def factory(*args: Any, **kwargs: Any) -> DummyContext:
+        tab_panels_calls.append({"args": args, "kwargs": kwargs})
+        return DummyContext()
+
+    return factory
+
+
+def _dummy_tab_factory(name: str, _label: str) -> DummyTab:
+    """Simple ui.tab side_effect that returns a DummyTab."""
+    return DummyTab(name)
+
+
+def test_render_body_initializes_tabs_from_state() -> None:
+    """render_body() should restore the previously selected tab from state, not force 'summary'."""
+    tabs_created, tab_panels_calls, fake_app = _make_render_body_stubs()
+    tab_panels_factory = _make_tab_panels_factory(tab_panels_calls)
+
+    original_tab = state.selected_main_tab
+    try:
+        state.selected_main_tab = "activities"
+
+        with (
+            patch("ui.layout.ui.row", return_value=DummyContext()),
+            patch("ui.layout.ui.input", return_value=DummyComponent()),
+            patch("ui.layout.ui.button", return_value=DummyComponent()),
+            patch("ui.layout.ui.spinner", return_value=DummyComponent()),
+            patch("ui.layout.ui.label", return_value=DummyComponent()),
+            patch("ui.layout.app", fake_app),
+            patch("ui.layout.ui.tabs", side_effect=_make_tabs_factory(tabs_created)),
+            patch("ui.layout.ui.tab", side_effect=_dummy_tab_factory),
+            patch("ui.layout.ui.tab_panels", side_effect=tab_panels_factory),
+            patch("ui.layout.ui.tab_panel", return_value=DummyContext()),
+            patch("ui.layout.stat_card"),
+            patch("ui.layout.render_activity_graphs"),
+            patch("ui.layout.render_trends_tab"),
+            patch("ui.layout.render_health_data_tab"),
+            patch("ui.layout.render_best_segments_tab"),
+        ):
+            layout.render_body()
+
+        assert tabs_created
+        assert tabs_created[0].value == "activities"
+        assert tab_panels_calls
+        assert tab_panels_calls[0]["kwargs"].get("value") == "activities"
+    finally:
+        state.selected_main_tab = original_tab
+
+
+def test_render_body_defaults_tabs_to_summary_when_state_empty() -> None:
+    """render_body() should default to 'summary' tab when state has no stored tab."""
+    tabs_created, tab_panels_calls, fake_app = _make_render_body_stubs()
+    tab_panels_factory = _make_tab_panels_factory(tab_panels_calls)
+
+    original_tab = state.selected_main_tab
+    try:
+        state.selected_main_tab = ""
+
+        with (
+            patch("ui.layout.ui.row", return_value=DummyContext()),
+            patch("ui.layout.ui.input", return_value=DummyComponent()),
+            patch("ui.layout.ui.button", return_value=DummyComponent()),
+            patch("ui.layout.ui.spinner", return_value=DummyComponent()),
+            patch("ui.layout.ui.label", return_value=DummyComponent()),
+            patch("ui.layout.app", fake_app),
+            patch("ui.layout.ui.tabs", side_effect=_make_tabs_factory(tabs_created)),
+            patch("ui.layout.ui.tab", side_effect=_dummy_tab_factory),
+            patch("ui.layout.ui.tab_panels", side_effect=tab_panels_factory),
+            patch("ui.layout.ui.tab_panel", return_value=DummyContext()),
+            patch("ui.layout.stat_card"),
+            patch("ui.layout.render_activity_graphs"),
+            patch("ui.layout.render_trends_tab"),
+            patch("ui.layout.render_health_data_tab"),
+            patch("ui.layout.render_best_segments_tab"),
+        ):
+            layout.render_body()
+
+        assert tabs_created
+        assert tabs_created[0].value == "summary"
+        assert tab_panels_calls
+        assert tab_panels_calls[0]["kwargs"].get("value") == "summary"
+    finally:
+        state.selected_main_tab = original_tab
