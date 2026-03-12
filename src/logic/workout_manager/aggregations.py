@@ -480,11 +480,15 @@ class WorkoutManagerAggregationsMixin:
         end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> float:
         """Return the distance of the longest single workout for the given activity types."""
-        all_workouts = self._filter_workouts("All", start_date, end_date)
-        if all_workouts.empty or "distance" not in all_workouts.columns:
+        if (
+            self.workouts.empty
+            or "distance" not in self.workouts.columns
+            or "activityType" not in self.workouts.columns
+        ):
             return 0.0
 
-        if "activityType" not in all_workouts.columns:
+        all_workouts = self._filter_workouts("All", start_date, end_date)
+        if all_workouts.empty:
             return 0.0
 
         filtered = all_workouts[all_workouts["activityType"].isin(activity_types)]

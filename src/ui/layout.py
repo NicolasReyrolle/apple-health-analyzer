@@ -613,6 +613,7 @@ def render_body() -> None:
                 stat_card(t("Elevation"), state.metrics_display, "elevation", "km")
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Calories"), state.metrics_display, "calories", "kcal")
+            with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Longest Run"), state.metrics_display, "longest_run", "km")
                 stat_card(t("Longest Walk/Hike"), state.metrics_display, "longest_walk", "km")
                 stat_card(t("Longest Cycling"), state.metrics_display, "longest_cycling", "km")
