@@ -41,6 +41,19 @@ BUTTON_FLAT_ROUND_PROPS = "flat round"
 LABEL_UPPERCASE_CLASSES = "text-sm text-gray-500 uppercase"
 
 
+def schedule_best_segments_load(force: bool = False) -> None:
+    """Schedule best-segments loading and keep a reference to the task."""
+
+    def _clear_completed_task(task: asyncio.Task[None]) -> None:
+        if state.best_segments_task is task:
+            state.best_segments_task = None
+
+    task: Any = asyncio.create_task(load_best_segments_data(force=force))
+    state.best_segments_task = task if hasattr(task, "add_done_callback") else None
+    if state.best_segments_task is not None:
+        state.best_segments_task.add_done_callback(_clear_completed_task)
+
+
 def handle_json_export() -> None:
     """Handle exporting data to JSON format."""
     json_data = state.workouts.export_to_json(
@@ -103,7 +116,7 @@ def refresh_data() -> None:
 
     # If user is already on the tab, load asynchronously after invalidation.
     if state.selected_main_tab == "best_segments":
-        asyncio.create_task(load_best_segments_data())
+        schedule_best_segments_load()
 
 
 def _build_best_segments_rows() -> list[dict[str, Any]]:
@@ -559,7 +572,7 @@ def render_body() -> None:
         tab_name = str(getattr(value, "name", value)) if value is not None else ""
         state.selected_main_tab = tab_name
         if tab_name == "best_segments":
-            asyncio.create_task(load_best_segments_data())
+            schedule_best_segments_load()
 
     with ui.tabs(on_change=_on_tab_change).classes("w-full") as tabs:
         ui.tab("summary", t("Overview"))
