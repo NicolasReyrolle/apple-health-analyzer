@@ -116,6 +116,8 @@ def anonymize_gpx(file_path: str) -> None:
     """Rewrite a GPX file in place while preserving route geometry and distances."""
     tree = ET.parse(file_path)
     root = tree.getroot()
+    if root is None:
+        raise ValueError("Invalid XML structure in file")
     namespaces = {"gpx": GPX_NAMESPACE}
 
     first_pt = root.find(GPX_TRKPT_XPATH, namespaces)
@@ -212,6 +214,8 @@ def anonymize_gpx_single_track(
 
     first_tree = ET.parse(file_paths[0])
     first_root = first_tree.getroot()
+    if first_root is None:
+        raise ValueError(f"Invalid XML structure in file: {file_paths[0]}")
 
     first_pt = first_root.find(GPX_TRKPT_XPATH, namespaces)
     if first_pt is None:
@@ -234,8 +238,11 @@ def anonymize_gpx_single_track(
 
     for index, file_path in enumerate(file_paths):
         tree = ET.parse(file_path)
+        root = tree.getroot()
+        if root is None:
+            raise ValueError(f"Invalid XML structure in file: {file_path}")
         forced_first = previous_last if index > 0 else None
-        previous_last = _transform_tree_with_rotation(tree, rotate, forced_first)
+        previous_last = _transform_tree_with_rotation(tree, rotate, forced_first)  # type: ignore[arg-type]
 
         if output_dir is None:
             target_path = file_path
