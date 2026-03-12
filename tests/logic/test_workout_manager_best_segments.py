@@ -168,7 +168,7 @@ class TestGetBestSegments:
 
         assert len(result) == 1
         assert list(result["distance"]) == [1000]
-        assert list(result["duration_s"]) == [pytest.approx(260.0)]
+        assert abs(float(result.iloc[0]["duration_s"]) - 260.0) < 1e-6
 
     def test_last_unpaired_motion_paused_trims_vehicle_section(self, tmp_path: Path) -> None:
         """Active-end trimming removes vehicle GPS recorded after forgetting to stop the watch.
@@ -293,3 +293,127 @@ class TestGetBestSegments:
         assert 10000 in available_distances
         assert 15000 in available_distances
         assert 21097 in available_distances
+
+    def test_get_best_segments_ignores_single_point_route(self) -> None:
+        """A route with fewer than two points should yield no best segment."""
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                )
+            ]
+        )
+
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-01-01")],
+                    "route": [route],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(topn=1, distances=[100])
+
+        assert result.empty
+
+    def test_get_best_segments_handles_time_reversal_by_splitting_trace(self) -> None:
+        """Timestamp reversals should split traces and still allow valid segment computation."""
+        t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(time=t0, latitude=0.0, longitude=0.0, altitude=0.0),
+                RoutePoint(
+                    time=t0 + timedelta(seconds=5),
+                    latitude=0.0,
+                    longitude=0.001,
+                    altitude=0.0,
+                ),
+                RoutePoint(
+                    time=t0 - timedelta(seconds=1),
+                    latitude=0.0,
+                    longitude=0.002,
+                    altitude=0.0,
+                ),
+                RoutePoint(
+                    time=t0 + timedelta(seconds=1),
+                    latitude=0.0,
+                    longitude=0.003,
+                    altitude=0.0,
+                ),
+            ]
+        )
+
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-01-01")],
+                    "distance": [1000.0],
+                    "route": [route],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(topn=1, distances=[100])
+
+        assert len(result) == 1
+        assert int(result.iloc[0]["distance"]) == 100
+
+    def test_get_best_segments_uses_default_distances_when_not_provided(self) -> None:
+        """When distances is None, manager default segment distances should be used."""
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-01-01")],
+                    "distance": [5000.0],
+                    "route": [_two_point_route(300)],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(topn=1, distances=None)
+
+        assert not result.empty
+        assert int(result.iloc[0]["distance"]) == 100
+
+    def test_get_best_segments_skips_distance_above_run_distance(self) -> None:
+        """Requested segment distance above run distance should be skipped."""
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-01-01")],
+                    "distance": [500.0],
+                    "route": [_two_point_route(300)],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(topn=1, distances=[1000])
+
+        assert result.empty
+        assert list(result.columns) == ["startDate", "distance", "duration_s"]
+
+    def test_get_best_segments_handles_nan_distance_by_using_route_trace(self) -> None:
+        """NaN run distance should not block segment computation when route data exists."""
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-01-01")],
+                    "distance": [float("nan")],
+                    "route": [_two_point_route(300)],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(topn=1, distances=[1000])
+
+        assert len(result) == 1
+        assert int(result.iloc[0]["distance"]) == 1000
