@@ -37,6 +37,8 @@ _logger = logging.getLogger(__name__)
 
 # CSS class constants
 ROW_CENTERED_CLASSES = "w-full justify-center gap-4"
+BUTTON_FLAT_ROUND_PROPS = "flat round"
+LABEL_UPPERCASE_CLASSES = "text-sm text-gray-500 uppercase"
 
 
 def handle_json_export() -> None:
@@ -273,13 +275,13 @@ def render_header() -> None:
         # Toggle button with dynamic icon
         ui.button(icon="dark_mode", on_click=dark.enable).bind_visibility_from(
             dark, "value", backward=lambda v: not v
-        ).props("flat round")
+        ).props(BUTTON_FLAT_ROUND_PROPS)
         ui.button(icon="light_mode", on_click=dark.disable).bind_visibility_from(
             dark, "value"
-        ).props("flat round").classes("text-main")
+        ).props(BUTTON_FLAT_ROUND_PROPS).classes("text-main")
 
         # Language selector (globe icon)
-        with ui.button(icon="language").props("flat round"):
+        with ui.button(icon="language").props(BUTTON_FLAT_ROUND_PROPS):
             with ui.menu():
                 for code, name in LANGUAGES.items():
                     ui.menu_item(name, on_click=lambda _event, c=code: _change_language(c))
@@ -306,7 +308,7 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
     chart_data = [{"value": v, "name": k} for k, v in values.items()]
 
     with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
-        ui.label(label).classes("text-sm text-gray-500 uppercase")
+        ui.label(label).classes(LABEL_UPPERCASE_CLASSES)
         ui.echart(
             {
                 "tooltip": {"trigger": "item", "formatter": f"{{b}}: {{c}} {unit} ({{d}}%)"},
@@ -375,7 +377,7 @@ def render_generic_graph(
         )
 
     with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
-        ui.label(label).classes("text-sm text-gray-500 uppercase")
+        ui.label(label).classes(LABEL_UPPERCASE_CLASSES)
         ui.echart(
             {
                 "tooltip": {"trigger": "axis", "formatter": f"{{b}}: {{c}} {unit}"},
@@ -560,7 +562,7 @@ def render_body() -> None:
             asyncio.create_task(load_best_segments_data())
 
     with ui.tabs(on_change=_on_tab_change).classes("w-full") as tabs:
-        tab_summary = ui.tab("summary", t("Overview"))
+        ui.tab("summary", t("Overview"))
         ui.tab("activities", t("Activities")).bind_enabled_from(state, "file_loaded")
         ui.tab("trends", t("Trends")).bind_enabled_from(state, "file_loaded")
         ui.tab("health_data", t("Health Data")).bind_enabled_from(state, "file_loaded")
@@ -790,7 +792,7 @@ def render_best_segments_tab() -> None:
     show in a table format"""
     with ui.card().classes(ROW_CENTERED_CLASSES):
         ui.label(t("Best segments for standard running distances")).classes(
-            "text-sm text-gray-500 uppercase"
+            LABEL_UPPERCASE_CLASSES
         )
         columns = [
             {"name": "distance", "label": t("Distance"), "field": "distance"},

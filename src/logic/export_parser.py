@@ -284,6 +284,22 @@ class ExportParser:
         }
 
     @staticmethod
+    def _update_motion_timestamps(
+        event_type: str,
+        event_date: datetime,
+        last_paused: Optional[datetime],
+        last_resumed: Optional[datetime],
+    ) -> tuple[Optional[datetime], Optional[datetime]]:
+        """Update motion timestamps based on event type."""
+        if event_type == "HKWorkoutEventTypeMotionPaused":
+            if last_paused is None or event_date > last_paused:
+                last_paused = event_date
+        elif event_type == "HKWorkoutEventTypeMotionResumed":
+            if last_resumed is None or event_date > last_resumed:
+                last_resumed = event_date
+        return last_paused, last_resumed
+
+    @staticmethod
     def _compute_active_end(elem: Element) -> Optional[datetime]:
         """Return the last MotionPaused time if it is not followed by a MotionResumed.
 
@@ -300,12 +316,9 @@ class ExportParser:
             event_date = ExportParser._parse_health_datetime(child.get("date"))
             if event_date is None:
                 continue
-            if event_type == "HKWorkoutEventTypeMotionPaused":
-                if last_paused is None or event_date > last_paused:
-                    last_paused = event_date
-            elif event_type == "HKWorkoutEventTypeMotionResumed":
-                if last_resumed is None or event_date > last_resumed:
-                    last_resumed = event_date
+            last_paused, last_resumed = ExportParser._update_motion_timestamps(
+                event_type, event_date, last_paused, last_resumed
+            )
         if last_paused is None:
             return None
         if last_resumed is None or last_paused > last_resumed:
@@ -354,6 +367,49 @@ class ExportParser:
                     record[f"{stat_attr}{stat_type}"] = float(stat_attr_str)
                     record[f"{stat_attr}{stat_type}Unit"] = child.get("unit")
 
+    @staticmethod
+    def _parse_gpx_speed(ext_elem: Optional[Element]) -> float:
+        """Extract speed value from GPX extensions element."""
+        if ext_elem is None:
+            return 0.0
+        speed_elem = ext_elem.find("{http://www.topografix.com/GPX/1/1}speed")
+        if speed_elem is None or not speed_elem.text:
+            return 0.0
+        try:
+            return float(speed_elem.text)
+        except ValueError:
+            return 0.0
+
+    @staticmethod
+    def _extract_gpx_point_data(elem: Element) -> tuple[str, str, str, str, float]:
+        """Extract coordinate and metadata from a GPX trackpoint element."""
+        latitude = elem.get("lat") or "0.0"
+        longitude = elem.get("lon") or "0.0"
+
+        ele_elem = elem.find("{http://www.topografix.com/GPX/1/1}ele")
+        time_elem = elem.find("{http://www.topografix.com/GPX/1/1}time")
+
+        altitude = ele_elem.text or "0.0" if ele_elem is not None else "0.0"
+        time_str = time_elem.text or "" if time_elem is not None else ""
+
+        ext_elem = elem.find("{http://www.topografix.com/GPX/1/1}extensions")
+        speed_val = ExportParser._parse_gpx_speed(ext_elem)
+
+        return latitude, longitude, altitude, time_str, speed_val
+
+    @staticmethod
+    def _create_route_point(
+        latitude: str, longitude: str, altitude: str, time_str: str, speed_val: float
+    ) -> RoutePoint:
+        """Create a RoutePoint from extracted GPX data."""
+        return RoutePoint(
+            time=datetime.fromisoformat(time_str.replace("Z", "+00:00")),
+            latitude=float(latitude),
+            longitude=float(longitude),
+            altitude=float(altitude),
+            speed=speed_val,
+        )
+
     def _load_route(self, zipfile: ZipFile, route_path: str) -> Optional[WorkoutRoute]:
         """Load GPX route file from the export zip."""
         try:
@@ -361,38 +417,8 @@ class ExportParser:
                 route: WorkoutRoute = WorkoutRoute(points=[])
                 for event, elem in iterparse(route_file, events=("start", "end")):
                     if event == "end" and elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt":
-                        latitude: str = elem.get("lat") or "0.0"
-                        longitude: str = elem.get("lon") or "0.0"
-
-                        # Extract child elements (ele and time are not attributes)
-                        ele_elem = elem.find("{http://www.topografix.com/GPX/1/1}ele")
-                        time_elem = elem.find("{http://www.topografix.com/GPX/1/1}time")
-
-                        altitude: str = ele_elem.text or "0.0" if ele_elem is not None else "0.0"
-                        time_str: str = time_elem.text or "" if time_elem is not None else ""
-
-                        ext_elem = elem.find("{http://www.topografix.com/GPX/1/1}extensions")
-                        speed_elem = (
-                            ext_elem.find("{http://www.topografix.com/GPX/1/1}speed")
-                            if ext_elem is not None
-                            else None
-                        )
-                        speed_val: float = 0.0
-                        if speed_elem is not None and speed_elem.text:
-                            try:
-                                speed_val = float(speed_elem.text)
-                            except ValueError:
-                                pass
-
-                        route.add_point(
-                            RoutePoint(
-                                time=datetime.fromisoformat(time_str.replace("Z", "+00:00")),
-                                latitude=float(latitude),
-                                longitude=float(longitude),
-                                altitude=float(altitude),
-                                speed=speed_val,
-                            )
-                        )
+                        point_data = self._extract_gpx_point_data(elem)
+                        route.add_point(self._create_route_point(*point_data))
                         elem.clear()
                 return route
         except KeyError:

@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 
 GPX_NAMESPACE = "http://www.topografix.com/GPX/1/1"
 XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"
+GPX_TRKPT_XPATH = ".//gpx:trkpt"
+ZERO_THRESHOLD = 1e-12
 Vector3: TypeAlias = tuple[float, float, float]
 LatLon: TypeAlias = tuple[float, float]
 RotateFn: TypeAlias = Callable[[Vector3], Vector3]
@@ -54,7 +56,7 @@ def _norm(vector: Vector3) -> float:
 
 def _normalize(vector: Vector3) -> Vector3:
     vector_norm = _norm(vector)
-    if vector_norm == 0.0:
+    if vector_norm < ZERO_THRESHOLD:
         raise ValueError("Cannot normalize a zero vector")
     return (vector[0] / vector_norm, vector[1] / vector_norm, vector[2] / vector_norm)
 
@@ -94,28 +96,19 @@ def _build_rotation(
     cross_norm = _norm(cross_vec)
     dot_value = max(-1.0, min(1.0, _dot(source_unit, target_unit)))
 
-    if cross_norm < 1e-12:
+    if cross_norm < ZERO_THRESHOLD:
         if dot_value > 0.0:
-            def _identity(vector: Vector3) -> Vector3:
-                return vector
-
-            return _identity
+            return lambda vector: vector
 
         # 180-degree rotation: pick any axis orthogonal to source.
         fallback_axis = _cross(source_unit, (0.0, 0.0, 1.0))
-        if _norm(fallback_axis) < 1e-12:
+        if _norm(fallback_axis) < ZERO_THRESHOLD:
             fallback_axis = _cross(source_unit, (0.0, 1.0, 0.0))
-        def _half_turn(vector: Vector3) -> Vector3:
-            return _rotate_with_axis_angle(vector, fallback_axis, math.pi)
-
-        return _half_turn
+        return lambda vector: _rotate_with_axis_angle(vector, fallback_axis, math.pi)
 
     axis = (cross_vec[0] / cross_norm, cross_vec[1] / cross_norm, cross_vec[2] / cross_norm)
     angle = math.atan2(cross_norm, dot_value)
-    def _rotate(vector: Vector3) -> Vector3:
-        return _rotate_with_axis_angle(vector, axis, angle)
-
-    return _rotate
+    return lambda vector: _rotate_with_axis_angle(vector, axis, angle)
 
 
 def anonymize_gpx(file_path: str) -> None:
@@ -124,7 +117,7 @@ def anonymize_gpx(file_path: str) -> None:
     root = tree.getroot()
     namespaces = {"gpx": GPX_NAMESPACE}
 
-    first_pt = root.find(".//gpx:trkpt", namespaces)
+    first_pt = root.find(GPX_TRKPT_XPATH, namespaces)
     if first_pt is None:
         raise ValueError("No track point found in file")
 
@@ -135,14 +128,14 @@ def anonymize_gpx(file_path: str) -> None:
 
     first_lat = float(lat_value)
     first_lon = float(lon_value)
-    if abs(first_lat) < 1e-12 and abs(first_lon) < 1e-12:
+    if abs(first_lat) < ZERO_THRESHOLD and abs(first_lon) < ZERO_THRESHOLD:
         raise ValueError("File is already anonymized: first point is 0,0")
 
     source_vector = _lat_lon_to_vector(first_lat, first_lon)
     target_vector = _lat_lon_to_vector(0.0, 0.0)
     rotate = _build_rotation(source_vector, target_vector)
 
-    for trkpt in root.findall(".//gpx:trkpt", namespaces):
+    for trkpt in root.findall(GPX_TRKPT_XPATH, namespaces):
         point_lat = trkpt.get("lat")
         point_lon = trkpt.get("lon")
         if point_lat is None or point_lon is None:
@@ -177,7 +170,7 @@ def _transform_tree_with_rotation(
     transformed_last: LatLon | None = None
     first_written = False
 
-    for trkpt in root.findall(".//gpx:trkpt", namespaces):
+    for trkpt in root.findall(GPX_TRKPT_XPATH, namespaces):
         point_lat = trkpt.get("lat")
         point_lon = trkpt.get("lon")
         if point_lat is None or point_lon is None:
@@ -219,7 +212,7 @@ def anonymize_gpx_single_track(
     first_tree = ET.parse(file_paths[0])
     first_root = first_tree.getroot()
 
-    first_pt = first_root.find(".//gpx:trkpt", namespaces)
+    first_pt = first_root.find(GPX_TRKPT_XPATH, namespaces)
     if first_pt is None:
         raise ValueError(f"No track point found in file: {file_paths[0]}")
 
@@ -258,13 +251,25 @@ def anonymize_gpx_single_track(
 def _normalize_date_for_filename(date_value: str) -> str:
     """Convert accepted date formats to YYYY-MM-DD for route filenames."""
     value = date_value.strip()
+    separator: str | None = None
     if "/" in value:
-        day, month, year = value.split("/")
-        return f"{year.zfill(4)}-{month.zfill(2)}-{day.zfill(2)}"
-    if "-" in value:
-        year, month, day = value.split("-")
-        return f"{year.zfill(4)}-{month.zfill(2)}-{day.zfill(2)}"
-    raise ValueError("Unsupported date format. Use DD/MM/YYYY or YYYY-MM-DD")
+        separator = "/"
+    elif "-" in value:
+        separator = "-"
+
+    if separator is None:
+        raise ValueError("Unsupported date format. Use DD/MM/YYYY or YYYY-MM-DD")
+
+    parts = value.split(separator)
+    if len(parts) != 3:
+        raise ValueError("Unsupported date format. Use DD/MM/YYYY or YYYY-MM-DD")
+
+    if separator == "/":
+        day, month, year = parts
+    else:
+        year, month, day = parts
+
+    return f"{year.zfill(4)}-{month.zfill(2)}-{day.zfill(2)}"
 
 
 def _files_from_date(routes_dir: Path, date_value: str) -> list[Path]:
@@ -274,6 +279,23 @@ def _files_from_date(routes_dir: Path, date_value: str) -> list[Path]:
     if not matched:
         raise ValueError(f"No GPX files found for date {normalized} in {routes_dir}")
     return matched
+
+
+def _process_output_files(
+    input_files: list[Path],
+    output_dir: Path | None,
+) -> None:
+    """Process files for non-single-track mode."""
+    if output_dir is None:
+        for file_path in input_files:
+            anonymize_gpx(str(file_path))
+        return
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for file_path in input_files:
+        target = output_dir / file_path.name
+        target.write_bytes(file_path.read_bytes())
+        anonymize_gpx(str(target))
 
 
 def main() -> int:
@@ -319,20 +341,7 @@ def main() -> int:
         if args.single_track:
             anonymize_gpx_single_track(input_files, output_dir)
         else:
-            if output_dir is not None and len(input_files) > 1:
-                output_dir.mkdir(parents=True, exist_ok=True)
-                for file_path in input_files:
-                    target = output_dir / file_path.name
-                    target.write_bytes(file_path.read_bytes())
-                    anonymize_gpx(str(target))
-            elif output_dir is not None and len(input_files) == 1:
-                output_dir.mkdir(parents=True, exist_ok=True)
-                target = output_dir / input_files[0].name
-                target.write_bytes(input_files[0].read_bytes())
-                anonymize_gpx(str(target))
-            else:
-                for file_path in input_files:
-                    anonymize_gpx(str(file_path))
+            _process_output_files(input_files, output_dir)
     except (ET.ParseError, OSError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1

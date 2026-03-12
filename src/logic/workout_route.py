@@ -144,6 +144,25 @@ class WorkoutRoute:
 
         return 1.0
 
+    def _find_segment_end_index(
+        self,
+        start_idx: int,
+        end_idx: int,
+        segment_length_m: float,
+        cumulative_distances: list[float],
+        distance_scale_factor: float,
+    ) -> int:
+        """Find the end index for a segment of the given length."""
+        current_end = max(end_idx, start_idx + 1)
+        while current_end < len(self.points):
+            route_distance = (
+                cumulative_distances[current_end] - cumulative_distances[start_idx]
+            ) * distance_scale_factor
+            if route_distance >= segment_length_m:
+                break
+            current_end += 1
+        return current_end
+
     def find_fastest_segment(
         self, segment_length_m: float, distance_scale_factor: float = 1.0
     ) -> float | None:
@@ -163,10 +182,7 @@ class WorkoutRoute:
             The duration in seconds of the fastest qualifying segment,
             or None if no valid segment exists.
         """
-        if self.is_empty or segment_length_m <= 0:
-            return None
-
-        if len(self.points) < 2:
+        if self.is_empty or segment_length_m <= 0 or len(self.points) < 2:
             return None
 
         cumulative_distances = self._cumulative_distances()
@@ -174,16 +190,9 @@ class WorkoutRoute:
         end_idx = 1
 
         for start_idx in range(len(self.points) - 1):
-            if end_idx <= start_idx:
-                end_idx = start_idx + 1
-
-            while end_idx < len(self.points):
-                route_distance = (
-                    cumulative_distances[end_idx] - cumulative_distances[start_idx]
-                ) * distance_scale_factor
-                if route_distance >= segment_length_m:
-                    break
-                end_idx += 1
+            end_idx = self._find_segment_end_index(
+                start_idx, end_idx, segment_length_m, cumulative_distances, distance_scale_factor
+            )
 
             if end_idx == len(self.points):
                 break
