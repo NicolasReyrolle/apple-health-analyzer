@@ -804,9 +804,7 @@ def render_best_segments_tab() -> None:
     """Render the best segment for a list of standard running distances
     show in a table format"""
     with ui.card().classes(ROW_CENTERED_CLASSES):
-        ui.label(t("Best segments for standard running distances")).classes(
-            LABEL_UPPERCASE_CLASSES
-        )
+        ui.label(t("Best segments for standard running distances")).classes(LABEL_UPPERCASE_CLASSES)
         columns = [
             {"name": "distance", "label": t("Distance"), "field": "distance"},
             {"name": "duration", "label": t("Duration"), "field": "duration"},
