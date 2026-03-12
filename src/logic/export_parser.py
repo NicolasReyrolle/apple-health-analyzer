@@ -283,17 +283,47 @@ class ExportParser:
             "source": elem.get("sourceName"),
         }
 
+    @staticmethod
+    def _compute_active_end(elem: Element) -> Optional[datetime]:
+        """Return the last MotionPaused time if it is not followed by a MotionResumed.
+
+        When the user forgets to stop the watch before getting into a vehicle, the GPS
+        keeps recording at vehicle speed after the final pause.  Trimming route points
+        beyond this timestamp prevents impossible best-segment values.
+        """
+        last_paused: Optional[datetime] = None
+        last_resumed: Optional[datetime] = None
+        for child in elem:
+            if child.tag != "WorkoutEvent":
+                continue
+            event_type = child.get("type", "")
+            event_date = ExportParser._parse_health_datetime(child.get("date"))
+            if event_date is None:
+                continue
+            if event_type == "HKWorkoutEventTypeMotionPaused":
+                if last_paused is None or event_date > last_paused:
+                    last_paused = event_date
+            elif event_type == "HKWorkoutEventTypeMotionResumed":
+                if last_resumed is None or event_date > last_resumed:
+                    last_resumed = event_date
+        if last_paused is None:
+            return None
+        if last_resumed is None or last_paused > last_resumed:
+            return last_paused
+        return None
+
     def _process_workout_children(
         self, elem: Element, record: WorkoutRecord, zipfile: ZipFile
     ) -> None:
         """Process child elements of workout (statistics and metadata)."""
+        active_end = self._compute_active_end(elem)
         for child in elem:
             if child.tag == "WorkoutStatistics":
                 self._process_workout_statistics(child, record)
             elif child.tag == "MetadataEntry":
                 self._process_metadata_entry(child, record)
             elif child.tag == "WorkoutRoute":
-                self._process_workout_route(child, record, zipfile)
+                self._process_workout_route(child, record, zipfile, active_end=active_end)
 
     @staticmethod
     def str_distance_to_meters(value: str, unit: Optional[str]) -> int:
@@ -341,12 +371,26 @@ class ExportParser:
                         altitude: str = ele_elem.text or "0.0" if ele_elem is not None else "0.0"
                         time_str: str = time_elem.text or "" if time_elem is not None else ""
 
+                        ext_elem = elem.find("{http://www.topografix.com/GPX/1/1}extensions")
+                        speed_elem = (
+                            ext_elem.find("{http://www.topografix.com/GPX/1/1}speed")
+                            if ext_elem is not None
+                            else None
+                        )
+                        speed_val: float = 0.0
+                        if speed_elem is not None and speed_elem.text:
+                            try:
+                                speed_val = float(speed_elem.text)
+                            except ValueError:
+                                pass
+
                         route.add_point(
                             RoutePoint(
                                 time=datetime.fromisoformat(time_str.replace("Z", "+00:00")),
                                 latitude=float(latitude),
                                 longitude=float(longitude),
                                 altitude=float(altitude),
+                                speed=speed_val,
                             )
                         )
                         elem.clear()
@@ -414,13 +458,21 @@ class ExportParser:
         return WorkoutRoute(points=merged_points) if merged_points else None
 
     def _process_workout_route(
-        self, elem: Element, record: WorkoutRecord, zipfile: ZipFile
+        self,
+        elem: Element,
+        record: WorkoutRecord,
+        zipfile: ZipFile,
+        active_end: Optional[datetime] = None,
     ) -> None:
         """Process one WorkoutRoute XML block as an independent time window.
 
         Behavior is intentionally window-based to prevent unrealistic best-segment
         calculations when adjacent windows reuse GPX files or when a window has no
         matching GPX points.
+
+        ``active_end`` clips the window end to the last unpaired MotionPaused event,
+        which prevents vehicle-speed GPS points recorded after forgetting to stop the
+        watch from influencing best-segment calculations.
         """
         route_path: Optional[str] = None
         for child in elem:
@@ -436,6 +488,8 @@ class ExportParser:
 
         window_start = self._parse_health_datetime(elem.get("startDate"))
         window_end = self._parse_health_datetime(elem.get("endDate"))
+        if active_end is not None and window_end is not None:
+            window_end = min(window_end, active_end)
         route_part = self._clip_route_to_window(route_source, window_start, window_end)
 
         if not route_part.points:

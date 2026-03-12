@@ -983,8 +983,19 @@ class WorkoutManager:
             if not route_traces:
                 continue  # skips None / wrong types safely
 
+            # Use the HealthKit-reported workout distance (in meters) as an upper bound so
+            # that segment distances longer than the workout itself are never searched.
+            raw_run_distance: Any = getattr(run, "distance", None)
+            run_distance_m: Optional[float] = (
+                float(raw_run_distance)
+                if raw_run_distance is not None and not pd.isna(raw_run_distance)
+                else None
+            )
+
             # Iterate over each distance
             for distance in distances:
+                if run_distance_m is not None and float(distance) > run_distance_m:
+                    continue
                 distance_f = float(distance)
                 fastest_for_run = min(
                     (

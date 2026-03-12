@@ -1,0 +1,71 @@
+<Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="80.54295533299447" durationUnit="min" sourceName="Apple Watch " sourceVersion="8.3" device="&lt;&lt;HKDevice: 0x8c3c4c660&gt;, name:Apple Watch, manufacturer:Apple Inc., model:Watch, hardware:Watch3,4, software:8.3, creation date:2021-12-14 08:27:33 +0000&gt;" creationDate="2021-12-26 16:51:03 +0100" startDate="2021-12-26 15:29:59 +0100" endDate="2021-12-26 16:50:32 +0100">
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKAverageMETs" value="7.84293 kcal/hr·kg"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Luxembourg"/>
+  <MetadataEntry key="HKElevationAscended" value="23590 cm"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 15:29:59 +0100" duration="12.16952180067698" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 15:29:59 +0100" duration="18.60773582657178" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:30:00 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 15:30:04 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:30:18 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 15:30:39 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:30:43 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 15:30:55 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:31:03 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 15:41:49 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:42:09 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 15:42:10 +0100" duration="9.011028683185577" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 15:43:07 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:43:14 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 15:47:09 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:47:36 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 15:47:41 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:47:56 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 15:48:36 +0100" duration="11.54053388237953" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 15:51:10 +0100" duration="7.46545959909757" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 15:56:13 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 15:56:20 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 15:58:38 +0100" duration="10.92002561291059" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:00:08 +0100" duration="17.95853040615718" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:07:52 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:07:59 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:09:33 +0100" duration="9.684912858406703" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:11:51 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:11:53 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:15:52 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:16:02 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:18:06 +0100" duration="11.22079545855522" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:19:14 +0100" duration="7.190197151899338" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:26:26 +0100" duration="8.473682741324106" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:29:19 +0100" duration="13.74580611983935" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:29:38 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:29:41 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:30:02 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:30:15 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:34:54 +0100" duration="7.884226137399674" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:42:47 +0100" duration="7.713136063019435" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2021-12-26 16:43:04 +0100" duration="7.438788954416911" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:43:56 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:44:07 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:45:16 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:45:25 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:45:32 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:45:45 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:45:52 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionResumed" date="2021-12-26 16:46:10 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypeMotionPaused" date="2021-12-26 16:46:13 +0100"/>
+  <WorkoutEvent type="HKWorkoutEventTypePause" date="2021-12-26 16:50:32 +0100"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2021-12-26 15:29:59 +0100" endDate="2021-12-26 16:50:32 +0100" sum="694.34" unit="kcal"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceWalkingRunning" startDate="2021-12-26 15:29:59 +0100" endDate="2021-12-26 16:50:32 +0100" sum="8.82238" unit="km"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierBasalEnergyBurned" startDate="2021-12-26 15:29:59 +0100" endDate="2021-12-26 16:50:32 +0100" sum="137.782" unit="kcal"/>
+  <WorkoutRoute sourceName="Apple Watch " sourceVersion="8.3" creationDate="2021-12-26 16:51:31 +0100" startDate="2021-12-26 15:30:02 +0100" endDate="2021-12-26 16:50:31 +0100">
+   <MetadataEntry key="HKMetadataKeySyncVersion" value="2"/>
+   <MetadataEntry key="HKMetadataKeySyncIdentifier" value="086CF750-8DEB-4951-BA15-0AD077814E5A"/>
+   <FileReference path="/workout-routes/route_2021-12-26_4.50pm.gpx"/>
+  </WorkoutRoute>
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKAverageMETs" value="7.84293 kcal/hr·kg"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Luxembourg"/>
+  <MetadataEntry key="HKElevationAscended" value="23590 cm"/>
+ </Workout>
+ 

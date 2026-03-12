@@ -17,6 +17,7 @@ class RoutePoint:
     latitude: float
     longitude: float
     altitude: float = 0.0
+    speed: float = 0.0  # GPS-measured speed in m/s; 0.0 means unknown/unavailable
 
 
 @dataclass
@@ -97,12 +98,17 @@ class WorkoutRoute:
 
         distances = [0.0]
         for previous, current in zip(self.points, self.points[1:]):
-            segment_distance = self._haversine_m(
-                previous.latitude,
-                previous.longitude,
-                current.latitude,
-                current.longitude,
-            )
+            avg_speed = (previous.speed + current.speed) / 2.0
+            if avg_speed > 0.0:
+                delta_t = max(0.0, (current.time - previous.time).total_seconds())
+                segment_distance = avg_speed * delta_t
+            else:
+                segment_distance = self._haversine_m(
+                    previous.latitude,
+                    previous.longitude,
+                    current.latitude,
+                    current.longitude,
+                )
             distances.append(distances[-1] + segment_distance)
 
         self._cumulative_distance_cache = distances
