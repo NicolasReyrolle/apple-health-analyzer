@@ -1,6 +1,6 @@
 """Unit tests for workout route domain models and calculations."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
@@ -139,6 +139,41 @@ class TestWorkoutRoute:
 
         assert result is not None
         assert result == pytest.approx(375.0)  # type: ignore[misc]
+
+    def test_find_fastest_segment_applies_realistic_distance_scaling(self) -> None:
+        """A modest route/workout distance mismatch should be normalized."""
+        start_time = datetime.fromisoformat("2024-01-01T10:00:00+00:00")
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=start_time,
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=1.0,
+                ),
+                RoutePoint(
+                    time=start_time + timedelta(seconds=95),
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=1.0,
+                ),
+            ]
+        )
+
+        scale_factor = WorkoutRoute.calculate_distance_scale_factor(95.0, 100.0)
+
+        result = route.find_fastest_segment(100.0, distance_scale_factor=scale_factor)
+
+        assert scale_factor > 1.0
+        assert result == pytest.approx(95.0)  # type: ignore[misc]
+
+    def test_calculate_distance_scale_factor_rejects_unrealistic_mismatch(self) -> None:
+        """Large route/workout distance mismatches should not be normalized."""
+        scale_factor = WorkoutRoute.calculate_distance_scale_factor(1000.0, 1300.0)
+
+        assert scale_factor == pytest.approx(1.0)  # type: ignore[misc]
 
     def test_find_fastest_segment_from_real_gpx_fixture_not_found(self) -> None:
         """find_fastest_segment should return None if no segment meets the required length."""

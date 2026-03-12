@@ -117,7 +117,7 @@ class TestGetBestSegments:
 
         assert len(result) == 1
         assert int(result.iloc[0]["distance"]) == 1000
-        expected_duration = pytest.approx(374.0, rel=1e-3)  # type: ignore[misc]
+        expected_duration = pytest.approx(377.0, rel=1e-3)  # type: ignore[misc]
         assert float(result.iloc[0]["duration_s"]) == expected_duration
 
     def test_considers_each_route_part_separately(self) -> None:
@@ -292,4 +292,4 @@ class TestGetBestSegments:
         assert 5000 in available_distances
         assert 10000 in available_distances
         assert 15000 in available_distances
-        assert max(available_distances) >= 15000
+        assert 21097 in available_distances

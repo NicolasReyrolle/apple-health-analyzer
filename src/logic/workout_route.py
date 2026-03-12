@@ -24,6 +24,14 @@ class RoutePoint:
 class WorkoutRoute:
     """Represents a workout route as a sequence of GPS points."""
 
+    # Maximum allowed relative deviation between route-derived distance and workout
+    # summary distance for normalization to be considered realistic.
+    #
+    # Example with default 0.10 (10%):
+    # - route=20.8km vs workout=21.1km -> scaling applied
+    # - route=15.0km vs workout=21.1km -> scaling rejected
+    MAX_REALISTIC_DISTANCE_SCALE_DEVIATION = 0.10
+
     points: list[RoutePoint]
     _cumulative_distance_cache: list[float] | None = field(default=None, init=False, repr=False)
 
@@ -42,10 +50,8 @@ class WorkoutRoute:
     @property
     def distance_meters(self) -> float:
         """Calculate the total distance of the workout route in meters."""
-        return sum(
-            self._haversine_m(a.latitude, a.longitude, b.latitude, b.longitude)
-            for a, b in zip(self.points, self.points[1:])
-        )
+        cumulative_distances = self._cumulative_distances()
+        return cumulative_distances[-1] if cumulative_distances else 0.0
 
     @property
     def elevation_gain_m(self) -> float:
@@ -114,12 +120,44 @@ class WorkoutRoute:
         self._cumulative_distance_cache = distances
         return self._cumulative_distance_cache
 
-    def find_fastest_segment(self, segment_length_m: float) -> float | None:
+    @classmethod
+    def calculate_distance_scale_factor(
+        cls, route_distance_m: float, reference_distance_m: float | None
+    ) -> float:
+        """Return a route-distance normalization factor when the mismatch is realistic.
+
+        The reference distance comes from the workout summary. A modest adjustment helps
+        when GPX-derived distance slightly under/over-counts due to sampling, pauses, or
+        Apple Health export quirks. Large mismatches are treated as data quality issues and
+        therefore do not trigger scaling.
+
+        This factor is computed once per workout route and reused for all queried
+        segment distances (100m, 200m, 1km, 5km, half-marathon, etc.).
+        """
+        if reference_distance_m is None or route_distance_m <= 0 or reference_distance_m <= 0:
+            return 1.0
+
+        scale_factor = reference_distance_m / route_distance_m
+        deviation = abs(scale_factor - 1.0)
+        if deviation <= cls.MAX_REALISTIC_DISTANCE_SCALE_DEVIATION:
+            return scale_factor
+
+        return 1.0
+
+    def find_fastest_segment(
+        self, segment_length_m: float, distance_scale_factor: float = 1.0
+    ) -> float | None:
         """Find the fastest segment of the given length in meters.
 
         Uses traveled route distance rather than straight-line displacement.
         This matches how running segments are typically defined and allows a
         sliding-window search with linear complexity.
+
+        Args:
+            segment_length_m: Requested segment length in meters.
+            distance_scale_factor: Multiplicative correction applied to route-distance
+                progression when route and workout summary distances differ by a
+                realistic margin. Set to ``1.0`` to disable scaling.
 
         Returns:
             The duration in seconds of the fastest qualifying segment,
@@ -140,7 +178,9 @@ class WorkoutRoute:
                 end_idx = start_idx + 1
 
             while end_idx < len(self.points):
-                route_distance = cumulative_distances[end_idx] - cumulative_distances[start_idx]
+                route_distance = (
+                    cumulative_distances[end_idx] - cumulative_distances[start_idx]
+                ) * distance_scale_factor
                 if route_distance >= segment_length_m:
                     break
                 end_idx += 1

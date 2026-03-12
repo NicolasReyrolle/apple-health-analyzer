@@ -992,6 +992,15 @@ class WorkoutManager:
                 if raw_run_distance is not None and not pd.isna(raw_run_distance)
                 else None
             )
+            total_trace_distance_m = sum(
+                route_trace.distance_meters for route_trace in route_traces
+            )
+            # Compute one normalization factor per workout, then apply it consistently
+            # to every requested segment distance in this run.
+            distance_scale_factor = WorkoutRoute.calculate_distance_scale_factor(
+                total_trace_distance_m,
+                run_distance_m,
+            )
 
             # Iterate over each distance
             for distance in distances:
@@ -1002,7 +1011,12 @@ class WorkoutManager:
                     (
                         duration_s
                         for route_trace in route_traces
-                        for duration_s in [route_trace.find_fastest_segment(distance_f)]
+                        for duration_s in [
+                            route_trace.find_fastest_segment(
+                                distance_f,
+                                distance_scale_factor=distance_scale_factor,
+                            )
+                        ]
                         if duration_s is not None
                     ),
                     default=None,
