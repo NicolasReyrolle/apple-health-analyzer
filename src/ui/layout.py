@@ -567,9 +567,9 @@ def render_body() -> None:
         ui.tab("best_segments", t("Best Segments")).bind_enabled_from(state, "file_loaded")
 
     # Ensure Overview is selected by default when rendering the page.
-    tabs.value = tab_summary
+    tabs.value = "summary"
 
-    with ui.tab_panels(tabs, value=tab_summary).classes("w-full"):
+    with ui.tab_panels(tabs, value="summary").classes("w-full"):
         with ui.tab_panel("summary"):
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Count"), state.metrics_display, "count")
