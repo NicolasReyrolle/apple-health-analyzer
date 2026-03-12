@@ -383,8 +383,12 @@ class ExportParser:
     @staticmethod
     def _extract_gpx_point_data(elem: Element) -> tuple[str, str, str, str, float]:
         """Extract coordinate and metadata from a GPX trackpoint element."""
-        latitude = elem.get("lat") or "0.0"
-        longitude = elem.get("lon") or "0.0"
+        latitude = elem.get("lat") or ""
+        longitude = elem.get("lon") or ""
+        if not latitude or not longitude:
+            _logger.debug(
+                "Skipping GPX trackpoint with missing latitude/longitude: %s", elem.attrib
+            )
 
         ele_elem = elem.find("{http://www.topografix.com/GPX/1/1}ele")
         time_elem = elem.find("{http://www.topografix.com/GPX/1/1}time")
