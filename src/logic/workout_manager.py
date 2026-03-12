@@ -17,6 +17,7 @@ STANDARD_SEGMENT_DISTANCES: list[int] = [
     5000,
     10000,
     15000,
+    20000,
     21097,
     42195,
     50000,
@@ -946,7 +947,7 @@ class WorkoutManager:
             traces: list[WorkoutRoute] = []
             current_points = [route.points[0]]
             for point in route.points[1:]:
-                if point.time <= current_points[-1].time:
+                if point.time < current_points[-1].time:
                     if len(current_points) >= 2:
                         traces.append(WorkoutRoute(points=current_points))
                     current_points = [point]

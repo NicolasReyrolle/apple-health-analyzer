@@ -1,0 +1,114 @@
+ <Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="172.3566451172034" durationUnit="min" sourceName="Apple Watch " sourceVersion="26.1" device="&lt;&lt;HKDevice: 0x8c524c540&gt;, name:Apple Watch, manufacturer:Apple Inc., model:Watch, hardware:Watch7,2, software:26.1, creation date:2025-11-07 01:55:07 +0000&gt;" creationDate="2025-11-30 18:08:09 +0100" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100">
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Luxembourg"/>
+  <MetadataEntry key="HKWeatherHumidity" value="8600 %"/>
+  <MetadataEntry key="HKWeatherTemperature" value="44.0765 degF"/>
+  <MetadataEntry key="HKAverageMETs" value="8.18609 kcal/hr·kg"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:13:47 +0100" duration="8.53827886581421" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:13:47 +0100" duration="12.57608552773794" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:22:19 +0100" duration="6.604738473892212" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:26:22 +0100" duration="11.28615245223045" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:28:56 +0100" duration="7.297885700066884" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:36:14 +0100" duration="8.31623130440712" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:37:39 +0100" duration="13.30663196047147" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:44:33 +0100" duration="8.142434197664262" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:50:57 +0100" duration="15.19527730941772" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:52:41 +0100" duration="9.682818019390107" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:02:22 +0100" duration="8.334143392244975" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:06:09 +0100" duration="12.79340899387995" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:10:42 +0100" duration="7.957980970541636" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:18:40 +0100" duration="7.188015749057134" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:18:57 +0100" duration="11.8585911889871" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:25:51 +0100" duration="8.397762254873912" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:30:48 +0100" duration="12.43604103922844" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:34:15 +0100" duration="7.157044603427251" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:41:24 +0100" duration="11.19759314258893" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:43:14 +0100" duration="17.45179380575816" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:52:36 +0100" duration="8.9316337843736" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:00:41 +0100" duration="12.61652381618818" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:01:32 +0100" duration="7.720279866456986" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:09:15 +0100" duration="7.860686349868774" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:13:18 +0100" duration="12.07320352395376" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:17:07 +0100" duration="7.565194988250733" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:24:41 +0100" duration="8.014954952398936" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:25:23 +0100" duration="13.02775970697403" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:32:42 +0100" duration="7.737111498912175" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:38:24 +0100" duration="13.1373949944973" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:40:26 +0100" duration="8.056817299127578" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:48:29 +0100" duration="8.244744296868642" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:51:33 +0100" duration="12.81960270206134" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:56:44 +0100" duration="8.091503544648488" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 18:04:22 +0100" duration="1.554359704256058" durationUnit="min"/>
+  <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 18:04:49 +0100" duration="1.094973470767339" durationUnit="min"/>
+  <WorkoutActivity uuid="6F620223-1D9D-4EAE-AF5B-65E49112A4EE" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" duration="172.3566451172034" durationUnit="min">
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:13:47 +0100" duration="8.53827886581421" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:13:47 +0100" duration="12.57608552773794" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:22:19 +0100" duration="6.604738473892212" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:26:22 +0100" duration="11.28615245223045" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:28:56 +0100" duration="7.297885700066884" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:36:14 +0100" duration="8.31623130440712" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:37:39 +0100" duration="13.30663196047147" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:44:33 +0100" duration="8.142434197664262" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:50:57 +0100" duration="15.19527730941772" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 15:52:41 +0100" duration="9.682818019390107" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:02:22 +0100" duration="8.334143392244975" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:06:09 +0100" duration="12.79340899387995" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:10:42 +0100" duration="7.957980970541636" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:18:40 +0100" duration="7.188015749057134" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:18:57 +0100" duration="11.8585911889871" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:25:51 +0100" duration="8.397762254873912" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:30:48 +0100" duration="12.43604103922844" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:34:15 +0100" duration="7.157044603427251" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:41:24 +0100" duration="11.19759314258893" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:43:14 +0100" duration="17.45179380575816" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 16:52:36 +0100" duration="8.9316337843736" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:00:41 +0100" duration="12.61652381618818" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:01:32 +0100" duration="7.720279866456986" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:09:15 +0100" duration="7.860686349868774" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:13:18 +0100" duration="12.07320352395376" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:17:07 +0100" duration="7.565194988250733" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:24:41 +0100" duration="8.014954952398936" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:25:23 +0100" duration="13.02775970697403" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:32:42 +0100" duration="7.737111498912175" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:38:24 +0100" duration="13.1373949944973" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:40:26 +0100" duration="8.056817299127578" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:48:29 +0100" duration="8.244744296868642" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:51:33 +0100" duration="12.81960270206134" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 17:56:44 +0100" duration="8.091503544648488" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 18:04:22 +0100" duration="1.554359704256058" durationUnit="min"/>
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-11-30 18:04:49 +0100" duration="1.094973470767339" durationUnit="min"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierStepCount" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" sum="23903" unit="count"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierRunningGroundContactTime" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="329.634" minimum="234" maximum="365" unit="ms"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierRunningPower" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="192.517" minimum="64" maximum="431" unit="W"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" sum="1664.77" unit="kcal"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierBasalEnergyBurned" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" sum="311.465" unit="kcal"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierRunningVerticalOscillation" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="9.06917" minimum="8.3" maximum="10.9" unit="cm"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierRunningSpeed" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="7.69106" minimum="1.033" maximum="10.4619" unit="km/hr"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierRunningStrideLength" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="0.920451" minimum="0.78" maximum="1.13" unit="m"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceWalkingRunning" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" sum="21.1328" unit="km"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierHeartRate" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="123.607" minimum="77" maximum="147" unit="count/min"/>
+   <MetadataEntry key="WOIntervalStepKeyPath" value="0.0.0"/>
+   <MetadataEntry key="HKElevationAscended" value="42875 cm"/>
+  </WorkoutActivity>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierStepCount" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" sum="23903" unit="count"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierRunningGroundContactTime" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="329.634" minimum="234" maximum="365" unit="ms"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierRunningPower" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="192.517" minimum="64" maximum="431" unit="W"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" sum="1664.77" unit="kcal"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierBasalEnergyBurned" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" sum="311.465" unit="kcal"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierRunningVerticalOscillation" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="9.06917" minimum="8.3" maximum="10.9" unit="cm"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierRunningSpeed" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="7.69106" minimum="1.033" maximum="10.4619" unit="km/hr"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierRunningStrideLength" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="0.920451" minimum="0.78" maximum="1.13" unit="m"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceWalkingRunning" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" sum="21.1328" unit="km"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierHeartRate" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:09 +0100" average="123.642" minimum="77" maximum="147" unit="count/min"/>
+  <WorkoutRoute sourceName="Apple Watch " sourceVersion="26.1" creationDate="2025-11-30 18:08:15 +0100" startDate="2025-11-30 15:13:47 +0100" endDate="2025-11-30 18:06:08 +0100">
+   <MetadataEntry key="HKMetadataKeySyncVersion" value="2"/>
+   <MetadataEntry key="HKMetadataKeySyncIdentifier" value="EAA2D7B6-AEC7-40D6-A5CA-3D5585C72CF0"/>
+   <FileReference path="/workout-routes/route_2025-11-30_6.06pm.gpx"/>
+  </WorkoutRoute>
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKTimeZone" value="Europe/Luxembourg"/>
+  <MetadataEntry key="HKWeatherHumidity" value="8600 %"/>
+  <MetadataEntry key="HKWeatherTemperature" value="44.0765 degF"/>
+  <MetadataEntry key="HKAverageMETs" value="8.18609 kcal/hr·kg"/>
+ </Workout>
+ 

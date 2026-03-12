@@ -258,3 +258,38 @@ class TestGetBestSegments:
         assert len(result) == 1
         duration_s = float(result.iloc[0]["duration_s"])
         assert duration_s > 1.0
+
+    def test_real_fixture_long_distance_includes_half_marathon_segments(
+        self, tmp_path: Path
+    ) -> None:
+        """Long-distance fixture should produce best segments beyond 5 km."""
+        workout_xml = load_export_fragment("workout_running_long_distance.xml")
+        route_file = (
+            Path(__file__).resolve().parents[1]
+            / "fixtures"
+            / "exports"
+            / "workout-routes"
+            / "route_2025-11-30_6.06pm.gpx"
+        )
+
+        zip_path = tmp_path / "running_long_distance.zip"
+        with ZipFile(zip_path, "w") as zf:
+            zf.writestr("apple_health_export/export.xml", build_health_export_xml([workout_xml]))
+            zf.writestr(
+                "apple_health_export/workout-routes/route_2025-11-30_6.06pm.gpx",
+                route_file.read_bytes(),
+            )
+
+        parser = ExportParser()
+        with parser:
+            parsed = parser.parse(str(zip_path))
+
+        manager = WorkoutManager(parsed.workouts)
+        distances = [100, 200, 400, 800, 1000, 5000, 10000, 15000, 21097]
+        result = manager.get_best_segments(topn=1, distances=distances)
+
+        available_distances = set(result["distance"].astype(int).tolist())
+        assert 5000 in available_distances
+        assert 10000 in available_distances
+        assert 15000 in available_distances
+        assert max(available_distances) >= 15000
