@@ -16,11 +16,12 @@ If you are contributing or maintaining the project, see [MAINTAINERS.md](MAINTAI
 - **Visual Statistics**: Real-time summary of total activities, distance, duration, elevation, and calories with interactive charts (pie/rose charts for activity breakdown, bar charts with trend lines for time-based analysis).
 - **Health Data Insights**: Dedicated Health Data tab with period-based trends for resting heart rate, body mass, and VO2 max.
 - **Best Segments Tab**: Computes and displays best running segments from 100m to 100km with expandable runner-up rows, formatted durations, and localized labels.
+- **Robust Segment Distance Model**: Segment search uses GPX speed integration with safeguards for export edge cases (window clipping, final unpaired pause trimming, strict reversal-only trace splits, and realistic workout-level distance normalization).
 - **Activity Filtering**: Filter your workout data by activity type (Running, Cycling, Walking, etc.).
 - **Date Range Filtering**: Analyze specific time periods using the date range picker to focus on your desired date ranges.
 - **Trends Period Aggregation**: Switch the Trends tab aggregation between week, month, quarter, or year.
 - **Gap-Aware Time Series**: Missing periods are preserved in health-data charts, so the x-axis remains continuous and missing measurements are explicit (not coerced to zero).
-- **Route Parts Merging**: Workouts with multiple GPX route files are merged into a single continuous route for analysis.
+- **Route Parts Handling**: Workouts with multiple GPX route files are preserved as independent route parts for segment analysis and also exposed as a merged compatibility route.
 - **Multilingual UI (EN/FR)**: gettext-based translations for labels, tabs, date picker locale labels, notifications, and loading/progress status messages.
 - **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
 - All processing happens locally on your machine.
@@ -97,6 +98,17 @@ To analyze your data, you first need to export it from your iPhone:
 Maintainer and contributor documentation has moved to [MAINTAINERS.md](MAINTAINERS.md).
 
 If you are here to use the app, you can skip directly to the sections above.
+
+### Best Segments algorithm (summary)
+
+Best segments are computed with a route-aware sliding-window search on running workouts:
+
+- GPX points are first clipped to each `WorkoutRoute` XML time window.
+- If a workout ends with `MotionPaused` and no later `MotionResumed`, points after that pause are excluded.
+- Route traces split only on strict timestamp reversal (`t[n+1] < t[n]`), so duplicated timestamps do not fragment long routes.
+- Traveled distance progression uses GPX speed integration (`speed × Δt`, trapezoidal between points), with haversine fallback when speed is unavailable.
+- A single workout-level distance normalization factor can be applied when route distance and workout summary distance differ only by a realistic margin; the same factor is reused for all queried segment distances.
+- Segment distances longer than the workout's reported distance are skipped.
 
 ## 🔒 Security
 

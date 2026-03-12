@@ -90,6 +90,26 @@ class TestBestSegmentLabelFormatters:
             == "fr:Marathon"
         )
 
+    def test_format_distance_label_special_distances_normalize_locale_code(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Locale-like language codes (e.g. fr_FR) should map to gettext base code."""
+
+        def _translate(message: str, language: str, **_kwargs: str) -> str:
+            return f"{language}:{message}"
+
+        monkeypatch.setattr(helpers, "translate", _translate)
+
+        assert (
+            helpers.format_distance_label(
+                21097,
+                language_code="fr_FR",
+                half_marathon_distance_m=21097,
+                marathon_distance_m=42195,
+            )
+            == "fr:Half-marathon"
+        )
+
     def test_format_distance_label_standard_units(self) -> None:
         """Distances below and above 1km should use meter/km formatting."""
         assert (
@@ -122,3 +142,8 @@ class TestBestSegmentLabelFormatters:
         value = datetime(2025, 9, 16)
         assert helpers.format_date_label(value, language_code="fr") == "16/09/2025"
         assert helpers.format_date_label(value, language_code="en") == "09/16/2025"
+
+    def test_format_date_label_normalizes_locale_code(self) -> None:
+        """Locale-like language codes should still use French date formatting."""
+        value = datetime(2025, 9, 16)
+        assert helpers.format_date_label(value, language_code="fr_FR") == "16/09/2025"
