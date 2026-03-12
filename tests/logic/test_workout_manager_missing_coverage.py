@@ -151,7 +151,7 @@ class TestAggregateByPeriodInternalBranches:
             )
         )
 
-        result = workouts._aggregate_by_period(  # pylint: disable=protected-access
+        result = workouts._aggregate_by_period(  # type: ignore[attr-defined]
             column="duration",
             period="M",
             aggregation=lambda grouped: grouped.sum(),
@@ -174,7 +174,7 @@ class TestAggregateByPeriodInternalBranches:
             )
         )
 
-        result = workouts._aggregate_by_period(  # pylint: disable=protected-access
+        result = workouts._aggregate_by_period(  # type: ignore[attr-defined]
             column="duration",
             period="M",
             aggregation=lambda _grouped: pd.Series(dtype=float),
@@ -197,19 +197,18 @@ class TestAggregateByPeriodInternalBranches:
             )
         )
 
-        monkeypatch.setattr(
-            workouts,
-            "_filter_workouts",
-            lambda *_args, **_kwargs: pd.DataFrame(
+        def _empty_filter(*_args: object, **_kwargs: object) -> pd.DataFrame:
+            return pd.DataFrame(
                 {
                     "activityType": pd.Series(dtype="object"),
                     "startDate": pd.Series(dtype="datetime64[ns]"),
                     "duration": pd.Series(dtype="int64"),
                 }
-            ),
-        )
+            )
 
-        result = workouts._aggregate_by_period(  # pylint: disable=protected-access
+        monkeypatch.setattr(workouts, "_filter_workouts", _empty_filter)
+
+        result = workouts._aggregate_by_period(  # type: ignore[attr-defined]
             column="duration",
             period="M",
             aggregation=lambda grouped: grouped.sum(),

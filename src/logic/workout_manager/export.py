@@ -32,6 +32,7 @@ class WorkoutManagerExportMixin:
         start_date: Optional[Union[datetime, pd.Timestamp]] = None,
         end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> int:
+        """Return the total distance in the specified unit."""
         raise NotImplementedError
 
     def get_statistics(self) -> str:
