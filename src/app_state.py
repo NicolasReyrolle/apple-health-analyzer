@@ -30,6 +30,9 @@ class AppState:
             "duration": 0,
             "elevation": 0,
             "calories": 0,
+            "longest_run": 0.0,
+            "longest_walk": 0.0,
+            "longest_cycling": 0.0,
         }
         self.metrics_display = {
             "count": "0",
@@ -37,6 +40,9 @@ class AppState:
             "duration": "0",
             "elevation": "0",
             "calories": "0",
+            "longest_run": "0.0",
+            "longest_walk": "0.0",
+            "longest_cycling": "0.0",
         }
         self.best_segments_rows: list[dict[str, Any]] = []
         self.best_segments_loading: bool = False

@@ -85,6 +85,15 @@ msgstr "Dénivelé"
 msgid "Calories"
 msgstr "Calories"
 
+msgid "Longest Run"
+msgstr "Course la plus longue"
+
+msgid "Longest Walk/Hike"
+msgstr "Marche/Randonnée la plus longue"
+
+msgid "Longest Cycling"
+msgstr "Cyclisme le plus long"
+
 msgid "Date"
 msgstr "Date"
 

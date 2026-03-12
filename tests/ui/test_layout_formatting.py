@@ -55,6 +55,15 @@ class _DummyWorkouts(WorkoutManager):
     ) -> int:
         return 98765
 
+    def get_longest_workout(
+        self,
+        activity_types: list[str],
+        unit: str = "km",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> float:
+        return 0.0
+
 
 def test_refresh_data_formats_metrics_display() -> None:
     """refresh_data should populate formatted display values."""
@@ -97,6 +106,7 @@ def test_refresh_data_passes_date_range_to_workouts() -> None:
     workouts_mock.get_total_duration.return_value = 3
     workouts_mock.get_total_elevation.return_value = 4
     workouts_mock.get_total_calories.return_value = 5
+    workouts_mock.get_longest_workout.return_value = 0.0
 
     try:
         state.workouts = workouts_mock
@@ -140,6 +150,7 @@ def test_refresh_data_triggers_best_segments_load_when_tab_selected() -> None:
     workouts_mock.get_total_duration.return_value = 3
     workouts_mock.get_total_elevation.return_value = 4
     workouts_mock.get_total_calories.return_value = 5
+    workouts_mock.get_longest_workout.return_value = 0.0
 
     try:
         state.workouts = workouts_mock

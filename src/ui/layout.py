@@ -26,6 +26,7 @@ from ui.helpers import (
     format_date_label,
     format_distance_label,
     format_duration_label,
+    format_float,
     format_integer,
     period_code_to_label,
     qdate_locale_json,
@@ -98,12 +99,24 @@ def refresh_data() -> None:
     state.metrics["calories"] = state.workouts.get_total_calories(
         state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
     )
+    state.metrics["longest_run"] = state.workouts.get_longest_workout(
+        ["Running"], start_date=state.start_date, end_date=state.end_date
+    )
+    state.metrics["longest_walk"] = state.workouts.get_longest_workout(
+        ["Walking", "Hiking"], start_date=state.start_date, end_date=state.end_date
+    )
+    state.metrics["longest_cycling"] = state.workouts.get_longest_workout(
+        ["Cycling"], start_date=state.start_date, end_date=state.end_date
+    )
 
     state.metrics_display["count"] = format_integer(state.metrics["count"])
     state.metrics_display["distance"] = format_integer(state.metrics["distance"])
     state.metrics_display["duration"] = format_integer(state.metrics["duration"])
     state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
+    state.metrics_display["longest_run"] = format_float(state.metrics["longest_run"])
+    state.metrics_display["longest_walk"] = format_float(state.metrics["longest_walk"])
+    state.metrics_display["longest_cycling"] = format_float(state.metrics["longest_cycling"])
 
     # Invalidate best-segments cache and cancel any in-flight load for stale data.
     best_segments_task: Any = getattr(state, "best_segments_task", None)
@@ -600,6 +613,9 @@ def render_body() -> None:
                 stat_card(t("Elevation"), state.metrics_display, "elevation", "km")
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Calories"), state.metrics_display, "calories", "kcal")
+                stat_card(t("Longest Run"), state.metrics_display, "longest_run", "km")
+                stat_card(t("Longest Walk/Hike"), state.metrics_display, "longest_walk", "km")
+                stat_card(t("Longest Cycling"), state.metrics_display, "longest_cycling", "km")
 
         with ui.tab_panel("activities"):
             render_activity_graphs()

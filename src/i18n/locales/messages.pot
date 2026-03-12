@@ -80,6 +80,15 @@ msgstr ""
 msgid "Calories"
 msgstr ""
 
+msgid "Longest Run"
+msgstr ""
+
+msgid "Longest Walk/Hike"
+msgstr ""
+
+msgid "Longest Cycling"
+msgstr ""
+
 msgid "Date"
 msgstr ""
 

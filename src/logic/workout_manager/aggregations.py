@@ -472,6 +472,32 @@ class WorkoutManagerAggregationsMixin:
 
         return result
 
+    def get_longest_workout(
+        self,
+        activity_types: List[str],
+        unit: str = "km",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> float:
+        """Return the distance of the longest single workout for the given activity types."""
+        all_workouts = self._filter_workouts("All", start_date, end_date)
+        if all_workouts.empty or "distance" not in all_workouts.columns:
+            return 0.0
+
+        if "activityType" not in all_workouts.columns:
+            return 0.0
+
+        filtered = all_workouts[all_workouts["activityType"].isin(activity_types)]
+        if filtered.empty:
+            return 0.0
+
+        max_distance = filtered["distance"].max()
+        if pd.isna(max_distance):
+            return 0.0
+
+        divisor = self._get_distance_divisor(unit)
+        return float(max_distance) / divisor
+
     def get_workouts(self) -> pd.DataFrame:
         """Return the DataFrame of workouts."""
         return self.workouts

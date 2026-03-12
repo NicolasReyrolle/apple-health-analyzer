@@ -44,6 +44,12 @@ def format_integer(value: int, locale_name: Optional[str] = None) -> str:
     return format_decimal(value, format="#,##0", locale=_resolve_locale(locale_name))
 
 
+def format_float(value: float, decimal_places: int = 1, locale_name: Optional[str] = None) -> str:
+    """Format a float with the given number of decimal places for the current locale."""
+    fmt = f"#,##0.{'0' * decimal_places}"
+    return format_decimal(value, format=fmt, locale=_resolve_locale(locale_name))
+
+
 def period_code_to_label(code: str) -> str:
     """Convert a period code to a human-readable label."""
     mapping = {
