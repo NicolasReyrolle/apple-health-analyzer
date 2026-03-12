@@ -39,6 +39,21 @@ if not _logger.handlers:
     _logger.addHandler(logging.NullHandler())
 
 
+@app.on_startup
+def _compile_catalogs() -> None:
+    """Compile translation catalogs at startup.
+
+    Registered as an app-startup callback so that catalogs are compiled
+    regardless of whether the app is launched via the CLI entry point
+    (``cli_main``) or directly via ``python -m nicegui src.apple_health_analyzer``.
+    """
+    compiled_catalogs = compile_message_catalogs()
+    if compiled_catalogs:
+        _logger.info("Compiled %d translation catalog(s)", compiled_catalogs)
+    else:
+        _logger.debug("Translation catalogs are up to date")
+
+
 def setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
     """Configure logging with both console and file handlers.
 
@@ -194,12 +209,6 @@ def cli_main() -> None:
         _logger.info("Dev file specified: %s", resolved_path)
 
     _logger.info("Starting Apple Health Analyzer with log level: %s", args.log_level)
-
-    compiled_catalogs = compile_message_catalogs()
-    if compiled_catalogs:
-        _logger.info("Compiled %d translation catalog(s)", compiled_catalogs)
-    else:
-        _logger.debug("Translation catalogs are up to date")
 
     secret = uuid.uuid4().hex if "pytest" in sys.modules else os.getenv("STORAGE_SECRET", "secret")
 
