@@ -1,6 +1,7 @@
 """Best-segment mixin for WorkoutManager."""
 
-from typing import Any, List, Optional, cast
+from datetime import datetime
+from typing import Any, List, Optional, Union, cast
 
 import pandas as pd
 
@@ -136,7 +137,11 @@ class WorkoutManagerSegmentsMixin:
         return rows
 
     def get_best_segments(
-        self, topn: int = 5, distances: Optional[list[int]] = None
+        self,
+        topn: int = 5,
+        distances: Optional[list[int]] = None,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> pd.DataFrame:
         """Return a DataFrame of best segments across all running workouts for a defined list of
         distances for the Top-N values of each segment distance.
@@ -145,6 +150,8 @@ class WorkoutManagerSegmentsMixin:
             topn: Number of top segments to return for each distance
             distances: List of distances (in meters) to consider for segment analysis
                 (defaults to DEFAULT_SEGMENT_DISTANCES)
+            start_date: Optional start date to filter workouts
+            end_date: Optional end date to filter workouts (inclusive)
 
         Returns:
             DataFrame with columns: startDate, distance, duration_s
@@ -159,6 +166,15 @@ class WorkoutManagerSegmentsMixin:
         if not required_columns.issubset(self.workouts.columns):
             return self._empty_best_segments_frame()
         runs = self.workouts[self.workouts["activityType"] == "Running"]
+
+        if start_date is not None:
+            runs = runs[runs["startDate"] >= pd.Timestamp(start_date)]
+        if end_date is not None:
+            # Use exclusive next-day boundary so the full end_date day is included
+            # (end_date from the date picker is a midnight datetime, i.e. date-only).
+            next_day = pd.Timestamp(end_date) + pd.Timedelta(days=1)
+            runs = runs[runs["startDate"] < next_day]
+
         if runs.empty:
             return self._empty_best_segments_frame()
 

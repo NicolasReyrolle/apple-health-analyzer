@@ -1,7 +1,9 @@
 """Logic for working with HealthKit records grouped by type."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
+from typing import Optional, Union
 
 import pandas as pd
 
@@ -48,6 +50,8 @@ class RecordsByType:
         query_filter: str | None = None,
         round_decimals: int = 2,
         fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> pd.DataFrame:
         """Aggregate avg/min/max/count by period for one record type."""
         df = self.get(record_type)
@@ -67,6 +71,14 @@ class RecordsByType:
             work[date_col] = work[date_col].dt.tz_localize(None)
         work[value_col] = pd.to_numeric(work[value_col], errors="coerce")
         work = work.dropna(subset=[date_col, value_col])
+
+        if start_date is not None:
+            work = work[work[date_col] >= pd.Timestamp(start_date)]
+        if end_date is not None:
+            # Use exclusive next-day boundary so the full end_date day is included
+            # (end_date from the date picker is a midnight datetime, i.e. date-only).
+            next_day = pd.Timestamp(end_date) + pd.Timedelta(days=1)
+            work = work[work[date_col] < next_day]
 
         if work.empty:
             return pd.DataFrame(columns=["period", "avg", "min", "max", "count"])
@@ -104,6 +116,8 @@ class RecordsByType:
         context: HeartRateMeasureContext | None = None,
         round_decimals: int = 2,
         fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> pd.DataFrame:
         """Return aggregated heart rate stats by period."""
         heart_rate_df = self.heart_rate()
@@ -117,6 +131,8 @@ class RecordsByType:
             query_filter=query_filter,
             round_decimals=round_decimals,
             fill_missing_periods=fill_missing_periods,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def weight_stats(
@@ -124,6 +140,8 @@ class RecordsByType:
         period: str = "M",
         round_decimals: int = 2,
         fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> pd.DataFrame:
         """Return aggregated weight stats by period."""
         return self.stats_by_period(
@@ -131,6 +149,8 @@ class RecordsByType:
             period=period,
             round_decimals=round_decimals,
             fill_missing_periods=fill_missing_periods,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def vo2_max_stats(
@@ -138,6 +158,8 @@ class RecordsByType:
         period: str = "M",
         round_decimals: int = 2,
         fill_missing_periods: bool = True,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> pd.DataFrame:
         """Return aggregated VO2 max stats by period."""
         return self.stats_by_period(
@@ -145,4 +167,6 @@ class RecordsByType:
             period=period,
             round_decimals=round_decimals,
             fill_missing_periods=fill_missing_periods,
+            start_date=start_date,
+            end_date=end_date,
         )
