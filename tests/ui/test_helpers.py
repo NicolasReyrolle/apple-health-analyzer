@@ -133,8 +133,10 @@ class TestBestSegmentLabelFormatters:
 
     def test_format_duration_label(self) -> None:
         """Durations should be rendered as s, min/s, or h/min/s."""
+        assert helpers.format_duration_label(5.0) == "5 s"
         assert helpers.format_duration_label(20.0) == "20 s"
         assert helpers.format_duration_label(404.0) == "6 min 44 s"
+        assert helpers.format_duration_label(3661.0) == "1 h 01 min 01 s"
         assert helpers.format_duration_label(5000.0) == "1 h 23 min 20 s"
 
     def test_format_date_label(self) -> None:

@@ -12,9 +12,9 @@ from i18n import translate
 class _SupportsStrftime(Protocol):
     """Protocol for date-like objects exposing ``strftime``."""
 
-    def strftime(self, format: str) -> str:
+    def strftime(self, fmt: str, /) -> str:
         """Return a formatted date string."""
-        ...
+        raise NotImplementedError
 
 
 def _resolve_locale(locale_name: Optional[str] = None) -> str:
@@ -187,8 +187,8 @@ def format_duration_label(duration_s: float) -> str:
     if total_seconds < 60:
         return f"{seconds} s"
     if total_seconds < 3600:
-        return f"{minutes} min {seconds} s"
-    return f"{hours} h {minutes} min {seconds} s"
+        return f"{minutes} min {seconds:02d} s"
+    return f"{hours} h {minutes:02d} min {seconds:02d} s"
 
 
 def format_date_label(start_date: _SupportsStrftime, language_code: str) -> str:
