@@ -568,10 +568,10 @@ def render_body() -> None:
         ui.tab("health_data", t("Health Data")).bind_enabled_from(state, "file_loaded")
         ui.tab("best_segments", t("Best Segments")).bind_enabled_from(state, "file_loaded")
 
-    # Ensure Overview is selected by default when rendering the page.
-    tabs.value = "summary"
+    # Restore the previously selected tab (defaults to "summary" on first render).
+    tabs.value = state.selected_main_tab or "summary"
 
-    with ui.tab_panels(tabs, value="summary").classes("w-full"):
+    with ui.tab_panels(tabs, value=state.selected_main_tab or "summary").classes("w-full"):
         with ui.tab_panel("summary"):
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Count"), state.metrics_display, "count")
@@ -788,12 +788,9 @@ def render_health_data_tab() -> None:
 
 @ui.refreshable
 def render_best_segments_tab() -> None:
-    """Render the best segment for a list of standard running distances
-    show in a table format"""
+    """Render the best segments for standard running distances in a table format."""
     with ui.card().classes(ROW_CENTERED_CLASSES):
-        ui.label(t("Best segments for standard running distances")).classes(
-            LABEL_UPPERCASE_CLASSES
-        )
+        ui.label(t("Best segments for standard running distances")).classes(LABEL_UPPERCASE_CLASSES)
         columns = [
             {"name": "distance", "label": t("Distance"), "field": "distance"},
             {"name": "duration", "label": t("Duration"), "field": "duration"},
