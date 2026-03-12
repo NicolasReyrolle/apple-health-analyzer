@@ -105,7 +105,14 @@ def refresh_data() -> None:
     state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
 
-    # Invalidate best-segments cache: it is lazily recomputed when the tab is opened.
+    # Invalidate best-segments cache and cancel any in-flight load for stale data.
+    best_segments_task: Any = getattr(state, "best_segments_task", None)
+    if isinstance(best_segments_task, asyncio.Task) and not best_segments_task.done():
+        best_segments_task.cancel()
+    # Ensure task and loading flag are reset so a new load can start after refresh.
+    state.best_segments_task = None
+    if hasattr(state, "best_segments_loading"):
+        state.best_segments_loading = False
     state.best_segments_rows = []
     state.best_segments_loaded = False
 
