@@ -114,12 +114,15 @@ class TestTranslationFunction:
         assert result == "Apple Health Analyzer"
 
     def test_t_returns_unformatted_result_on_missing_kwarg(self) -> None:
-        """t() must not raise when a required format kwarg is missing; returns raw translated string."""
+        """t() must not raise when a required format kwarg is missing; 
+        returns raw translated string."""
         # "Count by {period}" needs kwarg 'period'; omitting it should not crash
         result = t("Count by {period}")  # no period kwarg
         assert result == "Count by {period}"
 
-    def test_t_returns_unformatted_result_on_bad_format_string(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_t_returns_unformatted_result_on_bad_format_string(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """t() falls back to unformatted result when str.format raises, and logs a warning."""
         with (
             patch("i18n.get_language", return_value="en"),
