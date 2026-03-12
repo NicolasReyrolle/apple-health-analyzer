@@ -121,9 +121,9 @@ class TestGetBestSegments:
         assert float(result.iloc[0]["duration_s"]) == expected_duration
 
     def test_considers_each_route_part_separately(self) -> None:
-        """When route parts are merged, best segments are computed on the single merged route."""
+        """Best-segment search should not bridge disjoint route parts."""
         start_time = datetime(2025, 9, 26, tzinfo=timezone.utc)
-        merged_route = WorkoutRoute(
+        first_part = WorkoutRoute(
             points=[
                 RoutePoint(time=start_time, latitude=0.0, longitude=0.0, altitude=0.0),
                 RoutePoint(
@@ -132,8 +132,18 @@ class TestGetBestSegments:
                     longitude=0.01,
                     altitude=0.0,
                 ),
+            ]
+        )
+        second_part = WorkoutRoute(
+            points=[
                 RoutePoint(
                     time=start_time + pd.Timedelta(seconds=670),
+                    latitude=0.0,
+                    longitude=0.01,
+                    altitude=0.0,
+                ),
+                RoutePoint(
+                    time=start_time + pd.Timedelta(seconds=930),
                     latitude=0.0,
                     longitude=0.02,
                     altitude=0.0,
@@ -141,12 +151,15 @@ class TestGetBestSegments:
             ]
         )
 
+        merged_route = WorkoutRoute(points=first_part.points + second_part.points)
+
         manager = WorkoutManager(
             pd.DataFrame(
                 {
                     "activityType": ["Running"],
                     "startDate": [pd.Timestamp("2025-09-26")],
                     "route": [merged_route],
+                    "route_parts": [[first_part, second_part]],
                 }
             )
         )
@@ -156,3 +169,29 @@ class TestGetBestSegments:
         assert len(result) == 1
         assert list(result["distance"]) == [1000]
         assert list(result["duration_s"]) == [pytest.approx(260.0)]
+
+    def test_real_fixture_too_fast_does_not_generate_one_second_100m(self, tmp_path: Path) -> None:
+        """Window clipping and per-part analysis prevent impossible 100m=1s artifacts."""
+        workout_xml = load_export_fragment("workout_running_too_fast.xml")
+        route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
+        route_files = sorted(route_dir.glob("route_2024-12-26_*.gpx"))
+
+        zip_path = tmp_path / "running_too_fast.zip"
+        with ZipFile(zip_path, "w") as zf:
+            zf.writestr("apple_health_export/export.xml", build_health_export_xml([workout_xml]))
+            for route_file in route_files:
+                zf.writestr(
+                    f"apple_health_export/workout-routes/{route_file.name}",
+                    route_file.read_bytes(),
+                )
+
+        parser = ExportParser()
+        with parser:
+            parsed = parser.parse(str(zip_path))
+
+        manager = WorkoutManager(parsed.workouts)
+        result = manager.get_best_segments(topn=1, distances=[100])
+
+        assert len(result) == 1
+        duration_s = float(result.iloc[0]["duration_s"])
+        assert duration_s > 1.0

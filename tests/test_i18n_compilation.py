@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import i18n
 import pytest
 
+import i18n
 
-_MINIMAL_PO = '''msgid ""
+_MINIMAL_PO = """msgid ""
 msgstr ""
 "Language: fr\\n"
 "Content-Type: text/plain; charset=UTF-8\\n"
 
 msgid "Hello"
 msgstr "Bonjour"
-'''
+"""
 
 
 def _make_po_file(locales_root: Path) -> Path:

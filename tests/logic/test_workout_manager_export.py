@@ -163,7 +163,7 @@ class TestColumnExclusion:
     def test_default_excluded_columns_constant(self) -> None:
         """Test that DEFAULT_EXCLUDED_COLUMNS is defined correctly."""
         assert hasattr(wm.WorkoutManager, "DEFAULT_EXCLUDED_COLUMNS")
-        assert wm.WorkoutManager.DEFAULT_EXCLUDED_COLUMNS == {"route"}
+        assert wm.WorkoutManager.DEFAULT_EXCLUDED_COLUMNS == {"route", "route_parts"}
 
     def test_export_to_json_excludes_default_columns(self, tmp_path: Path) -> None:
         """Test that export_to_json excludes route objects by default."""
@@ -177,9 +177,10 @@ class TestColumnExclusion:
         json_content = StringIO(parse_and_export_json(zip_path))
 
         data = json.load(json_content)
-        # Check that route is not in the schema columns
+        # Check that route analysis payloads are not in the schema columns
         schema_fields = [field["name"] for field in data["schema"]["fields"]]
         assert "route" not in schema_fields
+        assert "route_parts" not in schema_fields
 
     def test_export_to_csv_excludes_default_columns(self, tmp_path: Path) -> None:
         """Test that export_to_csv excludes route objects by default."""
@@ -198,6 +199,7 @@ class TestColumnExclusion:
 
         df = pd.read_csv(csv_content)  # type: ignore[misc]
         assert "route" not in df.columns
+        assert "route_parts" not in df.columns
 
     def test_export_to_json_empty_exclude_set(self, tmp_path: Path) -> None:
         """Test that export_to_json with empty exclude_columns set includes all columns."""

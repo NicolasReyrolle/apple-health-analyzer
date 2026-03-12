@@ -2,12 +2,11 @@
 
 import json
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Mapping, Optional, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Union, cast
 
 import pandas as pd
 
 from logic.workout_route import WorkoutRoute
-
 
 STANDARD_SEGMENT_DISTANCES: list[int] = [
     100,
@@ -31,7 +30,7 @@ class WorkoutManager:
     """Class to manage workout data and metrics."""
 
     # Columns to exclude from exports by default
-    DEFAULT_EXCLUDED_COLUMNS = {"route"}
+    DEFAULT_EXCLUDED_COLUMNS = {"route", "route_parts"}
     # Date format for string representations
     DATE_FORMAT = "%Y/%m/%d"
     # Default distances for best segment calculations (in meters)
@@ -935,16 +934,68 @@ class WorkoutManager:
         # Prepare a list to store results
         results: List[List[Any]] = []
 
-        for run in runs.itertuples():
-            route_obj: Any = run.route if hasattr(run, "route") else None
-            if not isinstance(route_obj, WorkoutRoute):
-                continue  # skips None / wrong types safely
+        def split_route_into_traces(route: WorkoutRoute) -> list[WorkoutRoute]:
+            """Split a route into monotonic-time traces.
 
-            route: WorkoutRoute = route_obj
+            Segment analysis must not cross timestamp reversals because they indicate
+            disjoint windows or malformed ordering.
+            """
+            if len(route.points) < 2:
+                return []
+
+            traces: list[WorkoutRoute] = []
+            current_points = [route.points[0]]
+            for point in route.points[1:]:
+                if point.time <= current_points[-1].time:
+                    if len(current_points) >= 2:
+                        traces.append(WorkoutRoute(points=current_points))
+                    current_points = [point]
+                    continue
+                current_points.append(point)
+
+            if len(current_points) >= 2:
+                traces.append(WorkoutRoute(points=current_points))
+
+            return traces
+
+        def extract_route_traces(run_record: Any) -> list[WorkoutRoute]:
+            """Extract analysis traces from route parts first, then fallback to route."""
+            route_parts_obj: Any = (
+                run_record.route_parts if hasattr(run_record, "route_parts") else None
+            )
+            if isinstance(route_parts_obj, list):
+                traces: list[WorkoutRoute] = []
+                route_parts_list = cast(list[object], route_parts_obj)
+                for route_part in route_parts_list:
+                    if isinstance(route_part, WorkoutRoute):
+                        traces.extend(split_route_into_traces(route_part))
+                if traces:
+                    return traces
+
+            route_obj: Any = run_record.route if hasattr(run_record, "route") else None
+            if isinstance(route_obj, WorkoutRoute):
+                return split_route_into_traces(route_obj)
+
+            return []
+
+        for run in runs.itertuples():
+            route_traces = extract_route_traces(run)
+            if not route_traces:
+                continue  # skips None / wrong types safely
 
             # Iterate over each distance
             for distance in distances:
-                duration_s = route.find_fastest_segment(float(distance))
+                distance_f = float(distance)
+                fastest_for_run = min(
+                    (
+                        duration_s
+                        for route_trace in route_traces
+                        for duration_s in [route_trace.find_fastest_segment(distance_f)]
+                        if duration_s is not None
+                    ),
+                    default=None,
+                )
+                duration_s = fastest_for_run
                 if duration_s is None:
                     continue
 

@@ -5,6 +5,10 @@ A modern, graphical tool to parse, analyze, and export your Apple Health data. O
 [![codecov](https://codecov.io/gh/NicolasReyrolle/apple-health-analyzer/graph/badge.svg?token=2yKEc6OOkx)](https://codecov.io/gh/NicolasReyrolle/apple-health-analyzer)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=NicolasReyrolle_apple-health-analyzer&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=NicolasReyrolle_apple-health-analyzer)
 
+## 👩‍💻 For Contributors
+
+If you are contributing or maintaining the project, see [MAINTAINERS.md](MAINTAINERS.md).
+
 ## ✨ Features
 
 - **ZIP Parsing**: Directly select and parse your `export.zip` file from Apple Health.
@@ -90,102 +94,9 @@ To analyze your data, you first need to export it from your iPhone:
 
 ## 🛠️ Development & Testing
 
-### Running Tests
+Maintainer and contributor documentation has moved to [MAINTAINERS.md](MAINTAINERS.md).
 
-The project uses `pytest` with specific configurations for asynchronous NiceGUI testing.
-
-```bash
-pytest --cov=src tests/
-```
-
-### Developer Mode: Quick UI Testing
-
-For rapid UI development and testing, you can launch the app with a pre-loaded Apple Health export file using the installed entry point (preferred):
-
-```bash
-apple-health-analyzer --dev-file tests/fixtures/export_sample.zip
-```
-
-Alternatively, during development you can run the module directly:
-
-```bash
-python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip
-```
-
-This is especially useful for:
-
-- Testing UI rendering with actual data without manual file selection
-- Quick iteration on UI components
-- Verifying data visualization and metrics display
-
-The app will automatically load the specified file on startup, skipping the file picker dialog.
-
-#### Enable Debug Logging
-
-To see detailed debug information about the dev file loading process:
-
-```bash
-apple-health-analyzer --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
-```
-
-Or during development:
-
-```bash
-python src/apple_health_analyzer.py --dev-file tests/fixtures/export_sample.zip --log-level DEBUG
-```
-
-In normal (non-`--dev-file`) mode, debug logs are written to:
-
-- **Console**: Printed to stdout
-- **File**: `logs/apple_health_analyzer.log` (size-based rotation: 10MB max per file, 3 backup files)
-
-When running with `--dev-file`, logs are only written to the console; file logging is disabled to prevent reload loops.
-
-Available log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`)
-
-**Note**: First, generate the test fixture with:
-
-```bash
-python tests/fixtures/update_export_sample.py
-```
-
-This rebuilds `tests/fixtures/export_sample.zip` with:
-
-- `apple_health_export/export.xml` generated from top-level `tests/fixtures/exports/*.xml` fragments.
-- Every file found in subfolders under `tests/fixtures/exports/` (for example `workout-routes/`), preserved under the same relative paths inside `apple_health_export/`.
-
-### Code Quality
-
-We maintain strict coding standards. Before submitting a PR, ensure your code passes:
-
-- **Formatting**: `black` & `isort`.
-- **Linting**: `pylint` (configured for Windows compatibility).
-- **Typing**: `mypy` & `Pylance` (Strict mode).
-
-```bash
-# Run all checks
-black src tests --line-length=100
-isort src tests --profile=black
-mypy src tests
-pylint src tests
-```
-
-### Translations
-
-Translation workflows (updating `messages.pot`, editing `.po`, and adding a new language) are documented in:
-
-- `src/i18n/locales/README.md`
-
-Runtime behavior notes:
-
-- Language is stored per user session and can be changed from the header language menu.
-- Loading/progress messages are localized in the UI while parser internals remain language-agnostic.
-- Date picker day/month labels are sourced from gettext catalogs (no hardcoded translated strings in Python).
-- Compiled gettext catalogs (`.mo`) are generated automatically on application startup when missing or outdated.
-
-### Windows-Specific Notes
-
-The test suite includes a specialized `conftest.py` that handles Windows "WinError 32" (PermissionError) by isolating storage and patching file locks during teardown.
+If you are here to use the app, you can skip directly to the sections above.
 
 ## 🔒 Security
 

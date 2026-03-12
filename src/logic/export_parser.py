@@ -29,6 +29,7 @@ class ExportParser:
 
     def __init__(self, progress_callback: Optional[Callable[[str], None]] = None) -> None:
         self.progress_callback = progress_callback
+        self._route_cache: dict[str, Optional[WorkoutRoute]] = {}
 
     def __enter__(self) -> "ExportParser":
         return self
@@ -354,33 +355,107 @@ class ExportParser:
             self._log(f"Route file not found in export: {route_path}")
             return None
 
+    @staticmethod
+    def _parse_health_datetime(raw: Optional[str]) -> Optional[datetime]:
+        """Parse Apple Health datetime values like "YYYY-MM-DD HH:MM:SS +0100"."""
+        if raw is None:
+            return None
+        try:
+            return datetime.strptime(raw, "%Y-%m-%d %H:%M:%S %z")
+        except ValueError:
+            return None
+
+    def _load_route_cached(self, zipfile: ZipFile, route_path: str) -> Optional[WorkoutRoute]:
+        """Load GPX route once per file path for the current export parsing session."""
+        if route_path not in self._route_cache:
+            self._route_cache[route_path] = self._load_route(zipfile, route_path)
+        return self._route_cache[route_path]
+
+    @staticmethod
+    def _clip_route_to_window(
+        route: WorkoutRoute,
+        window_start: Optional[datetime],
+        window_end: Optional[datetime],
+    ) -> WorkoutRoute:
+        """Return route points clipped to WorkoutRoute time window.
+
+        Apple Health exports can reference the same GPX file from multiple adjacent
+        WorkoutRoute entries. We must keep only points that belong to the current
+        window to avoid creating artificial cross-window traces.
+        """
+        if window_start is None or window_end is None:
+            return WorkoutRoute(points=list(route.points))
+
+        clipped_points = [
+            point for point in route.points if window_start <= point.time <= window_end
+        ]
+        return WorkoutRoute(points=clipped_points)
+
+    @staticmethod
+    def _merge_route_parts(route_parts: list[WorkoutRoute]) -> Optional[WorkoutRoute]:
+        """Merge route parts as a compatibility route while preserving part boundaries.
+
+        Use ``route_parts`` for analytics. The merged ``route`` field remains available
+        for legacy consumers that expect a single route object.
+        """
+        if not route_parts:
+            return None
+
+        merged_points: list[RoutePoint] = []
+        for route_part in route_parts:
+            if not route_part.points:
+                continue
+
+            if merged_points and merged_points[-1] == route_part.points[0]:
+                merged_points.extend(route_part.points[1:])
+            else:
+                merged_points.extend(route_part.points)
+
+        return WorkoutRoute(points=merged_points) if merged_points else None
+
     def _process_workout_route(
         self, elem: Element, record: WorkoutRecord, zipfile: ZipFile
     ) -> None:
-        """Process workout route child element."""
+        """Process one WorkoutRoute XML block as an independent time window.
+
+        Behavior is intentionally window-based to prevent unrealistic best-segment
+        calculations when adjacent windows reuse GPX files or when a window has no
+        matching GPX points.
+        """
+        route_path: Optional[str] = None
         for child in elem:
             if child.tag == "FileReference":
                 route_path = child.get("path")
-                if not route_path:
-                    continue
 
-                route_part = self._load_route(zipfile, route_path)
+        if not route_path:
+            return
 
-                if route_part is None:
-                    continue
+        route_source = self._load_route_cached(zipfile, route_path)
+        if route_source is None:
+            return
 
-                existing_route = record.get("route")
-                if isinstance(existing_route, WorkoutRoute):
-                    if (
-                        existing_route.points
-                        and route_part.points
-                        and existing_route.points[-1] == route_part.points[0]
-                    ):
-                        existing_route.points.extend(route_part.points[1:])
-                    else:
-                        existing_route.points.extend(route_part.points)
-                else:
-                    record["route"] = route_part
+        window_start = self._parse_health_datetime(elem.get("startDate"))
+        window_end = self._parse_health_datetime(elem.get("endDate"))
+        route_part = self._clip_route_to_window(route_source, window_start, window_end)
+
+        if not route_part.points:
+            self._log(
+                "Skipping WorkoutRoute window without GPX points: "
+                f"{elem.get('startDate')} -> {elem.get('endDate')} ({route_path})"
+            )
+            return
+
+        existing_parts = record.get("route_parts")
+        if isinstance(existing_parts, list):
+            existing_parts.append(route_part)
+            route_parts = existing_parts
+        else:
+            route_parts = [route_part]
+            record["route_parts"] = route_parts
+
+        merged_route = self._merge_route_parts(route_parts)
+        if merged_route is not None:
+            record["route"] = merged_route
 
     def _process_metadata_entry(self, child: Element, record: WorkoutRecord) -> None:
         """Process metadata entry child element."""
@@ -404,6 +479,7 @@ class ExportParser:
         """Parse the export file."""
 
         try:
+            self._route_cache.clear()
             self._log("Starting to parse the Apple Health export file...")
             with ZipFile(export_file, "r") as zipfile:
                 result = self._load_data(zipfile)

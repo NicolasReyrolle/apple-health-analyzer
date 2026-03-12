@@ -68,7 +68,11 @@ class TestComplexRealWorldWorkout:
         assert workout["ElevationAscended"] == pytest.approx(65.75, abs=0.01)  # type: ignore[misc]
 
     def test_parse_workout_with_multiple_route_parts(self, tmp_path: Path) -> None:
-        """A workout containing multiple WorkoutRoute entries should keep all route parts."""
+        """A workout containing multiple WorkoutRoute entries should preserve route parts.
+
+        Analytics should use route_parts (window-bounded parts), while route remains
+        as a backward-compatible merged representation.
+        """
         workout_fragment = load_export_fragment("workout_running_multiple_parts.xml")
         route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
         route_files = sorted(route_dir.glob("route_2025-09-26_*.gpx"))
@@ -91,18 +95,13 @@ class TestComplexRealWorldWorkout:
         workout = health_data.workouts.iloc[0]
 
         assert isinstance(workout["route"], WorkoutRoute)
+        assert isinstance(workout["route_parts"], list)
 
         merged_route = workout["route"]
         assert isinstance(merged_route, WorkoutRoute)
 
-        with ZipFile(zip_path, "r") as zf:
-            parser_for_parts = ExportParser()
-            loaded_parts = [
-                parser_for_parts._load_route(zf, f"/workout-routes/{route_file.name}")
-                for route_file in route_files
-            ]
-
-        route_parts = [part for part in loaded_parts if isinstance(part, WorkoutRoute)]
+        route_parts = [part for part in workout["route_parts"] if isinstance(part, WorkoutRoute)]
+        assert route_parts
         assert len(route_parts) == len(route_files)
 
         expected_points = len(route_parts[0].points)
@@ -116,6 +115,41 @@ class TestComplexRealWorldWorkout:
                 dedup_boundaries += 1
 
         assert len(merged_route.points) == expected_points - dedup_boundaries
+
+    def test_route_windows_without_matching_points_are_skipped(self, tmp_path: Path) -> None:
+        """WorkoutRoute windows with no points are intentionally dropped from route_parts."""
+        workout_fragment = load_export_fragment("workout_running_too_fast.xml")
+        route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
+        route_files = sorted(route_dir.glob("route_2024-12-26_*.gpx"))
+
+        zip_path = tmp_path / "running_too_fast.zip"
+        with ZipFile(zip_path, "w") as zf:
+            xml_content = build_health_export_xml([workout_fragment])
+            zf.writestr("apple_health_export/export.xml", xml_content)
+            for route_file in route_files:
+                zf.writestr(
+                    f"apple_health_export/workout-routes/{route_file.name}",
+                    route_file.read_bytes(),
+                )
+
+        parser = ExportParser()
+        with parser:
+            health_data = parser.parse(str(zip_path))
+
+        assert len(health_data.workouts) == 1
+        workout = health_data.workouts.iloc[0]
+        route_parts = [part for part in workout["route_parts"] if isinstance(part, WorkoutRoute)]
+        assert route_parts
+
+        missing_window_start = pd.Timestamp("2024-12-26 14:53:58 +0100").to_pydatetime()
+        missing_window_end = pd.Timestamp("2024-12-26 14:54:27 +0100").to_pydatetime()
+        points_in_missing_window = [
+            point
+            for route_part in route_parts
+            for point in route_part.points
+            if missing_window_start <= point.time <= missing_window_end
+        ]
+        assert points_in_missing_window == []
 
     def test_workout_activity_stats_and_metadata_are_ignored(
         self, create_health_zip: Callable[..., str]
