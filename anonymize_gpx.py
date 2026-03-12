@@ -1,91 +1,42 @@
-"""Anonymize GPX coordinates in a directory to small random offsets near (0, 0)."""
+"""Thin wrapper for the canonical GPX anonymization script.
 
-import random
-import re
+This repository historically contained two different GPX anonymization implementations:
+a random jitter implementation at the repository root (this file) and a spherical
+rotation–based implementation in ``tests/fixtures/anonymize_gpx.py`` which is
+the documented workflow for generating anonymized GPX data.
+
+To avoid divergence and contributor confusion, this script now simply delegates
+execution to the canonical implementation under ``tests/fixtures/``.
+"""
+
+from __future__ import annotations
+
+import runpy
 import sys
 from pathlib import Path
 
 
-def is_already_anonymized(content: str) -> bool:
-    """Check if GPX content is already anonymized (coordinates near 0,0)."""
-    # Look for coordinates with magnitude > 1 degree
-    if re.search(r'lon="[1-9]\d*\.', content):
-        return False
-    if re.search(r'lon="-[1-9]\d*\.', content):
-        return False
-    return True
+def main() -> None:
+    """Delegate GPX anonymization to the canonical script in tests/fixtures.
 
-
-def anonymize_gpx_file(filepath: Path) -> None:
-    """Anonymize GPS coordinates in a single GPX file.
-
-    Replaces real coordinates with small random offsets near (0, 0).
+    This preserves the existing command-line interface while ensuring that there
+    is a single source of truth for anonymization behavior.
     """
-    # Read original content
-    original_content = filepath.read_text(encoding="utf-8")
+    repo_root = Path(__file__).resolve().parent
+    canonical_script = repo_root / "tests" / "fixtures" / "anonymize_gpx.py"
 
-    # Check if already anonymized
-    if is_already_anonymized(original_content):
-        print(f"Skipped (already anonymized): {filepath.name}")
-        return
-
-    # Set seed for deterministic but filename-unique offsets
-    random.seed(hash(filepath.name) % (2**32))
-
-    # State for coordinate generation
-    state: dict[str, float] = {"base_lat": 0.0, "base_lon": 0.0}
-
-    def replace_trkpt(_: re.Match[str]) -> str:
-        """Replace trkpt coordinates with anonymized values."""
-        # Generate small offsets
-        lat_offset = (random.random() - 0.5) * 0.1
-        lon_offset = (random.random() - 0.5) * 0.1
-
-        state["base_lat"] += lat_offset * 0.01
-        state["base_lon"] += lon_offset * 0.01
-
-        # Keep values small
-        state["base_lat"] = max(-0.05, min(0.05, state["base_lat"]))
-        state["base_lon"] = max(-0.05, min(0.05, state["base_lon"]))
-
-        return f'<trkpt lon="{state["base_lon"]:.6f}" lat="{state["base_lat"]:.6f}"'
-
-    # Replace all trkpt coordinates
-    trkpt_pattern = r'<trkpt\s+lon="[^"]+"\s+lat="[^"]+"'
-    modified_content = re.sub(trkpt_pattern, replace_trkpt, original_content)
-
-    # Write back
-    filepath.write_text(modified_content, encoding="utf-8")
-    print(f"Anonymized: {filepath.name}")
-
-
-def anonymize_directory(directory: Path) -> None:
-    """Anonymize all GPX files in a directory."""
-    if not directory.exists():
-        print(f"Error: Directory not found: {directory}")
+    if not canonical_script.is_file():
+        print(
+            "Error: canonical GPX anonymizer not found at "
+            f"{canonical_script}. Please ensure tests/fixtures/anonymize_gpx.py exists."
+        )
         sys.exit(1)
 
-    gpx_files = sorted(directory.glob("*.gpx"))
-
-    if not gpx_files:
-        print(f"No GPX files found in {directory}")
-        return
-
-    print(f"Processing {len(gpx_files)} GPX files in {directory}")
-
-    for filepath in gpx_files:
-        try:
-            anonymize_gpx_file(filepath)
-        except Exception as e:  # pylint: disable=broad-except
-            print(f"Error processing {filepath.name}: {e}")
-
-    print("Done!")
+    # Delegate execution to the canonical script, preserving sys.argv so that
+    # command-line arguments are handled there exactly as if it were invoked
+    # directly (e.g., `python tests/fixtures/anonymize_gpx.py <directory>`).
+    runpy.run_path(str(canonical_script), run_name="__main__")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python anonymize_gpx.py <directory>")
-        sys.exit(1)
-
-    target_dir = Path(sys.argv[1])
-    anonymize_directory(target_dir)
+    main()
