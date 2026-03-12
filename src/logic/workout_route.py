@@ -105,8 +105,8 @@ class WorkoutRoute:
         distances = [0.0]
         for previous, current in zip(self.points, self.points[1:]):
             avg_speed = (previous.speed + current.speed) / 2.0
-            if avg_speed > 0.0:
-                delta_t = max(0.0, (current.time - previous.time).total_seconds())
+            delta_t = (current.time - previous.time).total_seconds()
+            if avg_speed > 0.0 and delta_t > 0.0:
                 segment_distance = avg_speed * delta_t
             else:
                 segment_distance = self._haversine_m(
