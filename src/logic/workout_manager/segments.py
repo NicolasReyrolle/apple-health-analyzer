@@ -59,6 +59,82 @@ class WorkoutManagerSegmentsMixin:
 
         return []
 
+    @staticmethod
+    def _empty_best_segments_frame() -> pd.DataFrame:
+        """Return an empty DataFrame with the stable best-segment schema."""
+        return pd.DataFrame(columns=["startDate", "distance", "duration_s"])
+
+    @staticmethod
+    def _get_run_distance_m(run_record: Any) -> Optional[float]:
+        """Return the run distance in meters when present and finite."""
+        raw_run_distance: Any = getattr(run_record, "distance", None)
+        if raw_run_distance is None or pd.isna(raw_run_distance):
+            return None
+        return float(raw_run_distance)
+
+    @staticmethod
+    def _build_best_segments_frame(results: list[list[Any]], topn: int) -> pd.DataFrame:
+        """Sort and keep the fastest Top-N segments per requested distance."""
+        df = pd.DataFrame(results, columns=["startDate", "distance", "duration_s"])
+        df = df.sort_values(["distance", "duration_s"], ascending=[True, True])
+        return df.groupby("distance").head(topn).reset_index(drop=True)
+
+    @staticmethod
+    def _get_fastest_duration_for_distance(
+        route_traces: list[WorkoutRoute],
+        distance_m: float,
+        distance_scale_factor: float,
+    ) -> Optional[float]:
+        """Return the fastest valid segment duration for one distance across all traces."""
+        return min(
+            (
+                duration_s
+                for route_trace in route_traces
+                for duration_s in [
+                    route_trace.find_fastest_segment(
+                        distance_m,
+                        distance_scale_factor=distance_scale_factor,
+                    )
+                ]
+                if duration_s is not None
+            ),
+            default=None,
+        )
+
+    def _get_run_best_segment_rows(
+        self,
+        run_record: Any,
+        distances: list[int],
+    ) -> list[list[Any]]:
+        """Collect best-segment result rows for one running workout."""
+        route_traces = self._extract_route_traces(run_record)
+        if not route_traces:
+            return []
+
+        run_distance_m = self._get_run_distance_m(run_record)
+        total_trace_distance_m = sum(route_trace.distance_meters for route_trace in route_traces)
+        distance_scale_factor = WorkoutRoute.calculate_distance_scale_factor(
+            total_trace_distance_m,
+            run_distance_m,
+        )
+
+        rows: list[list[Any]] = []
+        for distance in distances:
+            if run_distance_m is not None and float(distance) > run_distance_m:
+                continue
+
+            duration_s = self._get_fastest_duration_for_distance(
+                route_traces,
+                float(distance),
+                distance_scale_factor,
+            )
+            if duration_s is None:
+                continue
+
+            rows.append([run_record.startDate, distance, duration_s])
+
+        return rows
+
     def get_best_segments(
         self, topn: int = 5, distances: Optional[list[int]] = None
     ) -> pd.DataFrame:
@@ -77,62 +153,18 @@ class WorkoutManagerSegmentsMixin:
             distances = self.DEFAULT_SEGMENT_DISTANCES
 
         if topn <= 0:
-            return pd.DataFrame(columns=["startDate", "distance", "duration_s"])
+            return self._empty_best_segments_frame()
 
         runs = self.workouts[self.workouts["activityType"] == "Running"]
         if runs.empty:
-            return pd.DataFrame(columns=["startDate", "distance", "duration_s"])
+            return self._empty_best_segments_frame()
 
         results: List[List[Any]] = []
 
         for run in runs.itertuples():
-            route_traces = self._extract_route_traces(run)
-            if not route_traces:
-                continue
-
-            raw_run_distance: Any = getattr(run, "distance", None)
-            run_distance_m: Optional[float] = (
-                float(raw_run_distance)
-                if raw_run_distance is not None and not pd.isna(raw_run_distance)
-                else None
-            )
-            total_trace_distance_m = sum(
-                route_trace.distance_meters for route_trace in route_traces
-            )
-            distance_scale_factor = WorkoutRoute.calculate_distance_scale_factor(
-                total_trace_distance_m,
-                run_distance_m,
-            )
-
-            for distance in distances:
-                if run_distance_m is not None and float(distance) > run_distance_m:
-                    continue
-                distance_f = float(distance)
-                fastest_for_run = min(
-                    (
-                        duration_s
-                        for route_trace in route_traces
-                        for duration_s in [
-                            route_trace.find_fastest_segment(
-                                distance_f,
-                                distance_scale_factor=distance_scale_factor,
-                            )
-                        ]
-                        if duration_s is not None
-                    ),
-                    default=None,
-                )
-                duration_s = fastest_for_run
-                if duration_s is None:
-                    continue
-
-                results.append([run.startDate, distance, duration_s])
+            results.extend(self._get_run_best_segment_rows(run, distances))
 
         if not results:
-            return pd.DataFrame(columns=["startDate", "distance", "duration_s"])
+            return self._empty_best_segments_frame()
 
-        df = pd.DataFrame(results, columns=["startDate", "distance", "duration_s"])
-        df = df.sort_values(["distance", "duration_s"], ascending=[True, True])
-        df = df.groupby("distance").head(topn).reset_index(drop=True)
-
-        return df
+        return self._build_best_segments_frame(results, topn)
