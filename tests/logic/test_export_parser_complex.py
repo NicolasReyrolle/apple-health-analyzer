@@ -1,5 +1,6 @@
 """Tests for complex workout parsing and route handling."""
 
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
 from xml.etree.ElementTree import Element
@@ -9,7 +10,7 @@ import pandas as pd
 import pytest
 
 from logic.export_parser import ExportParser, WorkoutRecord
-from logic.workout_route import WorkoutRoute
+from logic.workout_route import RoutePoint, WorkoutRoute
 from tests.conftest import build_health_export_xml, load_export_fragment
 
 
@@ -416,3 +417,98 @@ class TestProcessWorkoutRoute:
 
         # Record should remain unchanged if no FileReference
         assert record == {"activityType": "Running"}
+
+
+class TestClipRouteToWindow:
+    """Tests for ExportParser._clip_route_to_window (binary-search implementation)."""
+
+    # pylint: disable=protected-access
+
+    def _make_route(self, iso_times: list[str]) -> WorkoutRoute:
+        """Build a WorkoutRoute with one point per ISO timestamp."""
+        points = [
+            RoutePoint(
+                time=datetime.fromisoformat(t.replace("Z", "+00:00")),
+                latitude=float(i),
+                longitude=float(i),
+                altitude=0.0,
+            )
+            for i, t in enumerate(iso_times)
+        ]
+        return WorkoutRoute(points=points)
+
+    def test_clip_keeps_points_within_window(self) -> None:
+        """Points inside [window_start, window_end] must be returned."""
+        route = self._make_route(
+            [
+                "2024-01-01T10:00:00Z",
+                "2024-01-01T10:01:00Z",
+                "2024-01-01T10:02:00Z",
+                "2024-01-01T10:03:00Z",
+                "2024-01-01T10:04:00Z",
+            ]
+        )
+        start = datetime.fromisoformat("2024-01-01T10:01:00Z")
+        end = datetime.fromisoformat("2024-01-01T10:03:00Z")
+
+        clipped = ExportParser._clip_route_to_window(route, start, end)
+
+        assert len(clipped.points) == 3
+        assert clipped.points[0].time == datetime.fromisoformat("2024-01-01T10:01:00Z")
+        assert clipped.points[-1].time == datetime.fromisoformat("2024-01-01T10:03:00Z")
+
+    def test_clip_no_window_returns_copy_of_all_points(self) -> None:
+        """When either bound is None all route points are returned."""
+        route = self._make_route(
+            ["2024-01-01T10:00:00Z", "2024-01-01T10:01:00Z", "2024-01-01T10:02:00Z"]
+        )
+
+        clipped_no_start = ExportParser._clip_route_to_window(route, None, route.points[-1].time)
+        clipped_no_end = ExportParser._clip_route_to_window(route, route.points[0].time, None)
+        clipped_both_none = ExportParser._clip_route_to_window(route, None, None)
+
+        assert len(clipped_no_start.points) == 3
+        assert len(clipped_no_end.points) == 3
+        assert len(clipped_both_none.points) == 3
+
+    def test_clip_empty_route_returns_empty(self) -> None:
+        """Clipping an empty route should return an empty route."""
+        route = WorkoutRoute(points=[])
+        start = datetime.fromisoformat("2024-01-01T10:00:00Z")
+        end = datetime.fromisoformat("2024-01-01T10:05:00Z")
+
+        clipped = ExportParser._clip_route_to_window(route, start, end)
+
+        assert clipped.points == []
+
+    def test_clip_window_outside_range_returns_empty(self) -> None:
+        """A window entirely before or after route points returns an empty route."""
+        route = self._make_route(
+            ["2024-01-01T10:00:00Z", "2024-01-01T10:01:00Z", "2024-01-01T10:02:00Z"]
+        )
+        # window after all points
+        start_after = datetime.fromisoformat("2024-01-01T11:00:00Z")
+        end_after = datetime.fromisoformat("2024-01-01T11:05:00Z")
+        assert ExportParser._clip_route_to_window(route, start_after, end_after).points == []
+
+        # window before all points
+        start_before = datetime.fromisoformat("2024-01-01T09:00:00Z")
+        end_before = datetime.fromisoformat("2024-01-01T09:59:00Z")
+        assert ExportParser._clip_route_to_window(route, start_before, end_before).points == []
+
+    def test_clip_uses_sorted_times_cache(self) -> None:
+        """Clipping the same route twice should return the same sorted_times list object."""
+        route = self._make_route(
+            ["2024-01-01T10:00:00Z", "2024-01-01T10:01:00Z", "2024-01-01T10:02:00Z"]
+        )
+        start = datetime.fromisoformat("2024-01-01T10:00:00Z")
+        end = datetime.fromisoformat("2024-01-01T10:02:00Z")
+
+        ExportParser._clip_route_to_window(route, start, end)
+        times_first = route.sorted_times()
+
+        # Second clip must reuse the cached list (same object identity)
+        ExportParser._clip_route_to_window(route, start, end)
+        times_second = route.sorted_times()
+
+        assert times_first is times_second

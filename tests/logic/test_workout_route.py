@@ -280,3 +280,55 @@ class TestWorkoutRouteEndToEnd:
             f"Route: {route_metrics['elevation_gain_m']:.2f}m, "
             f"Manager: {manager_metrics['elevation_gain_m']:.2f}m"
         )
+
+
+class TestSortedTimes:
+    """Tests for the WorkoutRoute.sorted_times() caching helper."""
+
+    def test_sorted_times_returns_point_timestamps(self) -> None:
+        """sorted_times() should return timestamps matching point order."""
+        p1 = _point("2024-01-01T10:00:00Z", 48.0, 2.0)
+        p2 = _point("2024-01-01T10:01:00Z", 48.1, 2.1)
+        p3 = _point("2024-01-01T10:02:00Z", 48.2, 2.2)
+        route = WorkoutRoute(points=[p1, p2, p3])
+
+        times = route.sorted_times()
+
+        assert times == [p1.time, p2.time, p3.time]
+
+    def test_sorted_times_is_cached(self) -> None:
+        """sorted_times() should return the same list object on repeated calls."""
+        route = WorkoutRoute(
+            points=[
+                _point("2024-01-01T10:00:00Z", 48.0, 2.0),
+                _point("2024-01-01T10:01:00Z", 48.1, 2.1),
+            ]
+        )
+
+        first = route.sorted_times()
+        second = route.sorted_times()
+
+        assert first is second
+
+    def test_sorted_times_cache_invalidated_on_add_point(self) -> None:
+        """Adding a point should invalidate the sorted_times cache."""
+        p1 = _point("2024-01-01T10:00:00Z", 48.0, 2.0)
+        p2 = _point("2024-01-01T10:01:00Z", 48.1, 2.1)
+        route = WorkoutRoute(points=[p1])
+
+        before = route.sorted_times()
+        assert len(before) == 1
+
+        route.add_point(p2)
+        after = route.sorted_times()
+
+        assert len(after) == 2
+        assert after[1] == p2.time
+        # Cache was rebuilt: new list object
+        assert before is not after
+
+    def test_sorted_times_empty_route(self) -> None:
+        """sorted_times() should return an empty list for a route with no points."""
+        route = WorkoutRoute(points=[])
+
+        assert route.sorted_times() == []

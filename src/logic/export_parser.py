@@ -1,6 +1,7 @@
 """Export processor for Apple Health data."""
 
 import logging
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from datetime import datetime
 from types import TracebackType
@@ -220,16 +221,12 @@ class ExportParser:
             workout_rows: List[WorkoutRecord] = []
             record_rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
-            for event, elem in iterparse(export_file, events=("end",)):
-                if event == "end" and elem.tag == "Workout":
+            for _, elem in iterparse(export_file, events=("end",)):
+                if elem.tag == "Workout":
                     self._process_workout_event(elem, zipfile, workout_rows)
-
                     elem.clear()
-                    continue
-
-                if event == "end" and elem.tag == "Record":
+                elif elem.tag == "Record":
                     self._process_record_event(elem, record_rows_by_type)
-
                     elem.clear()
 
             return self._build_parsed_health_data(workout_rows, record_rows_by_type)
@@ -418,13 +415,13 @@ class ExportParser:
         """Load GPX route file from the export zip."""
         try:
             with zipfile.open(f"apple_health_export{route_path}") as route_file:
-                route: WorkoutRoute = WorkoutRoute(points=[])
-                for event, elem in iterparse(route_file, events=("start", "end")):
-                    if event == "end" and elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt":
+                points: list[RoutePoint] = []
+                for _, elem in iterparse(route_file, events=("end",)):
+                    if elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt":
                         point_data = self._extract_gpx_point_data(elem)
-                        route.add_point(self._create_route_point(*point_data))
+                        points.append(self._create_route_point(*point_data))
                         elem.clear()
-                return route
+                return WorkoutRoute(points=points)
         except KeyError:
             self._log(f"Route file not found in export: {route_path}")
             return None
@@ -456,14 +453,18 @@ class ExportParser:
         Apple Health exports can reference the same GPX file from multiple adjacent
         WorkoutRoute entries. We must keep only points that belong to the current
         window to avoid creating artificial cross-window traces.
+
+        Uses binary search on the cached sorted-times list for O(log n) clipping instead
+        of an O(n) linear scan, which matters when the same cached GPX route is clipped
+        many times across a large export.
         """
         if window_start is None or window_end is None:
             return WorkoutRoute(points=list(route.points))
 
-        clipped_points = [
-            point for point in route.points if window_start <= point.time <= window_end
-        ]
-        return WorkoutRoute(points=clipped_points)
+        times = route.sorted_times()
+        left = bisect_left(times, window_start)
+        right = bisect_right(times, window_end)
+        return WorkoutRoute(points=route.points[left:right])
 
     @staticmethod
     def _merge_route_parts(route_parts: list[WorkoutRoute]) -> Optional[WorkoutRoute]:
