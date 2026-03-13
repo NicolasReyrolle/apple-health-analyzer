@@ -92,7 +92,7 @@ msgid "Longest Walk/Hike"
 msgstr "Marche/Randonnée la plus longue"
 
 msgid "Longest Cycling"
-msgstr "Cyclisme le plus long"
+msgstr "Sortie à vélo la plus longue"
 
 msgid "Date"
 msgstr "Date"
