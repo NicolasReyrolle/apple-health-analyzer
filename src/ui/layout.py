@@ -99,24 +99,18 @@ def refresh_data() -> None:
     state.metrics["calories"] = state.workouts.get_total_calories(
         state.selected_activity_type, start_date=state.start_date, end_date=state.end_date
     )
-    state.metrics["longest_run"] = state.workouts.get_longest_workout(
-        ["Running"], start_date=state.start_date, end_date=state.end_date
-    )
-    state.metrics["longest_walk"] = state.workouts.get_longest_workout(
-        ["Walking", "Hiking"], start_date=state.start_date, end_date=state.end_date
-    )
-    state.metrics["longest_cycling"] = state.workouts.get_longest_workout(
-        ["Cycling"], start_date=state.start_date, end_date=state.end_date
-    )
 
     state.metrics_display["count"] = format_integer(state.metrics["count"])
     state.metrics_display["distance"] = format_integer(state.metrics["distance"])
     state.metrics_display["duration"] = format_integer(state.metrics["duration"])
     state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
-    state.metrics_display["longest_run"] = format_float(state.metrics["longest_run"])
-    state.metrics_display["longest_walk"] = format_float(state.metrics["longest_walk"])
-    state.metrics_display["longest_cycling"] = format_float(state.metrics["longest_cycling"])
+
+    # Initialize longest-workout metrics with default values; they may be
+    # overwritten below if corresponding details are available.
+    for metric_key in ("longest_run", "longest_walk", "longest_cycling"):
+        state.metrics[metric_key] = 0.0
+        state.metrics_display[metric_key] = format_float(state.metrics[metric_key])
 
     language_code = get_language()
     for metric_key, activity_types in [
@@ -128,6 +122,16 @@ def refresh_data() -> None:
             activity_types, start_date=state.start_date, end_date=state.end_date
         )
         if details and details.get("date") is not None and details.get("duration") is not None:
+            # Update numeric metric and display from details if distance is available.
+            distance_value = details.get("distance")
+            if distance_value is not None:
+                try:
+                    distance_float = float(distance_value)
+                except (TypeError, ValueError):
+                    distance_float = 0.0
+                state.metrics[metric_key] = distance_float
+                state.metrics_display[metric_key] = format_float(distance_float)
+
             date_str = format_date_label(details["date"], language_code)
             duration_str = format_duration_label(float(details["duration"]))
             state.metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"

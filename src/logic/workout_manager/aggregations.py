@@ -529,9 +529,10 @@ class WorkoutManagerAggregationsMixin:
         if filtered.empty:
             return None
 
-        idx = filtered["distance"].idxmax()
-        if pd.isna(idx):
+        distance_series = filtered["distance"].dropna()
+        if distance_series.empty:
             return None
+        idx = distance_series.idxmax()
 
         row = filtered.loc[idx]
         divisor = self._get_distance_divisor(unit)
