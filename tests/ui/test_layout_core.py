@@ -278,3 +278,125 @@ def test_render_date_range_selector_unknown_language_falls_back_to_english() -> 
         assert "Sunday" in dummy_date.props_arg
     finally:
         state.workouts = original_workouts
+
+
+def test_render_header_dark_mode_callbacks_update_state_and_refresh_graphs() -> None:
+    """Header dark-mode callbacks should update state and refresh refreshable graph sections."""
+
+    class _DummyDarkMode:
+        """Minimal dark-mode stub for callback testing."""
+
+        def __init__(self, value: bool = False) -> None:
+            """Initialize dark-mode flags."""
+            self.value = value
+            self.enabled = False
+            self.disabled = False
+
+        def enable(self) -> None:
+            """Mark dark mode as enabled."""
+            self.value = True
+            self.enabled = True
+
+        def disable(self) -> None:
+            """Mark dark mode as disabled."""
+            self.value = False
+            self.disabled = True
+
+    class _DummyButton:
+        """Minimal button/context manager stub for header rendering."""
+
+        def __init__(self, on_click: Any = None, context: bool = False) -> None:
+            """Store callback and context behavior."""
+            self.on_click = on_click
+            self._context = context
+
+        def bind_visibility_from(self, *_args: Any, **_kwargs: Any) -> "_DummyButton":
+            """Support NiceGUI-style chaining."""
+            return self
+
+        def props(self, *_args: Any, **_kwargs: Any) -> "_DummyButton":
+            """Support NiceGUI-style chaining."""
+            return self
+
+        def __enter__(self) -> "_DummyButton":
+            """Enter context only for context-enabled buttons."""
+            if not self._context:
+                raise RuntimeError("not a context button")
+            return self
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> bool:
+            """Exit context manager without swallowing exceptions."""
+            return False
+
+    class _DummyImage:  # pylint: disable=too-few-public-methods
+        """Minimal image stub supporting classes() chaining."""
+
+        def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyImage":
+            """Support NiceGUI-style chaining."""
+            return self
+
+    class _DummyLabel:  # pylint: disable=too-few-public-methods
+        """Minimal label stub supporting classes() chaining."""
+
+        def classes(self, *_args: Any, **_kwargs: Any) -> "_DummyLabel":
+            """Support NiceGUI-style chaining."""
+            return self
+
+    dark_mode = _DummyDarkMode(value=True)
+    callbacks: dict[str, Any] = {}
+
+    def _button_factory(*_args: Any, **kwargs: Any) -> _DummyButton:
+        """Create button stubs and capture dark/light callbacks for assertions."""
+        icon = kwargs.get("icon")
+        on_click = kwargs.get("on_click")
+        if icon in {"dark_mode", "light_mode"}:
+            callbacks[icon] = on_click
+            return _DummyButton(on_click=on_click)
+        if icon == "language":
+            return _DummyButton(on_click=on_click, context=True)
+        return _DummyButton(on_click=on_click)
+
+    original_dark_mode_enabled = state.dark_mode_enabled
+    try:
+        state.dark_mode_enabled = False
+        with patch("ui.layout.ui.dark_mode", return_value=dark_mode):
+            with patch("ui.layout.ui.header", return_value=_DummyRow()):
+                with patch("ui.layout.ui.image", return_value=_DummyImage()):
+                    with patch("ui.layout.ui.label", return_value=_DummyLabel()):
+                        with patch("ui.layout.ui.button", side_effect=_button_factory):
+                            with patch("ui.layout.ui.menu", return_value=_DummyRow()):
+                                with patch("ui.layout.ui.menu_item"):
+                                    with patch("ui.layout.LANGUAGES", {}):
+                                        with patch(
+                                            "ui.layout.render_activity_graphs.refresh"
+                                        ) as act:
+                                            with patch(
+                                                "ui.layout.render_trends_graphs.refresh"
+                                            ) as trends:
+                                                with patch(
+                                                    "ui.layout.render_health_data_tab.refresh"
+                                                ) as health:
+                                                    layout.render_header()
+
+                                                    assert state.dark_mode_enabled is True
+
+                                                    callbacks["light_mode"]()
+                                                    assert dark_mode.disabled is True
+                                                    assert state.dark_mode_enabled is False
+                                                    assert act.call_count == 1
+                                                    assert trends.call_count == 1
+                                                    assert health.call_count == 1
+
+                                                    callbacks["dark_mode"]()
+                                                    assert dark_mode.enabled is True
+                                                    assert state.dark_mode_enabled is True
+                                                    assert act.call_count == 2
+                                                    assert trends.call_count == 2
+                                                    assert health.call_count == 2
+    finally:
+        state.dark_mode_enabled = original_dark_mode_enabled

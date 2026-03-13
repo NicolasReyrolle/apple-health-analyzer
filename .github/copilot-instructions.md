@@ -18,6 +18,8 @@ If two rules at the same level conflict, choose the simpler option and state the
 - `src/apple_health_analyzer.py` - app entrypoint and `@ui.page` registration
 - `src/app_state.py` - shared UI/data singleton state
 - `src/ui/layout.py` - UI composition (header, drawer, tabs, charts)
+- `src/ui/css.py` - all CSS class/props string constants (single source of truth)
+- `src/ui/charts.py` - reusable chart and stat-card components
 - `src/ui/local_file_picker.py` - local file picker dialog
 - `src/ui/helpers.py` - label/date/duration/distance formatters
 - `src/logic/export_parser.py` - ZIP/XML/GPX parsing (`ExportParser`)
@@ -40,6 +42,12 @@ If two rules at the same level conflict, choose the simpler option and state the
 - Keep XML parsing on `defusedxml` (never switch to stdlib `ElementTree` for untrusted XML parsing).
 - Preserve streaming parsing patterns (`iterparse` + `elem.clear()`) for large files.
 - `ExportParser` remains a context manager and should be used with `with ExportParser() as ep:`.
+
+### CSS and styling
+- All Tailwind/Quasar class strings and NiceGUI `.props()` strings live in `src/ui/css.py` as named constants (`*_CLASSES` / `*_PROPS`).  Import and use them instead of writing inline string literals.
+- `resources/style.css` is the single global stylesheet.  Add new CSS classes there rather than using `.style(...)` inline styles.  Every class added must be documented with a comment explaining its purpose.
+- Inline styles (`style="..."` in Vue templates or `.style(...)` in Python) are forbidden unless strictly unavoidable; document any surviving inline styles with a comment in both the template and `style.css`.
+- ECharts (`ui.echart`) must include `"backgroundColor": "transparent"` in every chart config so the card background (which adapts to dark mode via CSS) shows through correctly.
 
 ### Test fixtures and mocking
 - Never modify existing files under `tests/fixtures/exports`.
@@ -80,7 +88,7 @@ If two rules at the same level conflict, choose the simpler option and state the
 
 A task is complete when all of the following are true:
 1. Requested behavior is implemented.
-2. Changed files are lint/type clean (or existing unrelated issues are explicitly called out).
+2. Changed files are lint/type clean (or existing unrelated issues are explicitly called out). Use both pylance and pylint for type/lint checks.
 3. Relevant tests pass.
 4. Any new assumptions, trade-offs, or follow-ups are clearly reported.
 
@@ -91,6 +99,8 @@ A task is complete when all of the following are true:
 | `src/apple_health_analyzer.py` | App entrypoint, page registration, CLI args |
 | `src/app_state.py` | Shared application state |
 | `src/ui/layout.py` | Main UI rendering/composition |
+| `src/ui/css.py` | All CSS class/props string constants (single source of truth) |
+| `src/ui/charts.py` | Reusable chart and stat-card components |
 | `src/ui/local_file_picker.py` | Local file picker dialog UI |
 | `src/ui/helpers.py` | UI formatting utilities |
 | `src/logic/export_parser.py` | Health export parsing, route loading |
@@ -98,6 +108,7 @@ A task is complete when all of the following are true:
 | `src/logic/workout_route.py` | Route models and route computations |
 | `tests/conftest.py` | Shared fixtures and test helpers |
 | `pyproject.toml` | Tooling configuration (pytest/mypy/pylint/formatters) |
+| `resources/style.css` | Global CSS: dark-mode vars, Quasar overrides, utility classes |
 
 ## CI expectations
 

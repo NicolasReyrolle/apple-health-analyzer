@@ -16,6 +16,8 @@ class AppState:
     def __init__(self) -> None:
         self.reset()
         self.input_file: ui.input  # Assigned in layout.py
+        # Dark mode preference — persists across data reloads so it lives outside reset().
+        self.dark_mode_enabled: bool = False
 
     def reset(self) -> None:
         """Reset the application state."""

@@ -5,12 +5,29 @@ from typing import Optional
 
 from nicegui import ui
 
+from app_state import state
+from ui.css import (
+    BUTTON_FLAT_ROUND_PROPS,
+    CHART_CARD_CLASSES,
+    LABEL_UPPERCASE_CLASSES,
+    ROW_CENTERED_CLASSES,
+    STAT_CARD_CLASSES,
+    STAT_CARD_LABEL_CLASSES,
+    STAT_CARD_UNIT_CLASSES,
+    STAT_CARD_VALUE_CLASSES,
+    STAT_CARD_VALUE_ROW_CLASSES,
+)
 from ui.helpers import calculate_moving_average
 
-# CSS class constants
-ROW_CENTERED_CLASSES = "w-full justify-center gap-4"
-BUTTON_FLAT_ROUND_PROPS = "flat round"
-LABEL_UPPERCASE_CLASSES = "text-sm text-gray-500 uppercase"
+# Re-export constants that other modules import from this module for compatibility.
+__all__ = [
+    "BUTTON_FLAT_ROUND_PROPS",
+    "LABEL_UPPERCASE_CLASSES",
+    "ROW_CENTERED_CLASSES",
+    "render_generic_graph",
+    "render_pie_rose_graph",
+    "stat_card",
+]
 
 
 def stat_card(
@@ -46,13 +63,13 @@ def stat_card(
         tooltip_key: Key inside *tooltip_ref* to read the tooltip text from.
             Required when *tooltip_ref* is provided; ignored otherwise.
     """
-    with ui.card().classes("w-40 h-24 items-center justify-center shadow-sm"):
-        ui.label(label).classes("text-xs text-gray-500 uppercase")
-        with ui.row().classes("items-baseline gap-1"):
+    with ui.card().classes(STAT_CARD_CLASSES):
+        ui.label(label).classes(STAT_CARD_LABEL_CLASSES)
+        with ui.row().classes(STAT_CARD_VALUE_ROW_CLASSES):
             # Bind the text to the dictionary key for reactive updates
-            ui.label().classes("text-xl font-bold").bind_text_from(value_ref, key)
+            ui.label().classes(STAT_CARD_VALUE_CLASSES).bind_text_from(value_ref, key)
             if unit:
-                ui.label(unit).classes("text-xs text-gray-400")
+                ui.label(unit).classes(STAT_CARD_UNIT_CLASSES)
         if tooltip_ref is not None and tooltip_key is not None:
             ui.tooltip().bind_text_from(tooltip_ref, tooltip_key).bind_visibility_from(
                 tooltip_ref, tooltip_key, backward=bool
@@ -64,10 +81,12 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
 
     chart_data = [{"value": v, "name": k} for k, v in values.items()]
 
-    with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
+    with ui.card().classes(CHART_CARD_CLASSES):
         ui.label(label).classes(LABEL_UPPERCASE_CLASSES)
         ui.echart(
             {
+                "backgroundColor": "transparent",
+                "darkMode": state.dark_mode_enabled,
                 "tooltip": {"trigger": "item", "formatter": f"{{b}}: {{c}} {unit} ({{d}}%)"},
                 "series": [
                     {
@@ -115,10 +134,12 @@ def render_generic_graph(
             }
         )
 
-    with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
+    with ui.card().classes(CHART_CARD_CLASSES):
         ui.label(label).classes(LABEL_UPPERCASE_CLASSES)
         ui.echart(
             {
+                "backgroundColor": "transparent",
+                "darkMode": state.dark_mode_enabled,
                 "tooltip": {"trigger": "axis", "formatter": f"{{b}}: {{c}} {unit}"},
                 "xAxis": {
                     "type": "category",

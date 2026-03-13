@@ -1,37 +1,77 @@
+/* ===================================================================
+   Global CSS variables — light mode defaults.
+   =================================================================== */
 :root {
     --bg-app: #F5F5F7;
     --text-main: #1D1D1F;
     --bg-card: #FFFFFF;
+    --bg-card-alt: #f0f0f0;
+    --border-subtle: rgba(128, 128, 128, 0.2);
+    --text-muted: rgba(0, 0, 0, 0.55);
 }
 
+/* Dark mode variable overrides.
+   Quasar's Dark plugin adds "body--dark" class to <body>; we also cover
+   the "dark" class that Quasar adds to individual layout elements
+   (header, drawer, page container). Both selectors are required.
+   NOTE: CSS custom properties do NOT support !important — omitting it. */
+body.body--dark,
 .dark {
-    --bg-app: #121212 !important;
-    --text-main: #F5F5F7 !important;
-    --bg-card: #1C1C1E !important;
+    --bg-app: #121212;
+    --text-main: #F5F5F7;
+    --bg-card: #1C1C1E;
+    --bg-card-alt: #2a2a2c;
+    --border-subtle: rgba(255, 255, 255, 0.12);
+    --text-muted: rgba(255, 255, 255, 0.55);
 }
 
-.dark, 
-.dark .q-layout, 
-.dark .q-header, 
-.dark .q-drawer, 
+/* ===================================================================
+   App-level dark mode: main layout containers.
+   Quasar adds body--dark to <body> and q-dark/dark to layout elements.
+   =================================================================== */
+body.body--dark,
+body.body--dark .q-layout,
+body.body--dark .q-page-container,
+.dark,
+.dark .q-layout,
 .dark .q-page-container {
     background-color: var(--bg-app) !important;
     color: var(--text-main) !important;
 }
-.dark .q-btn {
-    color: var(--q-primary) !important; 
+
+/* Drawers have their own background: #fff in Quasar — override. */
+body.body--dark .q-drawer,
+.dark .q-drawer {
+    background-color: var(--bg-app) !important;
 }
 
+body.body--dark .q-btn,
+.dark .q-btn {
+    color: var(--q-primary) !important;
+}
+
+/* ===================================================================
+   NiceGUI content wrapper — always transparent so the page background
+   shows through instead of a hard-coded white layer.
+   =================================================================== */
 .nicegui-content {
     background-color: transparent !important;
 }
 
-.nicegui-card, .q-card {
+/* ===================================================================
+   Cards — background adapts via CSS variable so dark/light mode
+   is handled automatically. Border is always applied.
+   =================================================================== */
+.nicegui-card,
+.q-card {
     background-color: var(--bg-card) !important;
     color: var(--text-main) !important;
-    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+    border: 1px solid var(--border-subtle) !important;
 }
 
+/* ===================================================================
+   Flat buttons.
+   =================================================================== */
 .q-btn--flat .q-icon {
     color: var(--text-main) !important;
     opacity: 1 !important;
@@ -39,4 +79,72 @@
 
 .q-btn--flat:hover {
     background: rgba(128, 128, 128, 0.1) !important;
+}
+
+/* ===================================================================
+   Tab panels — Quasar sets background: #fff on .q-tab-panels.
+   Make them transparent so the underlying page background shows through.
+   =================================================================== */
+.q-tab-panels,
+.q-tab-panel {
+    background-color: transparent !important;
+}
+
+/* ===================================================================
+   Tables — Quasar sets background: #fff on .q-table__card.
+   Override to use the card background variable.
+   =================================================================== */
+.q-table__card {
+    background-color: var(--bg-card) !important;
+    color: var(--text-main) !important;
+}
+
+/* Table header cells and body cells in dark mode. */
+body.body--dark .q-table thead tr th,
+body.body--dark .q-table tbody tr td,
+body.body--dark .q-table__top,
+body.body--dark .q-table__bottom,
+.dark .q-table thead tr th,
+.dark .q-table tbody tr td,
+.dark .q-table__top,
+.dark .q-table__bottom {
+    background-color: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+/* Hover row highlight in dark mode. */
+body.body--dark .q-table tbody tr:not(.q-tr--no-hover):hover td,
+.dark .q-table tbody tr:not(.q-tr--no-hover):hover td {
+    background-color: var(--bg-card-alt) !important;
+}
+
+/* ===================================================================
+   Menus and dropdowns — Quasar menus default to a white background.
+   =================================================================== */
+.q-menu {
+    background-color: var(--bg-card) !important;
+    color: var(--text-main) !important;
+}
+
+/* ===================================================================
+   Best-segments table: expanded child-row background.
+   Replaces the hard-coded Quasar "bg-grey-1" utility class
+   (background: #fafafa !important) so the row background adapts to
+   dark mode using CSS variables.
+   =================================================================== */
+.segment-child-row {
+    background-color: var(--bg-card-alt) !important;
+    color: var(--text-muted) !important;
+}
+
+/* ===================================================================
+   Expand-toggle placeholder: keeps the toggle column width consistent
+   for rows that have no expandable children.
+   Replaces the inline style="display:inline-block;width:28px" that was
+   previously in the best-segments Vue body template.
+   =================================================================== */
+.expand-placeholder {
+    display: inline-block;
+    width: 28px;
 }
