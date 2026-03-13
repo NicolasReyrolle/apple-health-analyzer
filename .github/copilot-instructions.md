@@ -50,6 +50,7 @@ If two rules at the same level conflict, choose the simpler option and state the
 - ECharts (`ui.echart`) must include `"backgroundColor": "transparent"` in every chart config so the card background (which adapts to dark mode via CSS) shows through correctly.
 
 ### Test fixtures and mocking
+- Never modify existing files under `tests/fixtures/exports`.
 - For new scenarios, add new fixture files or construct data in tests.
 - Prefer centralized fixtures/helpers in `tests/conftest.py` instead of ad-hoc inline mocks.
 - For patching NiceGUI objects, patch module-level lookups to support runtime patching.
