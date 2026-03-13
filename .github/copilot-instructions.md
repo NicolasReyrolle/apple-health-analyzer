@@ -88,7 +88,7 @@ If two rules at the same level conflict, choose the simpler option and state the
 
 A task is complete when all of the following are true:
 1. Requested behavior is implemented.
-2. Changed files are lint/type clean (or existing unrelated issues are explicitly called out).
+2. Changed files are lint/type clean (or existing unrelated issues are explicitly called out). Use both pylance and pylint for type/lint checks.
 3. Relevant tests pass.
 4. Any new assumptions, trade-offs, or follow-ups are clearly reported.
 
