@@ -472,6 +472,83 @@ class WorkoutManagerAggregationsMixin:
 
         return result
 
+    def get_longest_workout(
+        self,
+        activity_types: List[str],
+        unit: str = "km",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> float:
+        """Return the distance of the longest single workout for the given activity types."""
+        if (
+            self.workouts.empty
+            or "distance" not in self.workouts.columns
+            or "activityType" not in self.workouts.columns
+        ):
+            return 0.0
+
+        all_workouts = self._filter_workouts("All", start_date, end_date)
+        if all_workouts.empty:
+            return 0.0
+
+        filtered = all_workouts[all_workouts["activityType"].isin(activity_types)]
+        if filtered.empty:
+            return 0.0
+
+        max_distance = filtered["distance"].max()
+        if pd.isna(max_distance):
+            return 0.0
+
+        divisor = self._get_distance_divisor(unit)
+        return float(max_distance) / divisor
+
+    def get_longest_workout_details(
+        self,
+        activity_types: List[str],
+        unit: str = "km",
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Return details of the longest single workout for the given activity types.
+
+        Returns a dict with keys ``distance`` (float, in *unit*), ``date`` (Timestamp or ``None``),
+        and ``duration`` (float in seconds or ``None``), or ``None`` when no matching workout
+        exists.
+        """
+        if (
+            self.workouts.empty
+            or "distance" not in self.workouts.columns
+            or "activityType" not in self.workouts.columns
+        ):
+            return None
+
+        all_workouts = self._filter_workouts("All", start_date, end_date)
+        if all_workouts.empty:
+            return None
+
+        filtered = all_workouts[all_workouts["activityType"].isin(activity_types)]
+        if filtered.empty:
+            return None
+
+        distance_series = filtered["distance"].dropna()
+        if distance_series.empty:
+            return None
+        idx = distance_series.idxmax()
+
+        row = filtered.loc[idx]
+        divisor = self._get_distance_divisor(unit)
+        raw_duration = row["duration"] if "duration" in filtered.columns else None
+        result: Dict[str, Any] = {
+            "distance": float(row["distance"]) / divisor,
+            "date": row["startDate"] if "startDate" in filtered.columns else None,
+            "duration": (
+                None
+                if raw_duration is None or pd.isna(raw_duration)
+                else float(raw_duration)
+            ),
+        }
+        return result
+
     def get_workouts(self) -> pd.DataFrame:
         """Return the DataFrame of workouts."""
         return self.workouts

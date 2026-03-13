@@ -2,9 +2,8 @@
 
 import asyncio
 import logging
-import re
 import time
-from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Hashable, Mapping
 from typing import Any, Callable, Optional
 
 import pandas as pd
@@ -23,12 +22,15 @@ from logic.workout_manager import (
     WorkoutManager,
 )
 from ui.helpers import (
+    calculate_moving_average,
     format_date_label,
     format_distance_label,
     format_duration_label,
+    format_float,
     format_integer,
     period_code_to_label,
     qdate_locale_json,
+    translate_parser_progress_message,
 )
 from ui.local_file_picker import LocalFilePicker
 
@@ -74,15 +76,8 @@ def handle_csv_export() -> None:
     ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
 
 
-def refresh_data() -> None:
-    """Refresh the displayed data."""
-    _logger.info(
-        "Refreshing data: activity_type=%s, start_date=%s, end_date=%s",
-        state.selected_activity_type,
-        state.start_date,
-        state.end_date,
-    )
-
+def _refresh_summary_metrics() -> None:
+    """Refresh global summary metrics and their display values."""
     state.metrics["count"] = state.workouts.get_count(
         state.selected_activity_type, state.start_date, state.end_date
     )
@@ -105,16 +100,100 @@ def refresh_data() -> None:
     state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
 
-    # Invalidate best-segments cache and cancel any in-flight load for stale data.
+
+def _set_longest_metric_from_details(
+    metric_key: str,
+    details: Optional[dict[str, Any]],
+    language_code: str,
+) -> None:
+    """Set one longest-workout metric display/tooltip from details."""
+    state.metrics[metric_key] = 0.0
+    state.metrics_display[metric_key] = format_float(0.0)
+
+    if details is None:
+        state.metrics_tooltip[metric_key] = t("No data")
+        return
+
+    distance_value = details.get("distance")
+    distance_float = 0.0
+    if distance_value is not None:
+        try:
+            distance_float = float(distance_value)
+        except (TypeError, ValueError):
+            distance_float = 0.0
+
+    state.metrics[metric_key] = distance_float
+    state.metrics_display[metric_key] = format_float(distance_float)
+
+    date_value = details.get("date")
+    duration_value = details.get("duration")
+
+    date_str: Optional[str] = None
+    if date_value is not None:
+        date_str = format_date_label(date_value, language_code)
+
+    duration_str: Optional[str] = None
+    if duration_value is not None:
+        try:
+            duration_float = float(duration_value)
+        except (TypeError, ValueError):
+            duration_float = None
+        else:
+            duration_str = format_duration_label(duration_float)
+
+    if date_str and duration_str:
+        state.metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"
+    elif date_str:
+        state.metrics_tooltip[metric_key] = date_str
+    elif duration_str:
+        state.metrics_tooltip[metric_key] = duration_str
+    else:
+        state.metrics_tooltip[metric_key] = t("No data")
+
+
+def _refresh_longest_workout_metrics() -> None:
+    """Refresh longest run/walk/cycling metrics and tooltips."""
+    language_code = get_language()
+    metric_configs = [
+        ("longest_run", ["Running"]),
+        ("longest_walk", ["Walking", "Hiking"]),
+        ("longest_cycling", ["Cycling"]),
+    ]
+
+    for metric_key, activity_types in metric_configs:
+        details = state.workouts.get_longest_workout_details(
+            activity_types,
+            start_date=state.start_date,
+            end_date=state.end_date,
+        )
+        _set_longest_metric_from_details(metric_key, details, language_code)
+
+
+def _reset_best_segments_state() -> None:
+    """Invalidate cached best-segments data and cancel stale in-flight loads."""
     best_segments_task: Any = getattr(state, "best_segments_task", None)
     if isinstance(best_segments_task, asyncio.Task) and not best_segments_task.done():
         best_segments_task.cancel()
-    # Ensure task and loading flag are reset so a new load can start after refresh.
+
     state.best_segments_task = None
     if hasattr(state, "best_segments_loading"):
         state.best_segments_loading = False
     state.best_segments_rows = []
     state.best_segments_loaded = False
+
+
+def refresh_data() -> None:
+    """Refresh the displayed data."""
+    _logger.info(
+        "Refreshing data: activity_type=%s, start_date=%s, end_date=%s",
+        state.selected_activity_type,
+        state.start_date,
+        state.end_date,
+    )
+
+    _refresh_summary_metrics()
+    _refresh_longest_workout_metrics()
+    _reset_best_segments_state()
 
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()
@@ -311,11 +390,38 @@ def render_header() -> None:
                     ui.menu_item(name, on_click=lambda _event, c=code: _change_language(c))
 
 
-def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):
-    """
-    Create a reactive KPI card.
-    'value_ref' is a dictionary containing the totals,
-    allowing automatic updates via NiceGUI binding.
+def stat_card(
+    label: str,
+    value_ref: dict[str, str],
+    key: str,
+    unit: str = "",
+    tooltip_ref: Optional[dict[str, str]] = None,
+    tooltip_key: Optional[str] = None,
+) -> None:
+    """Create a reactive KPI card with an optional hover tooltip.
+
+    The card value is bound reactively to ``value_ref[key]`` so that any update
+    to the dictionary is immediately reflected in the UI without a full page
+    refresh.
+
+    Args:
+        label: Short display label shown above the value (e.g. ``"Distance"``).
+        value_ref: Mutable dictionary whose ``key`` entry holds the formatted
+            display string.  NiceGUI binds directly to this dict so mutations
+            are picked up automatically.
+        key: Key inside *value_ref* to read the display value from.
+        unit: Optional unit suffix rendered in smaller text next to the value
+            (e.g. ``"km"``, ``"kcal"``).  Omit or pass an empty string to show
+            no unit.
+        tooltip_ref: Optional mutable dictionary whose ``tooltip_key`` entry
+            holds the tooltip text.  When provided together with *tooltip_key*,
+            a NiceGUI ``ui.tooltip`` is added to the card and bound to this
+            dict so it updates reactively alongside the card value.  The tooltip
+            is hidden when the text is empty (i.e. before any file is loaded);
+            once data is available it shows either the record details or a
+            translated ``"No data"`` fallback.
+        tooltip_key: Key inside *tooltip_ref* to read the tooltip text from.
+            Required when *tooltip_ref* is provided; ignored otherwise.
     """
     with ui.card().classes("w-40 h-24 items-center justify-center shadow-sm"):
         ui.label(label).classes("text-xs text-gray-500 uppercase")
@@ -324,6 +430,10 @@ def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):
             ui.label().classes("text-xl font-bold").bind_text_from(value_ref, key)
             if unit:
                 ui.label(unit).classes("text-xs text-gray-400")
+        if tooltip_ref is not None and tooltip_key is not None:
+            ui.tooltip().bind_text_from(tooltip_ref, tooltip_key).bind_visibility_from(
+                tooltip_ref, tooltip_key, backward=bool
+            )
 
 
 def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: str = "") -> None:
@@ -348,24 +458,6 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
                 ],
             }
         )
-
-
-def calculate_moving_average(
-    y_values: Sequence[float | int | None], window_size: int = 12
-) -> list[float | None]:
-    """
-    Calculate a moving average to smooth out peaks and valleys in sports data.
-
-    Uses a rolling window with ``min_periods=1``, which behaves like an expanding
-    average for the initial points when there are fewer samples than ``window_size``.
-    Missing values (None/NaN) are preserved as None in the output.
-    """
-    # Use pandas rolling window to calculate the moving average consistently
-    # Convert y_values to a list to ensure compatibility with pandas Series
-    # constructor's type hints.
-    series = pd.Series(list(y_values), dtype=float)
-    result = series.rolling(window=window_size, min_periods=1).mean().round(2)
-    return [None if pd.isna(v) else float(v) for v in result]
 
 
 def render_generic_graph(
@@ -427,30 +519,6 @@ async def pick_file() -> None:
     state.input_file.value = result[0]
 
 
-def _translate_parser_progress_message(message: str) -> str:
-    """Translate parser progress messages emitted by ExportParser."""
-    if message == "Starting to parse the Apple Health export file...":
-        return t("Starting to parse the Apple Health export file...")
-    if message == "Loading the workouts...":
-        return t("Loading the workouts...")
-    if message == "Finished parsing the Apple Health export file.":
-        return t("Finished parsing the Apple Health export file.")
-
-    processed_match = re.match(r"^Processed (\d+) workouts\.\.\.$", message)
-    if processed_match:
-        return t("Processed {count} workouts...", count=processed_match.group(1))
-
-    loaded_match = re.match(r"^Loaded (\d+) workouts total\.$", message)
-    if loaded_match:
-        return t("Loaded {count} workouts total.", count=loaded_match.group(1))
-
-    error_match = re.match(r"^Error during parsing: (.+)$", message)
-    if error_match:
-        return t("Error during parsing: {error}", error=error_match.group(1))
-
-    return message
-
-
 def load_workouts_from_file(
     file_path: str,
     progress_callback: Optional[Callable[[int, str], None]] = None,
@@ -463,7 +531,7 @@ def load_workouts_from_file(
     """
 
     def report(progress: int, message: str) -> None:
-        localized_message = _translate_parser_progress_message(message)
+        localized_message = translate_parser_progress_message(message, get_language())
         _logger.info(localized_message)
         if progress_callback:
             progress_callback(progress, localized_message)
@@ -604,6 +672,31 @@ def render_body() -> None:
                 stat_card(t("Elevation"), state.metrics_display, "elevation", "km")
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Calories"), state.metrics_display, "calories", "kcal")
+            with ui.row().classes(ROW_CENTERED_CLASSES):
+                stat_card(
+                    t("Longest Run"),
+                    state.metrics_display,
+                    "longest_run",
+                    "km",
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_run",
+                )
+                stat_card(
+                    t("Longest Walk/Hike"),
+                    state.metrics_display,
+                    "longest_walk",
+                    "km",
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_walk",
+                )
+                stat_card(
+                    t("Longest Cycling"),
+                    state.metrics_display,
+                    "longest_cycling",
+                    "km",
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_cycling",
+                )
 
         with ui.tab_panel("activities"):
             render_activity_graphs()

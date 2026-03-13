@@ -1,93 +1,115 @@
 # Apple Health Analyzer - AI Coding Agent Instructions
 
-## Architecture
+## Rule precedence
 
-**Purpose**: NiceGUI-based graphical application for parsing and analyzing Apple Health export files (ZIP archives containing XML).
+When instructions conflict, apply this order:
+1. Explicit user request for the current task
+2. Safety and platform policy
+3. This repository instruction file
+4. General style preferences
 
-**Core Components**:
-- `src/apple_health_analyzer.py` - NiceGUI page definition and main GUI entry point with `@ui.page` decorator
-- `src/app_state.py` - Singleton `AppState` holding all shared UI and data state
-- `src/ui/layout.py` - Full NiceGUI UI (header, drawer, tabs, rendering)
-- `src/ui/local_file_picker.py` - `LocalFilePicker` class extending `ui.dialog` for file selection UI
-- `src/ui/helpers.py` - Formatting helpers for labels, dates, durations, distances
-- `src/logic/export_parser.py` - `ExportParser` class (context manager) for ZIP/XML processing
-- `src/logic/workout_manager/` - `WorkoutManager` package (aggregations, export, best-segment logic)
-- `src/logic/workout_route.py` - `WorkoutRoute` / `RoutePoint` models and GPS segment search
-- `src/assets.py` - Static assets (icons, images) for the GUI
-- `tests/` - pytest suite organised under `tests/logic/`, `tests/ui/`, `tests/i18n/` with fixture-based and NiceGUI testing
+If two rules at the same level conflict, choose the simpler option and state the assumption.
 
-**Data Flow**: NiceGUI app loads → `@ui.page` creates welcome page → user clicks "Browse" → `pick_file()` opens `LocalFilePicker` → user selects file → `load_file()` calls `load_workouts_from_file()` which parses with `ExportParser` → results stored in `AppState` → tabs refresh
+## Project overview
 
-## Development Workflow
+**Purpose**: NiceGUI app that parses Apple Health exports (ZIP containing XML/GPX) and presents workout analytics.
 
-**Setup**: Python 3.10+ with virtual environment (`.\.venv\Scripts\Activate.ps1` on Windows)
+**Core modules**:
+- `src/apple_health_analyzer.py` - app entrypoint and `@ui.page` registration
+- `src/app_state.py` - shared UI/data singleton state
+- `src/ui/layout.py` - UI composition (header, drawer, tabs, charts)
+- `src/ui/local_file_picker.py` - local file picker dialog
+- `src/ui/helpers.py` - label/date/duration/distance formatters
+- `src/logic/export_parser.py` - ZIP/XML/GPX parsing (`ExportParser`)
+- `src/logic/workout_manager/` - workout aggregations/export/segment features
+- `src/logic/workout_route.py` - `WorkoutRoute`/`RoutePoint`, route metrics, segment search
+- `tests/` - unit tests for logic, UI, i18n
 
-**Running the App**: `python -m nicegui src.apple_health_analyzer`
+**Data flow**: page load → file selection → `load_workouts_from_file()` → parse with `ExportParser` → store in `AppState` → refresh tabs/views.
 
-**Testing**: `pytest --cov=src tests/`
-- Uses `pytest-asyncio` with `asyncio_mode = "auto"` (configured in `pyproject.toml`)
-- Uses NiceGUI testing plugin with user fixture (`nicegui.testing.user_plugin`)
-- Tests gracefully skip if `tests/fixtures/` missing sample files
-- Integration tests may use mock fixtures from `tests/conftest.py`
+## Development commands
 
-**Code Quality** (all configured in `pyproject.toml`):
-```bash
-black src tests --line-length=100
-isort src tests --profile=black
-mypy src tests
-pylint src tests
-```
+- Setup (Windows): `.\.venv\Scripts\Activate.ps1`
+- Run app: `python -m nicegui src.apple_health_analyzer`
+- Tests: `pytest --cov=src tests/`
+- Quality: `black src tests --line-length=100`, `isort src tests --profile=black`, `mypy src tests`, `pylint src tests`
 
-**Linting & Type Checking**: 
-- Pylint is configured with: init-hook to add src to path, win32api in extension allow list
-- Mypy configured with: `disallow_untyped_defs = false`, Python 3.14 target
-- All Pylance and Pylint warnings MUST be resolved (see "Code Quality Standards" section below)
+## Mandatory engineering constraints
 
-CI validates code quality and tests on push/PR to main/develop (`.github/workflows/tests.yml`).
+### Parsing and security
+- Keep XML parsing on `defusedxml` (never switch to stdlib `ElementTree` for untrusted XML parsing).
+- Preserve streaming parsing patterns (`iterparse` + `elem.clear()`) for large files.
+- `ExportParser` remains a context manager and should be used with `with ExportParser() as ep:`.
 
-## Critical Patterns
+### Test fixtures and mocking
+- Never modify existing files under `tests/fixtures/exports`.
+- For new scenarios, add new fixture files or construct data in tests.
+- Prefer centralized fixtures/helpers in `tests/conftest.py` instead of ad-hoc inline mocks.
+- For patching NiceGUI objects, patch module-level lookups to support runtime patching.
 
-**Context Manager Pattern**: `ExportParser` implements `__enter__`/`__exit__` for resource cleanup.
-- Always use: `with ExportParser() as ep: phd = ep.parse(file_path)`
-- The constructor accepts an optional `progress_callback`; the file path is passed to `.parse()`
-- Safely processes large files with streaming (iterparse) and element clearing
+### Data and numeric handling
+- Convert numeric XML attributes/values to `int`/`float` at parse time.
+- In tests, never compare floating-point values with `==`; use `pytest.approx`.
 
-**Security**: Uses **defusedxml** (not ElementTree) for XXE protection—maintain for all XML additions.
+## Coding workflow
 
-**Data Processing**: Streaming XML iteration with `defusedxml.ElementTree.iterparse()` and `elem.clear()` for memory efficiency.
+### Before coding
+- Identify impacted files and adjacent tests.
+- Reuse existing patterns and naming.
+- Prefer minimal, targeted changes over broad refactors.
 
-## Key Files
+### During coding
+- Fix root cause; avoid cosmetic unrelated edits.
+- Keep public APIs stable unless the task explicitly requests API changes. Do not use compatibility layers unless absolutely necessary.
+- Use `# pylint: disable=...` or `# type: ignore` only when necessary and scoped to the smallest expression/line.
+- Keep cognitive complexity low; break down complex functions into smaller helpers. Maximum complexity of 15 per function.
+- Keep functions under 50 lines where practical. If a function exceeds this, consider refactoring into smaller functions.
+- Each module must contain less than 1000 lines of code. If a module exceeds this, consider splitting it into smaller modules.
+
+### Validation scope (default)
+- Validate changed files and directly affected tests first.
+- Run wider suites (`tests/`, full lint, full type-check) only when:
+	- requested by the user, or
+	- risk is high (cross-cutting parser/model/UI changes).
+
+### TDD policy
+- Use TDD for bug fixes and new logic where practical.
+- For trivial refactors/renames/doc-only changes, add or update tests only if behavior meaningfully changes.
+
+## Definition of done
+
+A task is complete when all of the following are true:
+1. Requested behavior is implemented.
+2. Changed files are lint/type clean (or existing unrelated issues are explicitly called out).
+3. Relevant tests pass.
+4. Any new assumptions, trade-offs, or follow-ups are clearly reported.
+
+## Key file map
 
 | File | Responsibility |
-|------|---|
-| `src/apple_health_analyzer.py` | NiceGUI page definition, main GUI entry point, CLI args |
-| `src/app_state.py` | Singleton `AppState`: all shared UI/data state |
-| `src/ui/layout.py` | Header, drawer, tabs, graphs, best-segments rendering |
-| `src/ui/helpers.py` | Label/date/duration/distance formatting helpers |
-| `src/ui/local_file_picker.py` | File picker UI dialog |
-| `src/logic/export_parser.py` | ZIP/XML parsing, route loading |
-| `src/logic/workout_manager/` | `WorkoutManager` package: aggregations, export, segments |
-| `src/logic/workout_route.py` | `WorkoutRoute` / `RoutePoint` models, GPS segment search |
-| `src/assets.py` | Static assets (base64-encoded icons/images) |
-| `tests/conftest.py` | Shared pytest fixtures and mock helpers |
-| `tests/logic/` | Logic-layer unit tests (parser, workout manager, route) |
-| `tests/ui/` | UI-layer unit tests (layout functions, helpers) |
-| `tests/i18n/` | Translation/i18n unit tests |
-| `pyproject.toml` | Build config, tool configs (Black 100-char, Pylint, mypy, pytest) |
+|---|---|
+| `src/apple_health_analyzer.py` | App entrypoint, page registration, CLI args |
+| `src/app_state.py` | Shared application state |
+| `src/ui/layout.py` | Main UI rendering/composition |
+| `src/ui/local_file_picker.py` | Local file picker dialog UI |
+| `src/ui/helpers.py` | UI formatting utilities |
+| `src/logic/export_parser.py` | Health export parsing, route loading |
+| `src/logic/workout_manager/` | Aggregations and reporting utilities |
+| `src/logic/workout_route.py` | Route models and route computations |
+| `tests/conftest.py` | Shared fixtures and test helpers |
+| `pyproject.toml` | Tooling configuration (pytest/mypy/pylint/formatters) |
 
-## Before Coding
+## CI expectations
 
-- **Pylance & Pylint warnings**: All Pylance and Pylint warnings MUST be resolved. Do not add code that creates new warnings. Use `# pylint: disable=...` or `# type: ignore` comments only when absolutely necessary and with clear justification.
-- **Type hints**: Maintain consistency with existing code (mypy: `disallow_untyped_defs = false`)
-- **NiceGUI components**: Familiarize with `@ui.page` decorator, `ui.dialog`, async/await patterns, and testing plugin usage
-- **Async/await patterns**: NiceGUI operations are async; always use `async def` and `await` where required. Tests must wait for async operations with `asyncio.sleep()` or similar.
-- **Mocking for tests**: Use centralized mock factories from `tests/conftest.py` (e.g., `mock_file_picker_context`) rather than inline mocks. When mocking NiceGUI components, use module-level lookups (e.g., `import apple_health_analyzer as _module; _module.LocalFilePicker`) to enable runtime patching.
-- **Test fixtures**: Add to `tests/fixtures/` (tests auto-skip if missing). Use pytest fixtures with `@pytest.fixture` decorator for setup/teardown. **AI agents must NEVER modify any existing file in `tests/fixtures/exports`** - these are real export samples that should not be altered. When test scenarios require different data values, AI agents should create new fixture files or generate modified fragments in-test rather than editing existing samples. Human developers may modify these files when intentionally updating baseline samples, but AI agents lack the context to make such decisions safely.
-- **Dependencies**: Check GPL-3.0 license compatibility for additions. NiceGUI and defusedxml are core dependencies.
-- **Entry point**: Sync entry point in `pyproject.toml` with `main()` function in `src/apple_health_analyzer.py`
-- **Memory efficiency**: Use iterparse + `.clear()` pattern for large XML files (see `_load_data()` in `src/logic/export_parser.py`)
-- **Data types**: Convert numeric strings to `int`/`float` when parsing XML attributes
-- **Security**: Uses **defusedxml** (not ElementTree) for XXE protection—maintain for all XML additions
-- **Documentation**: Update README.md for new features or changes
-- **Development workflow**: Use TDD approach. Write tests first, ensure they fail, then implement the code to pass tests
-- **Code reviews**: All Pylint/Pylance issues must be addressed before code is reviewed
+CI validates tests and quality checks on PRs. Keep local changes aligned with configured tooling and avoid introducing new warnings in touched code.
+
+## Example responses
+
+### Small fix (single file)
+"Updated `src/logic/workout_route.py` to avoid float equality in the segment guard. Ran `pytest tests/logic/test_workout_route.py -q` (all passing). No API changes."
+
+### Multi-file change
+"Implemented the requested metric in `src/logic/workout_manager/` and wired it in `src/ui/layout.py`, with tests in `tests/logic/test_workout_manager_totals.py`. Validated changed tests and ran targeted lint/type checks for touched files."
+
+### Blocked case
+"I could not complete the change because the required fixture is missing and must be provided by a human (`tests/fixtures/exports/...`). I made no destructive edits. If you add the fixture, I can finish by adding parser handling and tests in one pass."

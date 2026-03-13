@@ -1,5 +1,6 @@
 """Test suite for WorkoutManager total aggregation methods"""
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -626,3 +627,241 @@ class TestGetTotalCalories:
 
         assert workouts.get_total_calories("Running") == 826  # 250 + 300 + 275.5 = 825.5 → 826
         assert workouts.get_total_calories() == 826
+
+
+class TestGetLongestWorkout:
+    """Test suite for WorkoutManager.get_longest_workout method."""
+
+    def test_get_longest_workout_empty(self) -> None:
+        """Test get_longest_workout with empty DataFrame."""
+        workouts = wm.WorkoutManager()
+
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(0.0)  # type: ignore[misc]
+
+    def test_get_longest_workout_single_match(self) -> None:
+        """Test get_longest_workout with a single matching workout."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [10000],  # 10 km
+                }
+            )
+        )
+
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(  # type: ignore[misc]
+            10.0
+        )
+
+    def test_get_longest_workout_multiple_activities_picks_max(self) -> None:
+        """Test get_longest_workout returns the longest workout distance."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Running"],
+                    "distance": [5000, 12000, 8000],
+                }
+            )
+        )
+
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(  # type: ignore[misc]
+            12.0
+        )
+
+    def test_get_longest_workout_filters_by_activity_type(self) -> None:
+        """Test get_longest_workout only considers the specified activity types."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Cycling", "Walking"],
+                    "distance": [5000, 50000, 3000],
+                }
+            )
+        )
+
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(5.0)  # type: ignore[misc]
+        assert workouts.get_longest_workout(["Cycling"]) == pytest.approx(  # type: ignore[misc]
+            50.0
+        )
+        assert workouts.get_longest_workout(["Walking"]) == pytest.approx(3.0)  # type: ignore[misc]
+
+    def test_get_longest_workout_multiple_activity_types(self) -> None:
+        """Test get_longest_workout with multiple activity types."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Walking", "Hiking", "Running"],
+                    "distance": [4000, 9000, 6000],
+                }
+            )
+        )
+
+        expected = pytest.approx(9.0)  # type: ignore[misc]
+        assert workouts.get_longest_workout(["Walking", "Hiking"]) == expected
+
+    def test_get_longest_workout_no_match(self) -> None:
+        """Test get_longest_workout with no matching activity type returns 0."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [5000],
+                }
+            )
+        )
+
+        assert workouts.get_longest_workout(["Cycling"]) == pytest.approx(0.0)  # type: ignore[misc]
+
+    def test_get_longest_workout_no_distance_column(self) -> None:
+        """Test get_longest_workout when distance column is missing returns 0."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "duration": [3600],
+                }
+            )
+        )
+
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(0.0)  # type: ignore[misc]
+
+    def test_get_longest_workout_unit_km(self) -> None:
+        """Test get_longest_workout returns km by default."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [15000],  # 15 km
+                }
+            )
+        )
+
+        expected = pytest.approx(15.0)  # type: ignore[misc]
+        assert workouts.get_longest_workout(["Running"], unit="km") == expected
+
+    def test_get_longest_workout_unit_miles(self) -> None:
+        """Test get_longest_workout returns miles when specified."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [1609.34],  # 1 mile
+                }
+            )
+        )
+
+        expected = pytest.approx(1.0)  # type: ignore[misc]
+        assert workouts.get_longest_workout(["Running"], unit="mi") == expected
+
+    def test_get_longest_workout_empty_activity_types_list(self) -> None:
+        """Test get_longest_workout with empty activity types list returns 0."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [5000],
+                }
+            )
+        )
+
+        assert workouts.get_longest_workout([]) == pytest.approx(0.0)  # type: ignore[misc]
+
+
+class TestGetLongestWorkoutDetails:
+    """Test suite for WorkoutManager.get_longest_workout_details method."""
+
+    def test_get_longest_workout_details_empty(self) -> None:
+        """Test returns None for empty DataFrame."""
+        workouts = wm.WorkoutManager()
+        assert workouts.get_longest_workout_details(["Running"]) is None
+
+    def test_get_longest_workout_details_no_match(self) -> None:
+        """Test returns None when no matching activity type exists."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame({"activityType": ["Running"], "distance": [5000], "duration": [3600]})
+        )
+        assert workouts.get_longest_workout_details(["Cycling"]) is None
+
+    def test_get_longest_workout_details_returns_max_row(self) -> None:
+        """Test returns details of the single longest workout."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running"],
+                    "distance": [5000, 12000],
+                    "duration": [1800.0, 3600.0],
+                    "startDate": pd.to_datetime(["2024-01-01", "2024-02-15"]),
+                }
+            )
+        )
+        result = workouts.get_longest_workout_details(["Running"])
+        assert result is not None
+        assert result["distance"] == pytest.approx(12.0)  # type: ignore[misc]
+        assert result["duration"] == pytest.approx(3600.0)  # type: ignore[misc]
+
+    def test_get_longest_workout_details_multiple_activity_types(self) -> None:
+        """Test returns the longest workout across multiple activity types."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Walking", "Hiking"],
+                    "distance": [4000, 9000],
+                    "duration": [2400.0, 5400.0],
+                    "startDate": pd.to_datetime(["2024-03-01", "2024-04-10"]),
+                }
+            )
+        )
+        result = workouts.get_longest_workout_details(["Walking", "Hiking"])
+        assert result is not None
+        assert result["distance"] == pytest.approx(9.0)  # type: ignore[misc]
+        assert result["duration"] == pytest.approx(5400.0)  # type: ignore[misc]
+
+    def test_get_longest_workout_details_missing_duration_column(self) -> None:
+        """Test returns None duration when duration column is absent."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [10000],
+                    "startDate": pd.to_datetime(["2024-05-01"]),
+                }
+            )
+        )
+        result = workouts.get_longest_workout_details(["Running"])
+        assert result is not None
+        assert result["distance"] == pytest.approx(10.0)  # type: ignore[misc]
+        assert result["duration"] is None
+
+    def test_get_longest_workout_details_unit_miles(self) -> None:
+        """Test distance is converted to the requested unit."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [1609.34],  # 1 mile
+                    "duration": [600.0],
+                    "startDate": pd.to_datetime(["2024-06-01"]),
+                }
+            )
+        )
+        result = workouts.get_longest_workout_details(["Running"], unit="mi")
+        assert result is not None
+        assert result["distance"] == pytest.approx(1.0)  # type: ignore[misc]
+
+    def test_get_longest_workout_details_nan_duration(self) -> None:
+        """Test returns None for duration when the duration value is NaN."""
+
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "distance": [8000],
+                    "duration": [np.nan],
+                    "startDate": pd.to_datetime(["2024-07-01"]),
+                }
+            )
+        )
+        result = workouts.get_longest_workout_details(["Running"])
+        assert result is not None
+        assert result["distance"] == pytest.approx(8.0)  # type: ignore[misc]
+        assert result["duration"] is None
