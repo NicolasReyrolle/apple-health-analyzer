@@ -165,15 +165,25 @@ class WorkoutManagerSegmentsMixin:
         required_columns = {"activityType", "startDate"}
         if not required_columns.issubset(self.workouts.columns):
             return self._empty_best_segments_frame()
-        runs = self.workouts[self.workouts["activityType"] == "Running"]
 
-        if start_date is not None:
-            runs = runs[runs["startDate"] >= pd.Timestamp(start_date)]
-        if end_date is not None:
-            # Use exclusive next-day boundary so the full end_date day is included
-            # (end_date from the date picker is a midnight datetime, i.e. date-only).
-            next_day = pd.Timestamp(end_date) + pd.Timedelta(days=1)
-            runs = runs[runs["startDate"] < next_day]
+        # Prefer shared filtering logic from WorkoutManagerAggregationsMixin to keep
+        # date-handling semantics consistent across APIs.
+        if hasattr(self, "_filter_workouts"):
+            runs = self._filter_workouts("Running", start_date, end_date)
+        else:
+            # Fallback: local filtering with end-date handling similar to _filter_workouts.
+            runs = self.workouts[self.workouts["activityType"] == "Running"]
+            if start_date is not None:
+                runs = runs[runs["startDate"] >= pd.Timestamp(start_date)]
+            if end_date is not None:
+                end_ts = pd.Timestamp(end_date)
+                # Treat "date-only" end dates as an exclusive next-day boundary,
+                # otherwise include workouts up to and including the given timestamp.
+                is_date_only = end_ts.normalize() == end_ts
+                if is_date_only:
+                    runs = runs[runs["startDate"] < end_ts + pd.Timedelta(days=1)]
+                else:
+                    runs = runs[runs["startDate"] <= end_ts]
 
         if runs.empty:
             return self._empty_best_segments_frame()
