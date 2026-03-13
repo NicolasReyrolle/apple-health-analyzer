@@ -64,6 +64,15 @@ class _DummyWorkouts(WorkoutManager):
     ) -> float:
         return 0.0
 
+    def get_longest_workout_details(
+        self,
+        activity_types: list[str],
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> Optional[dict[str, Any]]:
+        """Return no longest workout details in this dummy implementation."""
+        return None
+
 
 def test_refresh_data_formats_metrics_display() -> None:
     """refresh_data should populate formatted display values."""
@@ -107,6 +116,7 @@ def test_refresh_data_passes_date_range_to_workouts() -> None:
     workouts_mock.get_total_elevation.return_value = 4
     workouts_mock.get_total_calories.return_value = 5
     workouts_mock.get_longest_workout.return_value = 0.0
+    workouts_mock.get_longest_workout_details.return_value = None
 
     try:
         state.workouts = workouts_mock
