@@ -1,6 +1,7 @@
 """Export processor for Apple Health data."""
 
 import logging
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from datetime import datetime
 from types import TracebackType
@@ -220,16 +221,12 @@ class ExportParser:
             workout_rows: List[WorkoutRecord] = []
             record_rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
-            for event, elem in iterparse(export_file, events=("end",)):
-                if event == "end" and elem.tag == "Workout":
+            for _, elem in iterparse(export_file, events=("end",)):
+                if elem.tag == "Workout":
                     self._process_workout_event(elem, zipfile, workout_rows)
-
                     elem.clear()
-                    continue
-
-                if event == "end" and elem.tag == "Record":
+                elif elem.tag == "Record":
                     self._process_record_event(elem, record_rows_by_type)
-
                     elem.clear()
 
             return self._build_parsed_health_data(workout_rows, record_rows_by_type)
@@ -418,13 +415,13 @@ class ExportParser:
         """Load GPX route file from the export zip."""
         try:
             with zipfile.open(f"apple_health_export{route_path}") as route_file:
-                route: WorkoutRoute = WorkoutRoute(points=[])
-                for event, elem in iterparse(route_file, events=("start", "end")):
-                    if event == "end" and elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt":
+                points: list[RoutePoint] = []
+                for _, elem in iterparse(route_file, events=("end",)):
+                    if elem.tag == "{http://www.topografix.com/GPX/1/1}trkpt":
                         point_data = self._extract_gpx_point_data(elem)
-                        route.add_point(self._create_route_point(*point_data))
+                        points.append(self._create_route_point(*point_data))
                         elem.clear()
-                return route
+                return WorkoutRoute(points=points)
         except KeyError:
             self._log(f"Route file not found in export: {route_path}")
             return None
@@ -446,7 +443,7 @@ class ExportParser:
         return self._route_cache[route_path]
 
     @staticmethod
-    def _clip_route_to_window(
+    def clip_route_to_window(
         route: WorkoutRoute,
         window_start: Optional[datetime],
         window_end: Optional[datetime],
@@ -456,12 +453,36 @@ class ExportParser:
         Apple Health exports can reference the same GPX file from multiple adjacent
         WorkoutRoute entries. We must keep only points that belong to the current
         window to avoid creating artificial cross-window traces.
+
+        Uses binary search on the cached sorted-times list for O(log n) clipping instead
+        of an O(n) linear scan, which matters when the same cached GPX route is clipped
+        many times across a large export. Falls back to a linear scan if route times
+        are not monotonic.
         """
         if window_start is None or window_end is None:
             return WorkoutRoute(points=list(route.points))
 
-        clipped_points = [
-            point for point in route.points if window_start <= point.time <= window_end
+        times = route.sorted_times()
+        if not times:
+            return WorkoutRoute(points=[])
+
+        try:
+            is_monotonic = all(t1 <= t2 for t1, t2 in zip(times, times[1:]))
+        except TypeError:
+            _logger.debug("Non-comparable route times encountered; falling back to linear clipping")
+            is_monotonic = False
+
+        if is_monotonic:
+            left = bisect_left(times, window_start)
+            right = bisect_right(times, window_end)
+            return WorkoutRoute(points=route.points[left:right])
+
+        # Fallback: linear scan for routes with non-monotonic or invalid times.
+        clipped_points: list[RoutePoint] = [
+            point
+            for point in route.points
+            if point.time is not None  # type: ignore[redundant-expr]
+            and window_start <= point.time <= window_end
         ]
         return WorkoutRoute(points=clipped_points)
 
@@ -518,9 +539,9 @@ class ExportParser:
 
         window_start = self._parse_health_datetime(elem.get("startDate"))
         window_end = self._parse_health_datetime(elem.get("endDate"))
-        if active_end is not None and window_end is not None:
+        if active_end is not None and window_end is not None:  # type: ignore[redundant-expr]
             window_end = min(window_end, active_end)
-        route_part = self._clip_route_to_window(route_source, window_start, window_end)
+        route_part = self.clip_route_to_window(route_source, window_start, window_end)
 
         if not route_part.points:
             self._log(
