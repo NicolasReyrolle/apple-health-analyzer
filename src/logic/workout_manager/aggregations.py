@@ -511,8 +511,9 @@ class WorkoutManagerAggregationsMixin:
     ) -> Optional[Dict[str, Any]]:
         """Return details of the longest single workout for the given activity types.
 
-        Returns a dict with keys ``distance`` (float, in *unit*), ``date`` (Timestamp),
-        and ``duration`` (float, in seconds), or ``None`` when no matching workout exists.
+        Returns a dict with keys ``distance`` (float, in *unit*), ``date`` (Timestamp or ``None``),
+        and ``duration`` (float in seconds or ``None``), or ``None`` when no matching workout
+        exists.
         """
         if (
             self.workouts.empty
