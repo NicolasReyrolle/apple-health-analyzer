@@ -44,6 +44,11 @@ class AppState:
             "longest_walk": "0.0",
             "longest_cycling": "0.0",
         }
+        self.metrics_tooltip: dict[str, str] = {
+            "longest_run": "",
+            "longest_walk": "",
+            "longest_cycling": "",
+        }
         self.best_segments_rows: list[dict[str, Any]] = []
         self.best_segments_loading: bool = False
         self.best_segments_loaded: bool = False
