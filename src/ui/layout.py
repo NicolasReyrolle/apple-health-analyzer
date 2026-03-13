@@ -382,7 +382,7 @@ def stat_card(
                 ui.label(unit).classes("text-xs text-gray-400")
         if tooltip_ref is not None and tooltip_key is not None:
             ui.tooltip().bind_text_from(tooltip_ref, tooltip_key).bind_visibility_from(
-                tooltip_ref, tooltip_key, backward=lambda v: bool(v)
+                tooltip_ref, tooltip_key, backward=bool
             )
 
 
