@@ -118,6 +118,22 @@ def refresh_data() -> None:
     state.metrics_display["longest_walk"] = format_float(state.metrics["longest_walk"])
     state.metrics_display["longest_cycling"] = format_float(state.metrics["longest_cycling"])
 
+    language_code = get_language()
+    for metric_key, activity_types in [
+        ("longest_run", ["Running"]),
+        ("longest_walk", ["Walking", "Hiking"]),
+        ("longest_cycling", ["Cycling"]),
+    ]:
+        details = state.workouts.get_longest_workout_details(
+            activity_types, start_date=state.start_date, end_date=state.end_date
+        )
+        if details and details.get("date") is not None and details.get("duration") is not None:
+            date_str = format_date_label(details["date"], language_code)
+            duration_str = format_duration_label(float(details["duration"]))
+            state.metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"
+        else:
+            state.metrics_tooltip[metric_key] = ""
+
     # Invalidate best-segments cache and cancel any in-flight load for stale data.
     best_segments_task: Any = getattr(state, "best_segments_task", None)
     if isinstance(best_segments_task, asyncio.Task) and not best_segments_task.done():
@@ -324,11 +340,35 @@ def render_header() -> None:
                     ui.menu_item(name, on_click=lambda _event, c=code: _change_language(c))
 
 
-def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):
-    """
-    Create a reactive KPI card.
-    'value_ref' is a dictionary containing the totals,
-    allowing automatic updates via NiceGUI binding.
+def stat_card(
+    label: str,
+    value_ref: dict[str, str],
+    key: str,
+    unit: str = "",
+    tooltip_ref: Optional[dict[str, str]] = None,
+    tooltip_key: Optional[str] = None,
+) -> None:
+    """Create a reactive KPI card with an optional hover tooltip.
+
+    The card value is bound reactively to ``value_ref[key]`` so that any update
+    to the dictionary is immediately reflected in the UI without a full page
+    refresh.
+
+    Args:
+        label: Short display label shown above the value (e.g. ``"Distance"``).
+        value_ref: Mutable dictionary whose ``key`` entry holds the formatted
+            display string.  NiceGUI binds directly to this dict so mutations
+            are picked up automatically.
+        key: Key inside *value_ref* to read the display value from.
+        unit: Optional unit suffix rendered in smaller text next to the value
+            (e.g. ``"km"``, ``"kcal"``).  Omit or pass an empty string to show
+            no unit.
+        tooltip_ref: Optional mutable dictionary whose ``tooltip_key`` entry
+            holds the tooltip text.  When provided together with *tooltip_key*,
+            a NiceGUI ``ui.tooltip`` is added to the card and bound to this
+            dict so it updates reactively alongside the card value.
+        tooltip_key: Key inside *tooltip_ref* to read the tooltip text from.
+            Required when *tooltip_ref* is provided; ignored otherwise.
     """
     with ui.card().classes("w-40 h-24 items-center justify-center shadow-sm"):
         ui.label(label).classes("text-xs text-gray-500 uppercase")
@@ -337,6 +377,8 @@ def stat_card(label: str, value_ref: dict[str, str], key: str, unit: str = ""):
             ui.label().classes("text-xl font-bold").bind_text_from(value_ref, key)
             if unit:
                 ui.label(unit).classes("text-xs text-gray-400")
+        if tooltip_ref is not None and tooltip_key is not None:
+            ui.tooltip().bind_text_from(tooltip_ref, tooltip_key)
 
 
 def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: str = "") -> None:
@@ -618,9 +660,30 @@ def render_body() -> None:
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Calories"), state.metrics_display, "calories", "kcal")
             with ui.row().classes(ROW_CENTERED_CLASSES):
-                stat_card(t("Longest Run"), state.metrics_display, "longest_run", "km")
-                stat_card(t("Longest Walk/Hike"), state.metrics_display, "longest_walk", "km")
-                stat_card(t("Longest Cycling"), state.metrics_display, "longest_cycling", "km")
+                stat_card(
+                    t("Longest Run"),
+                    state.metrics_display,
+                    "longest_run",
+                    "km",
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_run",
+                )
+                stat_card(
+                    t("Longest Walk/Hike"),
+                    state.metrics_display,
+                    "longest_walk",
+                    "km",
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_walk",
+                )
+                stat_card(
+                    t("Longest Cycling"),
+                    state.metrics_display,
+                    "longest_cycling",
+                    "km",
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_cycling",
+                )
 
         with ui.tab_panel("activities"):
             render_activity_graphs()
