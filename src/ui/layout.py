@@ -75,15 +75,8 @@ def handle_csv_export() -> None:
     ui.download(csv_data.encode("utf-8"), "apple_health_export.csv")
 
 
-def refresh_data() -> None:
-    """Refresh the displayed data."""
-    _logger.info(
-        "Refreshing data: activity_type=%s, start_date=%s, end_date=%s",
-        state.selected_activity_type,
-        state.start_date,
-        state.end_date,
-    )
-
+def _refresh_summary_metrics() -> None:
+    """Refresh global summary metrics and their display values."""
     state.metrics["count"] = state.workouts.get_count(
         state.selected_activity_type, state.start_date, state.end_date
     )
@@ -106,48 +99,85 @@ def refresh_data() -> None:
     state.metrics_display["elevation"] = format_integer(state.metrics["elevation"])
     state.metrics_display["calories"] = format_integer(state.metrics["calories"])
 
-    # Initialize longest-workout metrics with default values; they may be
-    # overwritten below if corresponding details are available.
-    for metric_key in ("longest_run", "longest_walk", "longest_cycling"):
-        state.metrics[metric_key] = 0.0
-        state.metrics_display[metric_key] = format_float(state.metrics[metric_key])
 
+def _set_longest_metric_from_details(
+    metric_key: str,
+    details: Optional[dict[str, Any]],
+    language_code: str,
+) -> None:
+    """Set one longest-workout metric display/tooltip from details."""
+    state.metrics[metric_key] = 0.0
+    state.metrics_display[metric_key] = format_float(0.0)
+
+    if details is None:
+        state.metrics_tooltip[metric_key] = t("No data")
+        return
+
+    date_value = details.get("date")
+    duration_value = details.get("duration")
+    if date_value is None or duration_value is None:
+        state.metrics_tooltip[metric_key] = t("No data")
+        return
+
+    distance_value = details.get("distance")
+    distance_float = 0.0
+    if distance_value is not None:
+        try:
+            distance_float = float(distance_value)
+        except (TypeError, ValueError):
+            distance_float = 0.0
+
+    state.metrics[metric_key] = distance_float
+    state.metrics_display[metric_key] = format_float(distance_float)
+
+    date_str = format_date_label(date_value, language_code)
+    duration_str = format_duration_label(float(duration_value))
+    state.metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"
+
+
+def _refresh_longest_workout_metrics() -> None:
+    """Refresh longest run/walk/cycling metrics and tooltips."""
     language_code = get_language()
-    for metric_key, activity_types in [
+    metric_configs = [
         ("longest_run", ["Running"]),
         ("longest_walk", ["Walking", "Hiking"]),
         ("longest_cycling", ["Cycling"]),
-    ]:
+    ]
+
+    for metric_key, activity_types in metric_configs:
         details = state.workouts.get_longest_workout_details(
-            activity_types, start_date=state.start_date, end_date=state.end_date
+            activity_types,
+            start_date=state.start_date,
+            end_date=state.end_date,
         )
-        if details and details.get("date") is not None and details.get("duration") is not None:
-            # Update numeric metric and display from details if distance is available.
-            distance_value = details.get("distance")
-            if distance_value is not None:
-                try:
-                    distance_float = float(distance_value)
-                except (TypeError, ValueError):
-                    distance_float = 0.0
-                state.metrics[metric_key] = distance_float
-                state.metrics_display[metric_key] = format_float(distance_float)
+        _set_longest_metric_from_details(metric_key, details, language_code)
 
-            date_str = format_date_label(details["date"], language_code)
-            duration_str = format_duration_label(float(details["duration"]))
-            state.metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"
-        else:
-            state.metrics_tooltip[metric_key] = t("No data")
 
-    # Invalidate best-segments cache and cancel any in-flight load for stale data.
+def _reset_best_segments_state() -> None:
+    """Invalidate cached best-segments data and cancel stale in-flight loads."""
     best_segments_task: Any = getattr(state, "best_segments_task", None)
     if isinstance(best_segments_task, asyncio.Task) and not best_segments_task.done():
         best_segments_task.cancel()
-    # Ensure task and loading flag are reset so a new load can start after refresh.
+
     state.best_segments_task = None
     if hasattr(state, "best_segments_loading"):
         state.best_segments_loading = False
     state.best_segments_rows = []
     state.best_segments_loaded = False
+
+
+def refresh_data() -> None:
+    """Refresh the displayed data."""
+    _logger.info(
+        "Refreshing data: activity_type=%s, start_date=%s, end_date=%s",
+        state.selected_activity_type,
+        state.start_date,
+        state.end_date,
+    )
+
+    _refresh_summary_metrics()
+    _refresh_longest_workout_metrics()
+    _reset_best_segments_state()
 
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()

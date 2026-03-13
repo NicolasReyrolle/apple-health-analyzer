@@ -1,7 +1,7 @@
 """Tests for UI formatting in layout refresh."""
 
 from datetime import datetime
-from typing import Any, Coroutine, Optional, Union
+from typing import Any, Coroutine, List, Optional, Union
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
@@ -57,7 +57,7 @@ class _DummyWorkouts(WorkoutManager):
 
     def get_longest_workout(
         self,
-        activity_types: list[str],
+        activity_types: List[str],
         unit: str = "km",
         start_date: Optional[Union[datetime, pd.Timestamp]] = None,
         end_date: Optional[Union[datetime, pd.Timestamp]] = None,
@@ -66,7 +66,8 @@ class _DummyWorkouts(WorkoutManager):
 
     def get_longest_workout_details(
         self,
-        activity_types: list[str],
+        activity_types: List[str],
+        unit: str = "km",
         start_date: Optional[Union[datetime, pd.Timestamp]] = None,
         end_date: Optional[Union[datetime, pd.Timestamp]] = None,
     ) -> Optional[dict[str, Any]]:
@@ -185,7 +186,7 @@ def test_refresh_data_triggers_best_segments_load_when_tab_selected() -> None:
         assert state.best_segments_rows == []
         assert state.best_segments_loaded is False
         create_task_mock.assert_called_once()
-        workouts_mock.get_longest_workout_details.assert_called_once()
+        assert workouts_mock.get_longest_workout_details.call_count == 3
     finally:
         state.workouts = original_workouts
         state.selected_main_tab = original_selected_tab
