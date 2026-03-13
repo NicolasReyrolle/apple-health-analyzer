@@ -1,8 +1,10 @@
 """Test suite for RecordsByType wrapper around HealthKit record DataFrames."""
 
+from datetime import datetime
 from typing import Callable
 
 import pandas as pd
+import pytest
 
 from logic.export_parser import ExportParser
 from logic.records_by_type import RecordsByType
@@ -199,7 +201,7 @@ class TestRecordsByTypeConvenienceStats:
         result = records.heart_rate_stats("M")
 
         assert len(result) == 1
-        assert result.iloc[0]["avg"] == 65.0
+        assert result.iloc[0]["avg"] == pytest.approx(65.0, abs=1e-9)  # type: ignore[arg-type]
 
     def test_heart_rate_stats_filters_unknown_context(self) -> None:
         """Filter heart rate stats by UNKNOWN context."""
@@ -218,7 +220,7 @@ class TestRecordsByTypeConvenienceStats:
 
         assert len(result) == 1
         assert result.iloc[0]["count"] == 2
-        assert result.iloc[0]["avg"] == 68.5
+        assert result.iloc[0]["avg"] == pytest.approx(68.5, abs=1e-9)  # type: ignore[arg-type]
 
     def test_weight_stats_uses_body_mass_type(self) -> None:
         """Use the BodyMass type constant in weight_stats."""
@@ -336,8 +338,6 @@ class TestRecordsByTypeDateRangeFiltering:
 
     def test_stats_by_period_filters_by_start_date(self) -> None:
         """Records before start_date should be excluded from aggregation."""
-        from datetime import datetime
-
         heart_rate_df = pd.DataFrame(
             {
                 "startDate": ["2024-01-01", "2024-02-01", "2024-03-01"],
@@ -346,9 +346,7 @@ class TestRecordsByTypeDateRangeFiltering:
         )
         records = RecordsByType({"HeartRate": heart_rate_df})
 
-        result = records.stats_by_period(
-            "HeartRate", period="M", start_date=datetime(2024, 2, 1)
-        )
+        result = records.stats_by_period("HeartRate", period="M", start_date=datetime(2024, 2, 1))
 
         periods = list(result["period"].astype(str))
         assert "2024-01" not in periods
@@ -357,8 +355,6 @@ class TestRecordsByTypeDateRangeFiltering:
 
     def test_stats_by_period_filters_by_end_date(self) -> None:
         """Records after end_date should be excluded from aggregation."""
-        from datetime import datetime
-
         heart_rate_df = pd.DataFrame(
             {
                 "startDate": ["2024-01-01", "2024-02-01", "2024-03-01"],
@@ -367,9 +363,7 @@ class TestRecordsByTypeDateRangeFiltering:
         )
         records = RecordsByType({"HeartRate": heart_rate_df})
 
-        result = records.stats_by_period(
-            "HeartRate", period="M", end_date=datetime(2024, 2, 28)
-        )
+        result = records.stats_by_period("HeartRate", period="M", end_date=datetime(2024, 2, 28))
 
         periods = list(result["period"].astype(str))
         assert "2024-01" in periods
@@ -378,8 +372,6 @@ class TestRecordsByTypeDateRangeFiltering:
 
     def test_stats_by_period_filters_by_both_dates(self) -> None:
         """Only records within [start_date, end_date] should be included."""
-        from datetime import datetime
-
         heart_rate_df = pd.DataFrame(
             {
                 "startDate": ["2024-01-01", "2024-02-01", "2024-03-01", "2024-04-01"],
@@ -400,8 +392,6 @@ class TestRecordsByTypeDateRangeFiltering:
 
     def test_stats_by_period_end_date_is_inclusive(self) -> None:
         """Records on the end_date itself should be included."""
-        from datetime import datetime
-
         heart_rate_df = pd.DataFrame(
             {
                 "startDate": ["2024-02-29", "2024-03-01"],
@@ -410,9 +400,7 @@ class TestRecordsByTypeDateRangeFiltering:
         )
         records = RecordsByType({"HeartRate": heart_rate_df})
 
-        result = records.stats_by_period(
-            "HeartRate", period="M", end_date=datetime(2024, 2, 29)
-        )
+        result = records.stats_by_period("HeartRate", period="M", end_date=datetime(2024, 2, 29))
 
         periods = list(result["period"].astype(str))
         assert "2024-02" in periods
@@ -420,8 +408,6 @@ class TestRecordsByTypeDateRangeFiltering:
 
     def test_heart_rate_stats_respects_date_range(self) -> None:
         """heart_rate_stats should pass date filters to stats_by_period."""
-        from datetime import datetime
-
         heart_rate_df = pd.DataFrame(
             {
                 "startDate": ["2024-01-01", "2024-02-01", "2024-03-01"],
@@ -436,12 +422,10 @@ class TestRecordsByTypeDateRangeFiltering:
 
         periods = list(result["period"].astype(str))
         assert periods == ["2024-02"]
-        assert result.iloc[0]["avg"] == 70.0
+        assert result.iloc[0]["avg"] == pytest.approx(70.0, abs=1e-9)  # type: ignore[arg-type]
 
     def test_weight_stats_respects_date_range(self) -> None:
         """weight_stats should pass date filters to stats_by_period."""
-        from datetime import datetime
-
         body_mass_df = pd.DataFrame(
             {
                 "startDate": ["2024-01-01", "2024-02-01", "2024-03-01"],
@@ -459,8 +443,6 @@ class TestRecordsByTypeDateRangeFiltering:
 
     def test_vo2_max_stats_respects_date_range(self) -> None:
         """vo2_max_stats should pass date filters to stats_by_period."""
-        from datetime import datetime
-
         vo2_max_df = pd.DataFrame(
             {
                 "startDate": ["2024-01-01", "2024-02-01", "2024-03-01"],
