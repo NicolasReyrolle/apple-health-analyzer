@@ -34,6 +34,7 @@ class WorkoutRoute:
 
     points: list[RoutePoint]
     _cumulative_distance_cache: list[float] | None = field(default=None, init=False, repr=False)
+    _sorted_times_cache: list[datetime] | None = field(default=None, init=False, repr=False)
 
     @property
     def is_empty(self) -> bool:
@@ -78,6 +79,13 @@ class WorkoutRoute:
         """Add a new point to the workout route."""
         self.points.append(point)
         self._cumulative_distance_cache = None
+        self._sorted_times_cache = None
+
+    def sorted_times(self) -> list[datetime]:
+        """Return a cached list of point timestamps in order, for binary-search clipping."""
+        if self._sorted_times_cache is None:
+            self._sorted_times_cache = [p.time for p in self.points]
+        return self._sorted_times_cache
 
     @staticmethod
     def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
