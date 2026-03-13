@@ -327,7 +327,7 @@ def render_header() -> None:
         ).props(BUTTON_FLAT_ROUND_PROPS)
         ui.button(icon="light_mode", on_click=_disable_dark).bind_visibility_from(
             dark, "value"
-        ).props(BUTTON_FLAT_ROUND_PROPS).classes("text-main")
+        ).props(BUTTON_FLAT_ROUND_PROPS)
 
         # Language selector (globe icon)
         with ui.button(icon="language").props(BUTTON_FLAT_ROUND_PROPS):
