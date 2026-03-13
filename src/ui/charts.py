@@ -1,0 +1,131 @@
+"""Shared UI chart and card components for Apple Health Analyzer."""
+
+from collections.abc import Mapping
+from typing import Optional
+
+from nicegui import ui
+
+from ui.helpers import calculate_moving_average
+
+# CSS class constants
+ROW_CENTERED_CLASSES = "w-full justify-center gap-4"
+BUTTON_FLAT_ROUND_PROPS = "flat round"
+LABEL_UPPERCASE_CLASSES = "text-sm text-gray-500 uppercase"
+
+
+def stat_card(
+    label: str,
+    value_ref: dict[str, str],
+    key: str,
+    unit: str = "",
+    tooltip_ref: Optional[dict[str, str]] = None,
+    tooltip_key: Optional[str] = None,
+) -> None:
+    """Create a reactive KPI card with an optional hover tooltip.
+
+    The card value is bound reactively to ``value_ref[key]`` so that any update
+    to the dictionary is immediately reflected in the UI without a full page
+    refresh.
+
+    Args:
+        label: Short display label shown above the value (e.g. ``"Distance"``).
+        value_ref: Mutable dictionary whose ``key`` entry holds the formatted
+            display string.  NiceGUI binds directly to this dict so mutations
+            are picked up automatically.
+        key: Key inside *value_ref* to read the display value from.
+        unit: Optional unit suffix rendered in smaller text next to the value
+            (e.g. ``"km"``, ``"kcal"``).  Omit or pass an empty string to show
+            no unit.
+        tooltip_ref: Optional mutable dictionary whose ``tooltip_key`` entry
+            holds the tooltip text.  When provided together with *tooltip_key*,
+            a NiceGUI ``ui.tooltip`` is added to the card and bound to this
+            dict so it updates reactively alongside the card value.  The tooltip
+            is hidden when the text is empty (i.e. before any file is loaded);
+            once data is available it shows either the record details or a
+            translated ``"No data"`` fallback.
+        tooltip_key: Key inside *tooltip_ref* to read the tooltip text from.
+            Required when *tooltip_ref* is provided; ignored otherwise.
+    """
+    with ui.card().classes("w-40 h-24 items-center justify-center shadow-sm"):
+        ui.label(label).classes("text-xs text-gray-500 uppercase")
+        with ui.row().classes("items-baseline gap-1"):
+            # Bind the text to the dictionary key for reactive updates
+            ui.label().classes("text-xl font-bold").bind_text_from(value_ref, key)
+            if unit:
+                ui.label(unit).classes("text-xs text-gray-400")
+        if tooltip_ref is not None and tooltip_key is not None:
+            ui.tooltip().bind_text_from(tooltip_ref, tooltip_key).bind_visibility_from(
+                tooltip_ref, tooltip_key, backward=bool
+            )
+
+
+def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: str = "") -> None:
+    """Render a pie/rose graph for the given values."""
+
+    chart_data = [{"value": v, "name": k} for k, v in values.items()]
+
+    with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
+        ui.label(label).classes(LABEL_UPPERCASE_CLASSES)
+        ui.echart(
+            {
+                "tooltip": {"trigger": "item", "formatter": f"{{b}}: {{c}} {unit} ({{d}}%)"},
+                "series": [
+                    {
+                        "type": "pie",
+                        "name": label,
+                        "data": chart_data,
+                        "roseType": "rose",
+                        "radius": ["10", "60"],
+                        "center": ["50%", "50%"],
+                    },
+                ],
+            }
+        )
+
+
+def render_generic_graph(
+    label: str,
+    values: Mapping[str, float | int | None],
+    unit: str = "",
+    graph_type: str = "bar",
+    show_trend: bool = True,
+) -> None:
+    """Render generic graphs for the given values."""
+
+    # Transform dictionary data into ECharts format: [{'value': x, 'name': y}, ...]
+    chart_data = [{"value": v, "name": k} for k, v in values.items()]
+
+    # Extract raw lists for the axes and series
+    categories = [d["name"] for d in chart_data]
+    data_points = list(values.values())
+
+    series: list[dict[str, object]] = [{"data": data_points, "type": graph_type}]
+    if show_trend:
+        series.append(
+            {
+                "name": "Trend",
+                "type": "line",
+                "data": calculate_moving_average(data_points),
+                "symbol": "none",  # Removes the dots on the line
+                "lineStyle": {
+                    "width": 2,
+                    "type": "dashed",  # Dashed line for statistical trends
+                },
+                "itemStyle": {"color": "#e74c3c"},  # Red color to stand out
+            }
+        )
+
+    with ui.card().classes("w-100 h-80 items-center justify-center shadow-sm"):
+        ui.label(label).classes(LABEL_UPPERCASE_CLASSES)
+        ui.echart(
+            {
+                "tooltip": {"trigger": "axis", "formatter": f"{{b}}: {{c}} {unit}"},
+                "xAxis": {
+                    "type": "category",
+                    "data": categories,
+                    "axisTick": {"alignWithLabel": True},
+                },
+                "yAxis": {"type": "value", "scale": True},
+                "series": series,
+            }
+        )

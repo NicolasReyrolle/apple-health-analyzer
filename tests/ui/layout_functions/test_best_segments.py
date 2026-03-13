@@ -12,7 +12,7 @@ from app_state import state
 from logic.workout_manager import STANDARD_SEGMENT_DISTANCES
 from ui import layout
 
-from ._helpers import DummyComponent, DummyContext, DummyTable, DummyTabs, DummyTab
+from ._helpers import DummyComponent, DummyContext, DummyTab, DummyTable, DummyTabs
 
 
 class TestBestSegmentsTabData:
@@ -151,7 +151,7 @@ class TestBestSegmentsTabData:
             state.best_segments_loading = False
             state.best_segments_loaded = False
 
-            with patch("ui.layout.get_language", return_value="fr"):
+            with patch("ui.best_segments.get_language", return_value="fr"):
                 with patch("ui.layout.render_best_segments_tab.refresh"):
                     await layout.load_best_segments_data(force=True)
 
@@ -180,7 +180,7 @@ class TestBestSegmentsTabData:
 
             with patch("ui.layout.render_best_segments_tab.refresh") as refresh_mock:
                 with patch(
-                    "ui.layout.asyncio.to_thread", new=AsyncMock(return_value=expected_rows)
+                    "ui.best_segments.asyncio.to_thread", new=AsyncMock(return_value=expected_rows)
                 ):
                     await layout.load_best_segments_data()
 
@@ -208,7 +208,7 @@ class TestBestSegmentsTabData:
             state.best_segments_loaded = False
 
             with patch("ui.layout.render_best_segments_tab.refresh") as refresh_mock:
-                with patch("ui.layout.asyncio.to_thread", new=AsyncMock()) as to_thread_mock:
+                with patch("ui.best_segments.asyncio.to_thread", new=AsyncMock()) as to_thread_mock:
                     await layout.load_best_segments_data()
 
             assert state.best_segments_rows == [{"distance": "existing"}]
@@ -234,7 +234,7 @@ class TestBestSegmentsTabData:
             state.best_segments_loaded = False
 
             with patch("ui.layout.render_best_segments_tab.refresh") as refresh_mock:
-                with patch("ui.layout.asyncio.to_thread", new=AsyncMock()) as to_thread_mock:
+                with patch("ui.best_segments.asyncio.to_thread", new=AsyncMock()) as to_thread_mock:
                     await layout.load_best_segments_data(force=True)
 
             refresh_mock.assert_not_called()
@@ -257,7 +257,7 @@ class TestBestSegmentsTabData:
             state.best_segments_loaded = True
 
             with patch("ui.layout.render_best_segments_tab.refresh") as refresh_mock:
-                with patch("ui.layout.asyncio.to_thread", new=AsyncMock()) as to_thread_mock:
+                with patch("ui.best_segments.asyncio.to_thread", new=AsyncMock()) as to_thread_mock:
                     await layout.load_best_segments_data(force=False)
 
             refresh_mock.assert_not_called()
@@ -281,9 +281,9 @@ class TestBestSegmentsTabData:
             state.best_segments_loaded = False
 
             with patch("ui.layout.render_best_segments_tab.refresh") as refresh_mock:
-                with patch("ui.layout._logger.exception") as exception_mock:
+                with patch("ui.best_segments._logger.exception") as exception_mock:
                     with patch(
-                        "ui.layout.asyncio.to_thread",
+                        "ui.best_segments.asyncio.to_thread",
                         new=AsyncMock(side_effect=RuntimeError("boom")),
                     ):
                         await layout.load_best_segments_data(force=True)
@@ -350,11 +350,11 @@ class TestBestSegmentsTabRendering:
             state.best_segments_loaded = False
 
             with (
-                patch("ui.layout.ui.card", return_value=DummyContext()),
-                patch("ui.layout.ui.row", return_value=DummyContext()),
-                patch("ui.layout.ui.spinner") as spinner_mock,
-                patch("ui.layout.ui.label") as label_mock,
-                patch("ui.layout.ui.table") as table_mock,
+                patch("ui.best_segments.ui.card", return_value=DummyContext()),
+                patch("ui.best_segments.ui.row", return_value=DummyContext()),
+                patch("ui.best_segments.ui.spinner") as spinner_mock,
+                patch("ui.best_segments.ui.label") as label_mock,
+                patch("ui.best_segments.ui.table") as table_mock,
             ):
                 layout.render_best_segments_tab.func()
 
@@ -392,9 +392,9 @@ class TestBestSegmentsTabRendering:
             state.best_segments_loaded = True
 
             with (
-                patch("ui.layout.ui.card", return_value=DummyContext()),
-                patch("ui.layout.ui.label", return_value=DummyComponent()),
-                patch("ui.layout.ui.table", return_value=table_stub) as table_mock,
+                patch("ui.best_segments.ui.card", return_value=DummyContext()),
+                patch("ui.best_segments.ui.label", return_value=DummyComponent()),
+                patch("ui.best_segments.ui.table", return_value=table_stub) as table_mock,
             ):
                 layout.render_best_segments_tab.func()
 
@@ -456,9 +456,7 @@ def test_render_body_tab_change_to_best_segments_schedules_async_load() -> None:
     create_task_mock.assert_called_once()
 
 
-def _make_render_body_stubs() -> (
-    tuple[list[DummyTabs], list[dict[str, Any]], SimpleNamespace]
-):
+def _make_render_body_stubs() -> tuple[list[DummyTabs], list[dict[str, Any]], SimpleNamespace]:
     """Return (tabs_created, tab_panels_calls, fake_app) factories for render_body() patching."""
     tabs_created: list[DummyTabs] = []
     tab_panels_calls: list[dict[str, Any]] = []

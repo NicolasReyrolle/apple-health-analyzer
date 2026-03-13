@@ -10,6 +10,7 @@ import pytest
 
 from app_state import state
 from ui import layout
+from ui.helpers import calculate_moving_average
 
 
 class TestExportHandlers:
@@ -84,14 +85,14 @@ class TestCalculateMovingAverage:
     def test_calculate_moving_average_with_small_list(self) -> None:
         """Test moving average with list smaller than window size."""
         y_values = [1, 2, 3, 4, 5]
-        result = layout.calculate_moving_average(y_values, window_size=12)
+        result = calculate_moving_average(y_values, window_size=12)
 
         assert result == [1.0, 1.5, 2.0, 2.5, 3.0]
 
     def test_calculate_moving_average_with_exact_window_size(self) -> None:
         """Test moving average with list exactly matching window size."""
         y_values = [10, 20, 30, 40, 50]
-        result = layout.calculate_moving_average(y_values, window_size=5)
+        result = calculate_moving_average(y_values, window_size=5)
 
         assert result[0] == pytest.approx(10.0, abs=1e-9)  # type: ignore[arg-type]
         assert result[1] == pytest.approx(15.0, abs=1e-9)  # type: ignore[arg-type]
@@ -102,7 +103,7 @@ class TestCalculateMovingAverage:
     def test_calculate_moving_average_with_larger_list(self) -> None:
         """Test moving average with list larger than window size."""
         y_values = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140]
-        result = layout.calculate_moving_average(y_values, window_size=3)
+        result = calculate_moving_average(y_values, window_size=3)
 
         assert result[0] == pytest.approx(10.0, abs=1e-9)  # type: ignore[arg-type]
         assert result[1] == pytest.approx(15.0, abs=1e-9)  # type: ignore[arg-type]
@@ -114,7 +115,7 @@ class TestCalculateMovingAverage:
     def test_calculate_moving_average_with_default_window(self) -> None:
         """Test moving average with default window size of 12."""
         y_values = list(range(1, 25))
-        result = layout.calculate_moving_average(y_values)
+        result = calculate_moving_average(y_values)
 
         assert result[0] == pytest.approx(1.0, abs=1e-9)  # type: ignore[arg-type]
         assert result[1] == pytest.approx(1.5, abs=1e-9)  # type: ignore[arg-type]
@@ -125,20 +126,20 @@ class TestCalculateMovingAverage:
     def test_calculate_moving_average_with_constant_values(self) -> None:
         """Test moving average with all constant values."""
         y_values = [50] * 20
-        result = layout.calculate_moving_average(y_values, window_size=5)
+        result = calculate_moving_average(y_values, window_size=5)
 
         assert all(v == pytest.approx(50.0, abs=1e-9) for v in result)  # type: ignore[arg-type]
 
     def test_calculate_moving_average_with_empty_list(self) -> None:
         """Test moving average with empty list."""
         y_values: list[int] = []
-        result = layout.calculate_moving_average(y_values, window_size=12)
+        result = calculate_moving_average(y_values, window_size=12)
 
         assert result == []
 
     def test_calculate_moving_average_with_single_value(self) -> None:
         """Test moving average with single value."""
         y_values = [42]
-        result = layout.calculate_moving_average(y_values, window_size=12)
+        result = calculate_moving_average(y_values, window_size=12)
 
         assert result == [42.0]
