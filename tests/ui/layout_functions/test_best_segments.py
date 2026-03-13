@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Callable, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
@@ -11,6 +11,7 @@ import pandas as pd
 from app_state import state
 from logic.workout_manager import STANDARD_SEGMENT_DISTANCES
 from ui import layout
+import ui.best_segments as best_segments_module
 
 from ._helpers import DummyComponent, DummyContext, DummyTab, DummyTable, DummyTabs
 
@@ -266,6 +267,75 @@ class TestBestSegmentsTabData:
             state.file_loaded = original_file_loaded
             state.best_segments_loading = original_loading
             state.best_segments_loaded = original_loaded
+
+    def test_build_best_segments_rows_skips_empty_groups(self) -> None:
+        """Groups with no records should be ignored instead of raising errors."""
+
+        original_workouts: Any = state.workouts
+        original_range = state.date_range_text
+
+        class _GroupFrame:  # pylint: disable=too-few-public-methods
+            """Minimal frame-like object exposing only methods used by builder."""
+
+            def __init__(self, records: list[Any]) -> None:
+                """Store tuple-like records to return from itertuples."""
+                self._records = records
+
+            def sort_values(self, _column: str) -> "_GroupFrame":
+                """Return self to mimic DataFrame sorting chain."""
+                return self
+
+            def itertuples(self, index: bool = False) -> list[Any]:
+                """Return prebuilt records in tuple-like form."""
+                _ = index
+                return self._records
+
+        class _BestSegmentsFrame:  # pylint: disable=too-few-public-methods
+            """Minimal frame-like object exposing only groupby used by builder."""
+
+            def __init__(self, groups: list[tuple[str, _GroupFrame]]) -> None:
+                """Store grouped records to be yielded by groupby."""
+                self._groups = groups
+
+            def groupby(self, _key: str, sort: bool = True) -> list[tuple[str, _GroupFrame]]:
+                """Return predefined groups regardless of key/sort arguments."""
+                _ = sort
+                return self._groups
+
+        empty_group = _GroupFrame([])
+        valid_group = _GroupFrame(
+            [
+                SimpleNamespace(
+                    distance=5000.0,
+                    duration_s=1500.0,
+                    startDate=pd.Timestamp("2025-09-17"),
+                ),
+            ]
+        )
+
+        workouts_mock = MagicMock()
+        workouts_mock.get_best_segments.return_value = _BestSegmentsFrame(
+            [("1000", empty_group), ("5000", valid_group)]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            state.date_range_text = ""
+            build_rows = cast(
+                Callable[[], list[dict[str, Any]]],
+                getattr(
+                    best_segments_module, "_build_best_segments_rows"
+                ),  # pyright: ignore[reportPrivateUsage]
+            )
+            with patch("ui.best_segments.get_language", return_value="en"):
+                rows = build_rows()
+
+            assert len(rows) == 1
+            assert rows[0]["id"] == "5000"
+            assert rows[0]["distance"] == "5.0 km"
+        finally:
+            state.workouts = original_workouts
+            state.date_range_text = original_range
 
     async def test_load_best_segments_data_logs_and_resets_when_background_fails(self) -> None:
         """Background compute errors should be logged and loading flag reset."""
