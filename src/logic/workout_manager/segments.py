@@ -1,11 +1,14 @@
 """Best-segment mixin for WorkoutManager."""
 
 from datetime import datetime
-from typing import Any, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Union
 
 import pandas as pd
 
 from logic.workout_route import WorkoutRoute
+
+if TYPE_CHECKING:
+    from pandas import Timestamp
 
 
 class WorkoutManagerSegmentsMixin:
@@ -13,6 +16,10 @@ class WorkoutManagerSegmentsMixin:
 
     workouts: pd.DataFrame
     DEFAULT_SEGMENT_DISTANCES: list[int]
+    _filter_workouts: Callable[
+        [str, Optional[Union[datetime, "Timestamp"]], Optional[Union[datetime, "Timestamp"]]],
+        pd.DataFrame,
+    ]
 
     @staticmethod
     def _split_route_into_traces(route: WorkoutRoute) -> list[WorkoutRoute]:
@@ -47,8 +54,7 @@ class WorkoutManagerSegmentsMixin:
         )
         if isinstance(route_parts_obj, list):
             traces: list[WorkoutRoute] = []
-            route_parts_list = cast(list[object], route_parts_obj)
-            for route_part in route_parts_list:
+            for route_part in route_parts_obj:  # type: ignore[misc]
                 if isinstance(route_part, WorkoutRoute):
                     traces.extend(cls._split_route_into_traces(route_part))
             if traces:
@@ -136,6 +142,24 @@ class WorkoutManagerSegmentsMixin:
 
         return rows
 
+    def _fallback_filter_running_workouts(
+        self,
+        start_date: Optional[Union[datetime, pd.Timestamp]],
+        end_date: Optional[Union[datetime, pd.Timestamp]],
+    ) -> pd.DataFrame:
+        """Fallback: filter running workouts with local logic and end-date handling."""
+        runs = self.workouts[self.workouts["activityType"] == "Running"]
+        if start_date is not None:
+            runs = runs[runs["startDate"] >= pd.Timestamp(start_date)]
+        if end_date is not None:
+            end_ts = pd.Timestamp(end_date)
+            is_date_only = end_ts.normalize() == end_ts
+            if is_date_only:
+                runs = runs[runs["startDate"] < end_ts + pd.Timedelta(days=1)]
+            else:
+                runs = runs[runs["startDate"] <= end_ts]
+        return runs
+
     def get_best_segments(
         self,
         topn: int = 5,
@@ -171,19 +195,7 @@ class WorkoutManagerSegmentsMixin:
         if hasattr(self, "_filter_workouts"):
             runs = self._filter_workouts("Running", start_date, end_date)
         else:
-            # Fallback: local filtering with end-date handling similar to _filter_workouts.
-            runs = self.workouts[self.workouts["activityType"] == "Running"]
-            if start_date is not None:
-                runs = runs[runs["startDate"] >= pd.Timestamp(start_date)]
-            if end_date is not None:
-                end_ts = pd.Timestamp(end_date)
-                # Treat "date-only" end dates as an exclusive next-day boundary,
-                # otherwise include workouts up to and including the given timestamp.
-                is_date_only = end_ts.normalize() == end_ts
-                if is_date_only:
-                    runs = runs[runs["startDate"] < end_ts + pd.Timedelta(days=1)]
-                else:
-                    runs = runs[runs["startDate"] <= end_ts]
+            runs = self._fallback_filter_running_workouts(start_date, end_date)
 
         if runs.empty:
             return self._empty_best_segments_frame()
