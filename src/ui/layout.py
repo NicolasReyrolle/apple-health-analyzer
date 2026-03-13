@@ -366,7 +366,9 @@ def stat_card(
         tooltip_ref: Optional mutable dictionary whose ``tooltip_key`` entry
             holds the tooltip text.  When provided together with *tooltip_key*,
             a NiceGUI ``ui.tooltip`` is added to the card and bound to this
-            dict so it updates reactively alongside the card value.
+            dict so it updates reactively alongside the card value.  The tooltip
+            is hidden automatically when the text is empty (e.g. no record
+            exists yet).
         tooltip_key: Key inside *tooltip_ref* to read the tooltip text from.
             Required when *tooltip_ref* is provided; ignored otherwise.
     """
@@ -378,7 +380,9 @@ def stat_card(
             if unit:
                 ui.label(unit).classes("text-xs text-gray-400")
         if tooltip_ref is not None and tooltip_key is not None:
-            ui.tooltip().bind_text_from(tooltip_ref, tooltip_key)
+            ui.tooltip().bind_text_from(tooltip_ref, tooltip_key).bind_visibility_from(
+                tooltip_ref, tooltip_key, backward=lambda v: bool(v)
+            )
 
 
 def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: str = "") -> None:
