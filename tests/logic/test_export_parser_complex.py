@@ -448,14 +448,14 @@ class TestClipRouteToWindow:
                 "2024-01-01T10:04:00Z",
             ]
         )
-        start = datetime.fromisoformat("2024-01-01T10:01:00Z")
-        end = datetime.fromisoformat("2024-01-01T10:03:00Z")
+        start = datetime.fromisoformat("2024-01-01T10:01:00+00:00")
+        end = datetime.fromisoformat("2024-01-01T10:03:00+00:00")
 
         clipped = ExportParser._clip_route_to_window(route, start, end)
 
         assert len(clipped.points) == 3
-        assert clipped.points[0].time == datetime.fromisoformat("2024-01-01T10:01:00Z")
-        assert clipped.points[-1].time == datetime.fromisoformat("2024-01-01T10:03:00Z")
+        assert clipped.points[0].time == datetime.fromisoformat("2024-01-01T10:01:00+00:00")
+        assert clipped.points[-1].time == datetime.fromisoformat("2024-01-01T10:03:00+00:00")
 
     def test_clip_no_window_returns_copy_of_all_points(self) -> None:
         """When either bound is None all route points are returned."""
@@ -474,8 +474,8 @@ class TestClipRouteToWindow:
     def test_clip_empty_route_returns_empty(self) -> None:
         """Clipping an empty route should return an empty route."""
         route = WorkoutRoute(points=[])
-        start = datetime.fromisoformat("2024-01-01T10:00:00Z")
-        end = datetime.fromisoformat("2024-01-01T10:05:00Z")
+        start = datetime.fromisoformat("2024-01-01T10:00:00+00:00")
+        end = datetime.fromisoformat("2024-01-01T10:05:00+00:00")
 
         clipped = ExportParser._clip_route_to_window(route, start, end)
 
@@ -487,13 +487,13 @@ class TestClipRouteToWindow:
             ["2024-01-01T10:00:00Z", "2024-01-01T10:01:00Z", "2024-01-01T10:02:00Z"]
         )
         # window after all points
-        start_after = datetime.fromisoformat("2024-01-01T11:00:00Z")
-        end_after = datetime.fromisoformat("2024-01-01T11:05:00Z")
+        start_after = datetime.fromisoformat("2024-01-01T11:00:00+00:00")
+        end_after = datetime.fromisoformat("2024-01-01T11:05:00+00:00")
         assert ExportParser._clip_route_to_window(route, start_after, end_after).points == []
 
         # window before all points
-        start_before = datetime.fromisoformat("2024-01-01T09:00:00Z")
-        end_before = datetime.fromisoformat("2024-01-01T09:59:00Z")
+        start_before = datetime.fromisoformat("2024-01-01T09:00:00+00:00")
+        end_before = datetime.fromisoformat("2024-01-01T09:59:00+00:00")
         assert ExportParser._clip_route_to_window(route, start_before, end_before).points == []
 
     def test_clip_uses_sorted_times_cache(self) -> None:
@@ -501,8 +501,8 @@ class TestClipRouteToWindow:
         route = self._make_route(
             ["2024-01-01T10:00:00Z", "2024-01-01T10:01:00Z", "2024-01-01T10:02:00Z"]
         )
-        start = datetime.fromisoformat("2024-01-01T10:00:00Z")
-        end = datetime.fromisoformat("2024-01-01T10:02:00Z")
+        start = datetime.fromisoformat("2024-01-01T10:00:00+00:00")
+        end = datetime.fromisoformat("2024-01-01T10:02:00+00:00")
 
         ExportParser._clip_route_to_window(route, start, end)
         times_first = route.sorted_times()
