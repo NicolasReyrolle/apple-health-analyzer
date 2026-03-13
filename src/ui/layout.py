@@ -114,12 +114,6 @@ def _set_longest_metric_from_details(
         state.metrics_tooltip[metric_key] = t("No data")
         return
 
-    date_value = details.get("date")
-    duration_value = details.get("duration")
-    if date_value is None or duration_value is None:
-        state.metrics_tooltip[metric_key] = t("No data")
-        return
-
     distance_value = details.get("distance")
     distance_float = 0.0
     if distance_value is not None:
@@ -131,9 +125,30 @@ def _set_longest_metric_from_details(
     state.metrics[metric_key] = distance_float
     state.metrics_display[metric_key] = format_float(distance_float)
 
-    date_str = format_date_label(date_value, language_code)
-    duration_str = format_duration_label(float(duration_value))
-    state.metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"
+    date_value = details.get("date")
+    duration_value = details.get("duration")
+
+    date_str: Optional[str] = None
+    if date_value is not None:
+        date_str = format_date_label(date_value, language_code)
+
+    duration_str: Optional[str] = None
+    if duration_value is not None:
+        try:
+            duration_float = float(duration_value)
+        except (TypeError, ValueError):
+            duration_float = None
+        else:
+            duration_str = format_duration_label(duration_float)
+
+    if date_str and duration_str:
+        state.metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"
+    elif date_str:
+        state.metrics_tooltip[metric_key] = date_str
+    elif duration_str:
+        state.metrics_tooltip[metric_key] = duration_str
+    else:
+        state.metrics_tooltip[metric_key] = t("No data")
 
 
 def _refresh_longest_workout_metrics() -> None:
