@@ -469,9 +469,7 @@ class ExportParser:
         try:
             is_monotonic = all(t1 <= t2 for t1, t2 in zip(times, times[1:]))
         except TypeError:
-            _logger.debug(
-                "Non-comparable route times encountered; falling back to linear clipping"
-            )
+            _logger.debug("Non-comparable route times encountered; falling back to linear clipping")
             is_monotonic = False
 
         if is_monotonic:
@@ -483,7 +481,7 @@ class ExportParser:
         clipped_points: list[RoutePoint] = [
             point
             for point in route.points
-            if point.time is not None and window_start <= point.time <= window_end
+            if point.time is not None and window_start <= point.time <= window_end  # type: ignore[redundant-expr]
         ]
         return WorkoutRoute(points=clipped_points)
 
@@ -540,7 +538,7 @@ class ExportParser:
 
         window_start = self._parse_health_datetime(elem.get("startDate"))
         window_end = self._parse_health_datetime(elem.get("endDate"))
-        if active_end is not None and window_end is not None:
+        if active_end is not None and window_end is not None:  # type: ignore[redundant-expr]
             window_end = min(window_end, active_end)
         route_part = self.clip_route_to_window(route_source, window_start, window_end)
 
