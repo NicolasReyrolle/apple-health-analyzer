@@ -456,15 +456,36 @@ class ExportParser:
 
         Uses binary search on the cached sorted-times list for O(log n) clipping instead
         of an O(n) linear scan, which matters when the same cached GPX route is clipped
-        many times across a large export.
+        many times across a large export. Falls back to a linear scan if route times
+        are not monotonic.
         """
         if window_start is None or window_end is None:
             return WorkoutRoute(points=list(route.points))
 
         times = route.sorted_times()
-        left = bisect_left(times, window_start)
-        right = bisect_right(times, window_end)
-        return WorkoutRoute(points=route.points[left:right])
+        if not times:
+            return WorkoutRoute(points=[])
+
+        try:
+            is_monotonic = all(t1 <= t2 for t1, t2 in zip(times, times[1:]))
+        except TypeError:
+            _logger.debug(
+                "Non-comparable route times encountered; falling back to linear clipping"
+            )
+            is_monotonic = False
+
+        if is_monotonic:
+            left = bisect_left(times, window_start)
+            right = bisect_right(times, window_end)
+            return WorkoutRoute(points=route.points[left:right])
+
+        # Fallback: linear scan for routes with non-monotonic or invalid times.
+        clipped_points: list[RoutePoint] = [
+            point
+            for point in route.points
+            if point.time is not None and window_start <= point.time <= window_end
+        ]
+        return WorkoutRoute(points=clipped_points)
 
     @staticmethod
     def _merge_route_parts(route_parts: list[WorkoutRoute]) -> Optional[WorkoutRoute]:
