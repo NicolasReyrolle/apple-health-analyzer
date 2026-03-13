@@ -58,7 +58,9 @@ class TestBestSegmentsTabData:
                 }
             ]
             workouts_mock.get_best_segments.assert_called_once_with(
-                distances=STANDARD_SEGMENT_DISTANCES
+                distances=STANDARD_SEGMENT_DISTANCES,
+                start_date=None,
+                end_date=None,
             )
         finally:
             state.workouts = original_workouts
