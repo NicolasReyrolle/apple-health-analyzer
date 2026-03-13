@@ -1,5 +1,6 @@
 """Test suite for WorkoutManager total aggregation methods"""
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -795,8 +796,8 @@ class TestGetLongestWorkoutDetails:
         )
         result = workouts.get_longest_workout_details(["Running"])
         assert result is not None
-        assert result["distance"] == pytest.approx(12.0)
-        assert result["duration"] == pytest.approx(3600.0)
+        assert result["distance"] == pytest.approx(12.0)  # type: ignore[misc]
+        assert result["duration"] == pytest.approx(3600.0)  # type: ignore[misc]
 
     def test_get_longest_workout_details_multiple_activity_types(self) -> None:
         """Test returns the longest workout across multiple activity types."""
@@ -812,8 +813,8 @@ class TestGetLongestWorkoutDetails:
         )
         result = workouts.get_longest_workout_details(["Walking", "Hiking"])
         assert result is not None
-        assert result["distance"] == pytest.approx(9.0)
-        assert result["duration"] == pytest.approx(5400.0)
+        assert result["distance"] == pytest.approx(9.0)  # type: ignore[misc]
+        assert result["duration"] == pytest.approx(5400.0)  # type: ignore[misc]
 
     def test_get_longest_workout_details_missing_duration_column(self) -> None:
         """Test returns None duration when duration column is absent."""
@@ -828,7 +829,7 @@ class TestGetLongestWorkoutDetails:
         )
         result = workouts.get_longest_workout_details(["Running"])
         assert result is not None
-        assert result["distance"] == pytest.approx(10.0)
+        assert result["distance"] == pytest.approx(10.0)  # type: ignore[misc]
         assert result["duration"] is None
 
     def test_get_longest_workout_details_unit_miles(self) -> None:
@@ -845,11 +846,10 @@ class TestGetLongestWorkoutDetails:
         )
         result = workouts.get_longest_workout_details(["Running"], unit="mi")
         assert result is not None
-        assert result["distance"] == pytest.approx(1.0)
+        assert result["distance"] == pytest.approx(1.0)  # type: ignore[misc]
 
     def test_get_longest_workout_details_nan_duration(self) -> None:
         """Test returns None for duration when the duration value is NaN."""
-        import numpy as np
 
         workouts = wm.WorkoutManager(
             pd.DataFrame(
@@ -863,5 +863,5 @@ class TestGetLongestWorkoutDetails:
         )
         result = workouts.get_longest_workout_details(["Running"])
         assert result is not None
-        assert result["distance"] == pytest.approx(8.0)
+        assert result["distance"] == pytest.approx(8.0)  # type: ignore[misc]
         assert result["duration"] is None
