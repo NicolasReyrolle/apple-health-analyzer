@@ -481,7 +481,8 @@ class ExportParser:
         clipped_points: list[RoutePoint] = [
             point
             for point in route.points
-            if point.time is not None and window_start <= point.time <= window_end  # type: ignore[redundant-expr]
+            if point.time is not None  # type: ignore[redundant-expr]
+            and window_start <= point.time <= window_end
         ]
         return WorkoutRoute(points=clipped_points)
 
