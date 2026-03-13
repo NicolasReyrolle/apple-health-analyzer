@@ -165,7 +165,7 @@ def render_best_segments_tab() -> None:
                 </q-td>
             </q-tr>
             <q-tr v-show="props.expand" :props="props">
-                <q-td colspan="100%" class="bg-grey-1">
+                <q-td colspan="100%" class="segment-child-row">
                     <q-list dense>
                         <q-item v-for="(child, i) in props.row.children" :key="i">
                             <q-item-section>
