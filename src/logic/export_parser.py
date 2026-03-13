@@ -467,15 +467,6 @@ class ExportParser:
         return WorkoutRoute(points=route.points[left:right])
 
     @staticmethod
-    def _clip_route_to_window(
-        route: WorkoutRoute,
-        window_start: Optional[datetime],
-        window_end: Optional[datetime],
-    ) -> WorkoutRoute:
-        """Backward-compatible alias for callers using the legacy protected name."""
-        return ExportParser.clip_route_to_window(route, window_start, window_end)
-
-    @staticmethod
     def _merge_route_parts(route_parts: list[WorkoutRoute]) -> Optional[WorkoutRoute]:
         """Merge route parts as a compatibility route while preserving part boundaries.
 
