@@ -75,10 +75,27 @@ class RecordsByType:
         if start_date is not None:
             work = work[work[date_col] >= pd.Timestamp(start_date)]
         if end_date is not None:
-            # Use exclusive next-day boundary so the full end_date day is included
-            # (end_date from the date picker is a midnight datetime, i.e. date-only).
-            next_day = pd.Timestamp(end_date) + pd.Timedelta(days=1)
-            work = work[work[date_col] < next_day]
+            end_ts = pd.Timestamp(end_date)
+            # Distinguish between date-only and datetime-with-time bounds.
+            # For date-only (e.g. from a date picker), include the full day by using an
+            # exclusive next-day boundary. For datetimes with a time component, treat the
+            # bound as an exact timestamp and include records up to and including end_ts.
+            has_time_component = False
+            if isinstance(end_date, datetime):
+                has_time_component = any(
+                    getattr(end_date, attr) != 0
+                    for attr in ("hour", "minute", "second", "microsecond")
+                )
+            elif isinstance(end_date, pd.Timestamp):
+                has_time_component = any(
+                    getattr(end_date, attr) != 0
+                    for attr in ("hour", "minute", "second", "microsecond", "nanosecond")
+                )
+            if has_time_component:
+                work = work[work[date_col] <= end_ts]
+            else:
+                next_day = end_ts + pd.Timedelta(days=1)
+                work = work[work[date_col] < next_day]
 
         if work.empty:
             return pd.DataFrame(columns=["period", "avg", "min", "max", "count"])
