@@ -121,7 +121,11 @@ def main() -> None:
     render_body()
 
     app.add_static_files("/resources", "resources")
-    ui.add_head_html('<link rel="stylesheet" href="/resources/style.css">', shared=True)
+    # Inject style.css inline rather than via an external link so that browsers
+    # always receive the latest styles.  External links are cached by
+    # NiceGUI/Starlette with a 1-hour max-age, meaning users would keep seeing
+    # stale CSS after a server update until the cache expires.
+    ui.add_css(Path(__file__).parent.parent / "resources" / "style.css", shared=True)
 
     # Check if dev file was passed through app storage
     # Note: This auto-load mechanism intentionally triggers on every page render
