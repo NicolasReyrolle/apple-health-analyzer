@@ -94,6 +94,9 @@ msgstr "Marche/Randonnée la plus longue"
 msgid "Longest Cycling"
 msgstr "Sortie à vélo la plus longue"
 
+msgid "No data"
+msgstr "Aucune donnée"
+
 msgid "Date"
 msgstr "Date"
 

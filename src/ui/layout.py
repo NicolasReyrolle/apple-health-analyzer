@@ -132,7 +132,7 @@ def refresh_data() -> None:
             duration_str = format_duration_label(float(details["duration"]))
             state.metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"
         else:
-            state.metrics_tooltip[metric_key] = ""
+            state.metrics_tooltip[metric_key] = t("No data")
 
     # Invalidate best-segments cache and cancel any in-flight load for stale data.
     best_segments_task: Any = getattr(state, "best_segments_task", None)
@@ -367,8 +367,9 @@ def stat_card(
             holds the tooltip text.  When provided together with *tooltip_key*,
             a NiceGUI ``ui.tooltip`` is added to the card and bound to this
             dict so it updates reactively alongside the card value.  The tooltip
-            is hidden automatically when the text is empty (e.g. no record
-            exists yet).
+            is hidden when the text is empty (i.e. before any file is loaded);
+            once data is available it shows either the record details or a
+            translated ``"No data"`` fallback.
         tooltip_key: Key inside *tooltip_ref* to read the tooltip text from.
             Required when *tooltip_ref* is provided; ignored otherwise.
     """

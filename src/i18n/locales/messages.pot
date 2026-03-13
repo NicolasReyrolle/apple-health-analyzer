@@ -89,6 +89,9 @@ msgstr ""
 msgid "Longest Cycling"
 msgstr ""
 
+msgid "No data"
+msgstr ""
+
 msgid "Date"
 msgstr ""
 
