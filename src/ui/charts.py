@@ -5,6 +5,7 @@ from typing import Optional
 
 from nicegui import ui
 
+from app_state import state
 from ui.css import (
     BUTTON_FLAT_ROUND_PROPS,
     CHART_CARD_CLASSES,
@@ -85,6 +86,7 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
         ui.echart(
             {
                 "backgroundColor": "transparent",
+                "darkMode": state.dark_mode_enabled,
                 "tooltip": {"trigger": "item", "formatter": f"{{b}}: {{c}} {unit} ({{d}}%)"},
                 "series": [
                     {
@@ -137,6 +139,7 @@ def render_generic_graph(
         ui.echart(
             {
                 "backgroundColor": "transparent",
+                "darkMode": state.dark_mode_enabled,
                 "tooltip": {"trigger": "axis", "formatter": f"{{b}}: {{c}} {unit}"},
                 "xAxis": {
                     "type": "category",

@@ -299,15 +299,31 @@ def _change_language(language_code: str) -> None:
 def render_header() -> None:
     """Generate the application header with a dark mode toggle and language selector."""
     dark = ui.dark_mode()
+
+    # Sync initial dark-mode state (browser may have remembered the preference).
+    state.dark_mode_enabled = bool(dark.value)
+
+    def _enable_dark() -> None:
+        dark.enable()
+        state.dark_mode_enabled = True
+        render_activity_graphs.refresh()
+        render_trends_graphs.refresh()
+
+    def _disable_dark() -> None:
+        dark.disable()
+        state.dark_mode_enabled = False
+        render_activity_graphs.refresh()
+        render_trends_graphs.refresh()
+
     with ui.header().classes(HEADER_CLASSES):
         ui.image(APP_ICON_BASE64).classes(APP_LOGO_CLASSES)
         ui.label(t("Apple Health Analyzer")).classes(APP_TITLE_CLASSES)
 
         # Toggle button with dynamic icon
-        ui.button(icon="dark_mode", on_click=dark.enable).bind_visibility_from(
+        ui.button(icon="dark_mode", on_click=_enable_dark).bind_visibility_from(
             dark, "value", backward=lambda v: not v
         ).props(BUTTON_FLAT_ROUND_PROPS)
-        ui.button(icon="light_mode", on_click=dark.disable).bind_visibility_from(
+        ui.button(icon="light_mode", on_click=_disable_dark).bind_visibility_from(
             dark, "value"
         ).props(BUTTON_FLAT_ROUND_PROPS).classes("text-main")
 
