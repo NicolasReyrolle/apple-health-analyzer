@@ -443,7 +443,7 @@ class ExportParser:
         return self._route_cache[route_path]
 
     @staticmethod
-    def _clip_route_to_window(
+    def clip_route_to_window(
         route: WorkoutRoute,
         window_start: Optional[datetime],
         window_end: Optional[datetime],
@@ -465,6 +465,15 @@ class ExportParser:
         left = bisect_left(times, window_start)
         right = bisect_right(times, window_end)
         return WorkoutRoute(points=route.points[left:right])
+
+    @staticmethod
+    def _clip_route_to_window(
+        route: WorkoutRoute,
+        window_start: Optional[datetime],
+        window_end: Optional[datetime],
+    ) -> WorkoutRoute:
+        """Backward-compatible alias for callers using the legacy protected name."""
+        return ExportParser.clip_route_to_window(route, window_start, window_end)
 
     @staticmethod
     def _merge_route_parts(route_parts: list[WorkoutRoute]) -> Optional[WorkoutRoute]:
@@ -521,7 +530,7 @@ class ExportParser:
         window_end = self._parse_health_datetime(elem.get("endDate"))
         if active_end is not None and window_end is not None:
             window_end = min(window_end, active_end)
-        route_part = self._clip_route_to_window(route_source, window_start, window_end)
+        route_part = self.clip_route_to_window(route_source, window_start, window_end)
 
         if not route_part.points:
             self._log(

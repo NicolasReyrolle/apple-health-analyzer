@@ -301,10 +301,10 @@ class TestLoadRoute:
 
         assert result is not None
         assert len(result.points) == 2
-        assert result.duration_seconds == 60.0
+        assert result.duration_seconds == pytest.approx(60.0, abs=1e-9)  # type: ignore[arg-type]
         assert result.distance_meters > 0.0
         assert result.elevation_gain_m > 0.0
-        assert result.elevation_loss_m == 0.0
+        assert result.elevation_loss_m == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
 
     def test_load_route_empty_gpx(self, tmp_path: Path) -> None:
         """Test loading an empty GPX file."""
@@ -420,9 +420,7 @@ class TestProcessWorkoutRoute:
 
 
 class TestClipRouteToWindow:
-    """Tests for ExportParser._clip_route_to_window (binary-search implementation)."""
-
-    # pylint: disable=protected-access
+    """Tests for ExportParser.clip_route_to_window (binary-search implementation)."""
 
     def _make_route(self, iso_times: list[str]) -> WorkoutRoute:
         """Build a WorkoutRoute with one point per ISO timestamp."""
@@ -451,7 +449,7 @@ class TestClipRouteToWindow:
         start = datetime.fromisoformat("2024-01-01T10:01:00+00:00")
         end = datetime.fromisoformat("2024-01-01T10:03:00+00:00")
 
-        clipped = ExportParser._clip_route_to_window(route, start, end)
+        clipped = ExportParser.clip_route_to_window(route, start, end)
 
         assert len(clipped.points) == 3
         assert clipped.points[0].time == datetime.fromisoformat("2024-01-01T10:01:00+00:00")
@@ -463,9 +461,9 @@ class TestClipRouteToWindow:
             ["2024-01-01T10:00:00Z", "2024-01-01T10:01:00Z", "2024-01-01T10:02:00Z"]
         )
 
-        clipped_no_start = ExportParser._clip_route_to_window(route, None, route.points[-1].time)
-        clipped_no_end = ExportParser._clip_route_to_window(route, route.points[0].time, None)
-        clipped_both_none = ExportParser._clip_route_to_window(route, None, None)
+        clipped_no_start = ExportParser.clip_route_to_window(route, None, route.points[-1].time)
+        clipped_no_end = ExportParser.clip_route_to_window(route, route.points[0].time, None)
+        clipped_both_none = ExportParser.clip_route_to_window(route, None, None)
 
         assert len(clipped_no_start.points) == 3
         assert len(clipped_no_end.points) == 3
@@ -477,9 +475,9 @@ class TestClipRouteToWindow:
         start = datetime.fromisoformat("2024-01-01T10:00:00+00:00")
         end = datetime.fromisoformat("2024-01-01T10:05:00+00:00")
 
-        clipped = ExportParser._clip_route_to_window(route, start, end)
+        clipped = ExportParser.clip_route_to_window(route, start, end)
 
-        assert clipped.points == []
+        assert not clipped.points
 
     def test_clip_window_outside_range_returns_empty(self) -> None:
         """A window entirely before or after route points returns an empty route."""
@@ -489,12 +487,12 @@ class TestClipRouteToWindow:
         # window after all points
         start_after = datetime.fromisoformat("2024-01-01T11:00:00+00:00")
         end_after = datetime.fromisoformat("2024-01-01T11:05:00+00:00")
-        assert ExportParser._clip_route_to_window(route, start_after, end_after).points == []
+        assert not ExportParser.clip_route_to_window(route, start_after, end_after).points
 
         # window before all points
         start_before = datetime.fromisoformat("2024-01-01T09:00:00+00:00")
         end_before = datetime.fromisoformat("2024-01-01T09:59:00+00:00")
-        assert ExportParser._clip_route_to_window(route, start_before, end_before).points == []
+        assert not ExportParser.clip_route_to_window(route, start_before, end_before).points
 
     def test_clip_uses_sorted_times_cache(self) -> None:
         """Clipping the same route twice should return the same sorted_times list object."""
@@ -504,11 +502,11 @@ class TestClipRouteToWindow:
         start = datetime.fromisoformat("2024-01-01T10:00:00+00:00")
         end = datetime.fromisoformat("2024-01-01T10:02:00+00:00")
 
-        ExportParser._clip_route_to_window(route, start, end)
+        ExportParser.clip_route_to_window(route, start, end)
         times_first = route.sorted_times()
 
         # Second clip must reuse the cached list (same object identity)
-        ExportParser._clip_route_to_window(route, start, end)
+        ExportParser.clip_route_to_window(route, start, end)
         times_second = route.sorted_times()
 
         assert times_first is times_second

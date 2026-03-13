@@ -30,7 +30,8 @@ def _point(
 
 def _load_gpx_route(gpx_path: Path) -> WorkoutRoute:
     """Load a WorkoutRoute from a GPX file fixture."""
-    namespace = {"gpx": "http://www.topografix.com/GPX/1/1"}
+    # GPX namespace URI, not a transport URL, disable sonar alert
+    namespace = {"gpx": "http://www.topografix.com/GPX/1/1"}  # NOSONAR
     root = ET.parse(gpx_path).getroot()
     points: list[RoutePoint] = []
 
@@ -68,20 +69,20 @@ class TestWorkoutRoute:
         route = WorkoutRoute(points=[])
 
         assert route.is_empty
-        assert route.duration_seconds == 0.0
-        assert route.distance_meters == 0.0
-        assert route.elevation_gain_m == 0.0
-        assert route.elevation_loss_m == 0.0
+        assert route.duration_seconds == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
+        assert route.distance_meters == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
+        assert route.elevation_gain_m == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
+        assert route.elevation_loss_m == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
 
     def test_single_point_route_metrics(self) -> None:
         """A route with one point has no duration, distance, or elevation changes."""
         route = WorkoutRoute(points=[_point("2024-01-01T10:00:00Z", 48.8566, 2.3522, 100.0)])
 
         assert not route.is_empty
-        assert route.duration_seconds == 0.0
-        assert route.distance_meters == 0.0
-        assert route.elevation_gain_m == 0.0
-        assert route.elevation_loss_m == 0.0
+        assert route.duration_seconds == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
+        assert route.distance_meters == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
+        assert route.elevation_gain_m == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
+        assert route.elevation_loss_m == pytest.approx(0.0, abs=1e-9)  # type: ignore[arg-type]
 
     def test_duration_distance_and_elevation_metrics(self) -> None:
         """Duration, distance, gain, and loss should be accumulated across segments."""
@@ -93,7 +94,7 @@ class TestWorkoutRoute:
             ]
         )
 
-        assert route.duration_seconds == 180.0
+        assert route.duration_seconds == pytest.approx(180.0, abs=1e-9)  # type: ignore[arg-type]
         assert route.distance_meters > 0.0
         assert route.elevation_gain_m == pytest.approx(5.0)  # type: ignore[misc]
         assert route.elevation_loss_m == pytest.approx(2.0)  # type: ignore[misc]
