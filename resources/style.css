@@ -40,3 +40,11 @@
 .q-btn--flat:hover {
     background: rgba(128, 128, 128, 0.1) !important;
 }
+
+/* Placeholder spacer for the expand toggle column in the best-segments table.
+   Keeps the column width consistent when a row has no expandable children.
+   Replaces the inline style="display:inline-block;width:28px" from the Vue template. */
+.expand-placeholder {
+    display: inline-block;
+    width: 28px;
+}

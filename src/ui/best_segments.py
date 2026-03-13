@@ -14,6 +14,11 @@ from logic.workout_manager import (
     STANDARD_SEGMENT_DISTANCES,
 )
 from ui.charts import LABEL_UPPERCASE_CLASSES, ROW_CENTERED_CLASSES
+from ui.css import (
+    LABEL_EMPTY_STATE_CLASSES,
+    ROW_LOADING_CLASSES,
+    TABLE_FULL_CLASSES,
+)
 from ui.helpers import format_date_label, format_distance_label, format_duration_label
 
 _logger = logging.getLogger(__name__)
@@ -117,13 +122,13 @@ def render_best_segments_tab() -> None:
         ]
 
         if state.best_segments_loading:
-            with ui.row().classes("w-full items-center justify-center q-gutter-sm"):
+            with ui.row().classes(ROW_LOADING_CLASSES):
                 ui.spinner(size="lg")
                 ui.label(t("Loading best segments..."))
             return
 
         if not state.best_segments_loaded:
-            ui.label(t("Open this tab to load best segments.")).classes("text-gray-500")
+            ui.label(t("Open this tab to load best segments.")).classes(LABEL_EMPTY_STATE_CLASSES)
             return
 
         _logger.debug("Table rendered with %d rows", len(state.best_segments_rows))
@@ -131,7 +136,7 @@ def render_best_segments_tab() -> None:
             columns=columns,
             rows=state.best_segments_rows,
             row_key="id",
-        ).classes("w-full")
+        ).classes(TABLE_FULL_CLASSES)
         table.add_slot(
             "header",
             r"""
@@ -153,7 +158,7 @@ def render_best_segments_tab() -> None:
                         size="sm" flat round dense
                         @click="props.expand = !props.expand"
                         :icon="props.expand ? 'expand_less' : 'expand_more'" />
-                    <span v-else style="display:inline-block;width:28px" />
+                    <span v-else class="expand-placeholder" />
                 </q-td>
                 <q-td v-for="col in props.cols" :key="col.name" :props="props">
                     {{ col.value }}

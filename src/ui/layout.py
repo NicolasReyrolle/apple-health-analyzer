@@ -18,11 +18,24 @@ from logic.records_by_type import RecordsByType
 from logic.workout_manager import WorkoutManager
 from ui.best_segments import load_best_segments_data, render_best_segments_tab
 from ui.charts import (
-    BUTTON_FLAT_ROUND_PROPS,
-    ROW_CENTERED_CLASSES,
     render_generic_graph,
     render_pie_rose_graph,
     stat_card,
+)
+from ui.css import (
+    APP_LOGO_CLASSES,
+    APP_TITLE_CLASSES,
+    BUTTON_FLAT_ROUND_PROPS,
+    DATE_ROW_CLASSES,
+    HEADER_CLASSES,
+    INPUT_GROW_CLASSES,
+    INPUT_MEDIUM_CLASSES,
+    INPUT_SMALL_CLASSES,
+    LABEL_MUTED_CLASSES,
+    LABEL_SECTION_CLASSES,
+    ROW_CENTERED_CLASSES,
+    ROW_FULL_ITEMS_CLASSES,
+    TABS_FULL_CLASSES,
 )
 from ui.helpers import (
     format_date_label,
@@ -210,7 +223,7 @@ def render_activity_select() -> None:
         on_change=refresh_data,
         value=state.selected_activity_type,
         label=t("Activity Type"),
-    ).classes("w-40").bind_enabled_from(state, "file_loaded").bind_value(
+    ).classes(INPUT_SMALL_CLASSES).bind_enabled_from(state, "file_loaded").bind_value(
         state, "selected_activity_type"
     )
 
@@ -237,13 +250,13 @@ def render_left_drawer() -> None:
 @ui.refreshable
 def render_date_range_selector() -> None:
     """Render the date range selector with linked input and date picker."""
-    with ui.row().classes("items-center gap-2"):
+    with ui.row().classes(DATE_ROW_CLASSES):
         min_date, max_date = state.workouts.get_date_bounds()
         date_locale = qdate_locale_json(get_language())
 
         date_input = (
             ui.input(t("Date range"))
-            .classes("w-50")
+            .classes(INPUT_MEDIUM_CLASSES)
             .bind_enabled_from(state, "file_loaded")
             .bind_value(state, "date_range_text")
             .props("clearable")
@@ -286,9 +299,9 @@ def _change_language(language_code: str) -> None:
 def render_header() -> None:
     """Generate the application header with a dark mode toggle and language selector."""
     dark = ui.dark_mode()
-    with ui.header().classes("items-center justify-between border-b"):
-        ui.image(APP_ICON_BASE64).classes("w-16 h-16")
-        ui.label(t("Apple Health Analyzer")).classes("font-bold text-xl")
+    with ui.header().classes(HEADER_CLASSES):
+        ui.image(APP_ICON_BASE64).classes(APP_LOGO_CLASSES)
+        ui.label(t("Apple Health Analyzer")).classes(APP_TITLE_CLASSES)
 
         # Toggle button with dynamic icon
         ui.button(icon="dark_mode", on_click=dark.enable).bind_visibility_from(
@@ -422,24 +435,24 @@ async def load_file() -> None:
 
 def render_body() -> None:
     """Generate the main body of the application."""
-    with ui.row().classes("w-full items-center"):
+    with ui.row().classes(ROW_FULL_ITEMS_CLASSES):
         state.input_file = (
             ui.input(
                 t("Apple Health export file"),
                 placeholder=t("Select an Apple Health export file..."),
             )
-            .classes("flex-grow")
+            .classes(INPUT_GROW_CLASSES)
             .bind_value(app.storage.user, "input_file_path")
         )
         ui.button(t("Browse"), on_click=pick_file, icon="folder_open")
 
-    with ui.row().classes("w-full items-center"):
+    with ui.row().classes(ROW_FULL_ITEMS_CLASSES):
         ui.button(t("Load"), on_click=load_file, icon="play_arrow").classes(
-            "flex-grow"
+            INPUT_GROW_CLASSES
         ).bind_enabled_from(state, "loading", backward=lambda loading: not loading)
         ui.spinner(size="lg").bind_visibility_from(state, "loading")
 
-    ui.label().classes("text-sm text-gray-500").bind_text_from(
+    ui.label().classes(LABEL_MUTED_CLASSES).bind_text_from(
         state, "loading_status"
     ).bind_visibility_from(state, "loading")
 
@@ -450,7 +463,7 @@ def render_body() -> None:
         if tab_name == "best_segments":
             schedule_best_segments_load()
 
-    with ui.tabs(on_change=_on_tab_change).classes("w-full") as tabs:
+    with ui.tabs(on_change=_on_tab_change).classes(TABS_FULL_CLASSES) as tabs:
         ui.tab("summary", t("Overview"))
         ui.tab("activities", t("Activities")).bind_enabled_from(state, "file_loaded")
         ui.tab("trends", t("Trends")).bind_enabled_from(state, "file_loaded")
@@ -460,7 +473,7 @@ def render_body() -> None:
     # Restore the previously selected tab (defaults to "summary" on first render).
     tabs.value = state.selected_main_tab or "summary"
 
-    with ui.tab_panels(tabs, value=state.selected_main_tab or "summary").classes("w-full"):
+    with ui.tab_panels(tabs, value=state.selected_main_tab or "summary").classes(TABS_FULL_CLASSES):
         with ui.tab_panel("summary"):
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Count"), state.metrics_display, "count")
@@ -565,7 +578,7 @@ def render_activity_graphs() -> None:
 def render_trends_tab() -> None:
     """Render the trends tab with period selection and graphs."""
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        ui.label(t("Aggregate by:")).classes("text-sm text-gray-500 uppercase self-center")
+        ui.label(t("Aggregate by:")).classes(LABEL_SECTION_CLASSES)
         ui.radio(
             {
                 "W": t("Week"),
