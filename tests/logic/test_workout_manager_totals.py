@@ -635,7 +635,7 @@ class TestGetLongestWorkout:
         """Test get_longest_workout with empty DataFrame."""
         workouts = wm.WorkoutManager()
 
-        assert workouts.get_longest_workout(["Running"]) == 0.0
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(0.0)  # type: ignore[misc]
 
     def test_get_longest_workout_single_match(self) -> None:
         """Test get_longest_workout with a single matching workout."""
@@ -648,7 +648,9 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout(["Running"]) == pytest.approx(10.0)
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(  # type: ignore[misc]
+            10.0
+        )
 
     def test_get_longest_workout_multiple_activities_picks_max(self) -> None:
         """Test get_longest_workout returns the longest workout distance."""
@@ -661,7 +663,9 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout(["Running"]) == pytest.approx(12.0)
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(  # type: ignore[misc]
+            12.0
+        )
 
     def test_get_longest_workout_filters_by_activity_type(self) -> None:
         """Test get_longest_workout only considers the specified activity types."""
@@ -674,9 +678,11 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout(["Running"]) == pytest.approx(5.0)
-        assert workouts.get_longest_workout(["Cycling"]) == pytest.approx(50.0)
-        assert workouts.get_longest_workout(["Walking"]) == pytest.approx(3.0)
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(5.0)  # type: ignore[misc]
+        assert workouts.get_longest_workout(["Cycling"]) == pytest.approx(  # type: ignore[misc]
+            50.0
+        )
+        assert workouts.get_longest_workout(["Walking"]) == pytest.approx(3.0)  # type: ignore[misc]
 
     def test_get_longest_workout_multiple_activity_types(self) -> None:
         """Test get_longest_workout with multiple activity types."""
@@ -689,7 +695,8 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout(["Walking", "Hiking"]) == pytest.approx(9.0)
+        expected = pytest.approx(9.0)  # type: ignore[misc]
+        assert workouts.get_longest_workout(["Walking", "Hiking"]) == expected
 
     def test_get_longest_workout_no_match(self) -> None:
         """Test get_longest_workout with no matching activity type returns 0."""
@@ -702,7 +709,7 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout(["Cycling"]) == 0.0
+        assert workouts.get_longest_workout(["Cycling"]) == pytest.approx(0.0)  # type: ignore[misc]
 
     def test_get_longest_workout_no_distance_column(self) -> None:
         """Test get_longest_workout when distance column is missing returns 0."""
@@ -715,7 +722,7 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout(["Running"]) == 0.0
+        assert workouts.get_longest_workout(["Running"]) == pytest.approx(0.0)  # type: ignore[misc]
 
     def test_get_longest_workout_unit_km(self) -> None:
         """Test get_longest_workout returns km by default."""
@@ -728,7 +735,8 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout(["Running"], unit="km") == pytest.approx(15.0)
+        expected = pytest.approx(15.0)  # type: ignore[misc]
+        assert workouts.get_longest_workout(["Running"], unit="km") == expected
 
     def test_get_longest_workout_unit_miles(self) -> None:
         """Test get_longest_workout returns miles when specified."""
@@ -741,7 +749,8 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout(["Running"], unit="mi") == pytest.approx(1.0)
+        expected = pytest.approx(1.0)  # type: ignore[misc]
+        assert workouts.get_longest_workout(["Running"], unit="mi") == expected
 
     def test_get_longest_workout_empty_activity_types_list(self) -> None:
         """Test get_longest_workout with empty activity types list returns 0."""
@@ -754,4 +763,4 @@ class TestGetLongestWorkout:
             )
         )
 
-        assert workouts.get_longest_workout([]) == 0.0
+        assert workouts.get_longest_workout([]) == pytest.approx(0.0)  # type: ignore[misc]
