@@ -133,7 +133,11 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
     in a ``children`` list so the table can expand them on demand.
     """
     _logger.debug("Calculating best segments for distances: %s", STANDARD_SEGMENT_DISTANCES)
-    best_segments = state.workouts.get_best_segments(distances=STANDARD_SEGMENT_DISTANCES)
+    best_segments = state.workouts.get_best_segments(
+        distances=STANDARD_SEGMENT_DISTANCES,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
     _logger.debug("Best segments data:\n%s", best_segments)
     language_code = get_language()
 
@@ -767,7 +771,10 @@ def render_health_data_tab() -> None:
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
         heart_rate_stats = state.records_by_type.heart_rate_stats(
-            period=state.trends_period, context=RecordsByType.HeartRateMeasureContext.SEDENTARY
+            period=state.trends_period,
+            context=RecordsByType.HeartRateMeasureContext.SEDENTARY,
+            start_date=state.start_date,
+            end_date=state.end_date,
         )
         render_generic_graph(
             t("Resting HR frequency over time"),
@@ -780,7 +787,11 @@ def render_health_data_tab() -> None:
             graph_type="line",
         )
 
-        body_mass_stats = state.records_by_type.weight_stats(period=state.trends_period)
+        body_mass_stats = state.records_by_type.weight_stats(
+            period=state.trends_period,
+            start_date=state.start_date,
+            end_date=state.end_date,
+        )
         render_generic_graph(
             t("Body Mass over time"),
             to_json_safe(
@@ -793,7 +804,11 @@ def render_health_data_tab() -> None:
         )
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        vo2_max_stats = state.records_by_type.vo2_max_stats(period=state.trends_period)
+        vo2_max_stats = state.records_by_type.vo2_max_stats(
+            period=state.trends_period,
+            start_date=state.start_date,
+            end_date=state.end_date,
+        )
         render_generic_graph(
             t("VO2 Max over time"),
             to_json_safe(

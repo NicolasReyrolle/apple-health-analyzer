@@ -417,3 +417,119 @@ class TestGetBestSegments:
 
         assert len(result) == 1
         assert int(result.iloc[0]["distance"]) == 1000
+
+
+class TestGetBestSegmentsDateFiltering:
+    """Test date-range filtering in get_best_segments."""
+
+    def test_get_best_segments_filters_by_start_date(self) -> None:
+        """Workouts before start_date should be excluded."""
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running"],
+                    "startDate": [pd.Timestamp("2024-01-01"), pd.Timestamp("2024-06-01")],
+                    "distance": [5000.0, 5000.0],
+                    "route": [_two_point_route(300), _two_point_route(200)],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(
+            topn=5, distances=[1000], start_date=datetime(2024, 3, 1)
+        )
+
+        # Only the June workout should be included; January workout excluded
+        assert not result.empty
+        assert len(result) == 1
+        assert result.iloc[0]["startDate"] == pd.Timestamp("2024-06-01")
+
+    def test_get_best_segments_filters_by_end_date(self) -> None:
+        """Workouts after end_date should be excluded."""
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running"],
+                    "startDate": [pd.Timestamp("2024-01-01"), pd.Timestamp("2024-06-01")],
+                    "distance": [5000.0, 5000.0],
+                    "route": [_two_point_route(300), _two_point_route(200)],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(
+            topn=5, distances=[1000], end_date=datetime(2024, 3, 31)
+        )
+
+        # Only the January workout should be included; June workout excluded
+        assert not result.empty
+        assert len(result) == 1
+        assert result.iloc[0]["startDate"] == pd.Timestamp("2024-01-01")
+
+    def test_get_best_segments_filters_by_both_dates(self) -> None:
+        """Only workouts within [start_date, end_date] should contribute."""
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Running"],
+                    "startDate": [
+                        pd.Timestamp("2024-01-01"),
+                        pd.Timestamp("2024-03-15"),
+                        pd.Timestamp("2024-06-01"),
+                    ],
+                    "distance": [5000.0, 5000.0, 5000.0],
+                    "route": [_two_point_route(300), _two_point_route(200), _two_point_route(400)],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(
+            topn=5,
+            distances=[1000],
+            start_date=datetime(2024, 2, 1),
+            end_date=datetime(2024, 4, 30),
+        )
+
+        # Only the March workout should be included
+        assert not result.empty
+        assert all(result["startDate"] >= pd.Timestamp("2024-02-01"))
+        assert all(result["startDate"] <= pd.Timestamp("2024-04-30"))
+
+    def test_get_best_segments_returns_empty_when_no_workouts_in_range(self) -> None:
+        """Return empty DataFrame when date filter excludes all workouts."""
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2024-01-01")],
+                    "distance": [5000.0],
+                    "route": [_two_point_route(300)],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(
+            topn=5, distances=[1000], start_date=datetime(2024, 6, 1)
+        )
+
+        assert result.empty
+        assert list(result.columns) == ["startDate", "distance", "duration_s"]
+
+    def test_get_best_segments_end_date_is_inclusive(self) -> None:
+        """A workout exactly on end_date should be included."""
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2024-03-31")],
+                    "distance": [5000.0],
+                    "route": [_two_point_route(300)],
+                }
+            )
+        )
+
+        result = manager.get_best_segments(
+            topn=5, distances=[1000], end_date=datetime(2024, 3, 31)
+        )
+
+        assert not result.empty
