@@ -308,12 +308,14 @@ def render_header() -> None:
         state.dark_mode_enabled = True
         render_activity_graphs.refresh()
         render_trends_graphs.refresh()
+        render_health_data_tab.refresh()
 
     def _disable_dark() -> None:
         dark.disable()
         state.dark_mode_enabled = False
         render_activity_graphs.refresh()
         render_trends_graphs.refresh()
+        render_health_data_tab.refresh()
 
     with ui.header().classes(HEADER_CLASSES):
         ui.image(APP_ICON_BASE64).classes(APP_LOGO_CLASSES)
