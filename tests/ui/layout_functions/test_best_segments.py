@@ -10,7 +10,6 @@ import pandas as pd
 
 from app_state import state
 from logic.workout_manager import STANDARD_SEGMENT_DISTANCES
-from ui import best_segments as best_segments_module
 from ui import layout
 
 from ._helpers import DummyComponent, DummyContext, DummyTab, DummyTable, DummyTabs
