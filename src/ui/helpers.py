@@ -1,15 +1,18 @@
 """UI formatting and locale helpers."""
 
 import json
+import re
+from collections.abc import Sequence
 from typing import Optional, Protocol
 
+import pandas as pd
 from babel.core import default_locale
 from babel.numbers import format_decimal
 
 from i18n import translate
 
 
-class _SupportsStrftime(Protocol):
+class _SupportsStrftime(Protocol):  # pylint: disable=too-few-public-methods
     """Protocol for date-like objects exposing ``strftime``."""
 
     def strftime(self, fmt: str, /) -> str:
@@ -203,3 +206,52 @@ def format_date_label(start_date: _SupportsStrftime, language_code: str) -> str:
     if normalized_language_code == "fr":
         return start_date.strftime("%d/%m/%Y")
     return start_date.strftime("%m/%d/%Y")
+
+
+def translate_parser_progress_message(message: str, language_code: str) -> str:
+    """Translate parser progress messages emitted by ``ExportParser``."""
+    exact_messages = {
+        "Starting to parse the Apple Health export file...": (
+            "Starting to parse the Apple Health export file..."
+        ),
+        "Loading the workouts...": "Loading the workouts...",
+        "Finished parsing the Apple Health export file.": (
+            "Finished parsing the Apple Health export file."
+        ),
+    }
+    exact_template = exact_messages.get(message)
+    if exact_template is not None:
+        return translate(exact_template, language=language_code)
+
+    template: Optional[str]
+    params: dict[str, str]
+    processed_match = re.match(r"^Processed (\d+) workouts\.\.\.$", message)
+    if processed_match:
+        template = "Processed {count} workouts..."
+        params = {"count": processed_match.group(1)}
+    else:
+        loaded_match = re.match(r"^Loaded (\d+) workouts total\.$", message)
+        if loaded_match:
+            template = "Loaded {count} workouts total."
+            params = {"count": loaded_match.group(1)}
+        else:
+            error_match = re.match(r"^Error during parsing: (.+)$", message)
+            if error_match:
+                template = "Error during parsing: {error}"
+                params = {"error": error_match.group(1)}
+            else:
+                template = None
+                params = {}
+
+    if template is None:
+        return message
+    return translate(template, language=language_code, **params)
+
+
+def calculate_moving_average(
+    y_values: Sequence[float | int | None], window_size: int = 12
+) -> list[float | None]:
+    """Calculate a moving average with ``min_periods=1`` while preserving missing values."""
+    series = pd.Series(list(y_values), dtype=float)
+    result = series.rolling(window=window_size, min_periods=1).mean().round(2)
+    return [None if pd.isna(v) else float(v) for v in result]

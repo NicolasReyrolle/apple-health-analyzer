@@ -2,9 +2,8 @@
 
 import asyncio
 import logging
-import re
 import time
-from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Hashable, Mapping
 from typing import Any, Callable, Optional
 
 import pandas as pd
@@ -23,6 +22,7 @@ from logic.workout_manager import (
     WorkoutManager,
 )
 from ui.helpers import (
+    calculate_moving_average,
     format_date_label,
     format_distance_label,
     format_duration_label,
@@ -30,6 +30,7 @@ from ui.helpers import (
     format_integer,
     period_code_to_label,
     qdate_locale_json,
+    translate_parser_progress_message,
 )
 from ui.local_file_picker import LocalFilePicker
 
@@ -444,24 +445,6 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
         )
 
 
-def calculate_moving_average(
-    y_values: Sequence[float | int | None], window_size: int = 12
-) -> list[float | None]:
-    """
-    Calculate a moving average to smooth out peaks and valleys in sports data.
-
-    Uses a rolling window with ``min_periods=1``, which behaves like an expanding
-    average for the initial points when there are fewer samples than ``window_size``.
-    Missing values (None/NaN) are preserved as None in the output.
-    """
-    # Use pandas rolling window to calculate the moving average consistently
-    # Convert y_values to a list to ensure compatibility with pandas Series
-    # constructor's type hints.
-    series = pd.Series(list(y_values), dtype=float)
-    result = series.rolling(window=window_size, min_periods=1).mean().round(2)
-    return [None if pd.isna(v) else float(v) for v in result]
-
-
 def render_generic_graph(
     label: str,
     values: Mapping[str, float | int | None],
@@ -521,30 +504,6 @@ async def pick_file() -> None:
     state.input_file.value = result[0]
 
 
-def _translate_parser_progress_message(message: str) -> str:
-    """Translate parser progress messages emitted by ExportParser."""
-    if message == "Starting to parse the Apple Health export file...":
-        return t("Starting to parse the Apple Health export file...")
-    if message == "Loading the workouts...":
-        return t("Loading the workouts...")
-    if message == "Finished parsing the Apple Health export file.":
-        return t("Finished parsing the Apple Health export file.")
-
-    processed_match = re.match(r"^Processed (\d+) workouts\.\.\.$", message)
-    if processed_match:
-        return t("Processed {count} workouts...", count=processed_match.group(1))
-
-    loaded_match = re.match(r"^Loaded (\d+) workouts total\.$", message)
-    if loaded_match:
-        return t("Loaded {count} workouts total.", count=loaded_match.group(1))
-
-    error_match = re.match(r"^Error during parsing: (.+)$", message)
-    if error_match:
-        return t("Error during parsing: {error}", error=error_match.group(1))
-
-    return message
-
-
 def load_workouts_from_file(
     file_path: str,
     progress_callback: Optional[Callable[[int, str], None]] = None,
@@ -557,7 +516,7 @@ def load_workouts_from_file(
     """
 
     def report(progress: int, message: str) -> None:
-        localized_message = _translate_parser_progress_message(message)
+        localized_message = translate_parser_progress_message(message, get_language())
         _logger.info(localized_message)
         if progress_callback:
             progress_callback(progress, localized_message)
