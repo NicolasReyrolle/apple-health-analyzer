@@ -62,6 +62,7 @@ If two rules at the same level conflict, choose the simpler option and state the
 - Fix root cause; avoid cosmetic unrelated edits.
 - Keep public APIs stable unless the task explicitly requests API changes. Do not use compatibility layers unless absolutely necessary.
 - Use `# pylint: disable=...` or `# type: ignore` only when necessary and scoped to the smallest expression/line.
+- Keep cognitive complexity low; break down complex functions into smaller helpers. Maximum complexity of 15 per function.
 
 ### Validation scope (default)
 - Validate changed files and directly affected tests first.
