@@ -39,8 +39,8 @@ if not _logger.handlers:
     _logger.addHandler(logging.NullHandler())
 
 
-@app.on_startup
-def _compile_catalogs() -> None:
+@app.on_startup  # type: ignore[arg-type]
+def _compile_catalogs() -> None:  # pyright: ignore[reportUnusedFunction]
     """Compile translation catalogs at startup.
 
     Registered as an app-startup callback so that catalogs are compiled
