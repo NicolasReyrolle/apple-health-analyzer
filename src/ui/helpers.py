@@ -49,7 +49,10 @@ def format_integer(value: int, locale_name: Optional[str] = None) -> str:
 
 def format_float(value: float, decimal_places: int = 1, locale_name: Optional[str] = None) -> str:
     """Format a float with the given number of decimal places for the current locale."""
-    fmt = f"#,##0.{'0' * decimal_places}"
+    if decimal_places <= 0:
+        fmt = "#,##0"
+    else:
+        fmt = f"#,##0.{'0' * decimal_places}"
     return format_decimal(value, format=fmt, locale=_resolve_locale(locale_name))
 
 
