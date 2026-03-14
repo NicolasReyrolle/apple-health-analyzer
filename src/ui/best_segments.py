@@ -12,7 +12,7 @@ from logic.workout_manager import (
     HALF_MARATHON_DISTANCE_M,
     MARATHON_DISTANCE_M,
     STANDARD_SEGMENT_DISTANCES,
-    CriticalVelocityResult,
+    CriticalPowerResult,
 )
 from ui.charts import LABEL_UPPERCASE_CLASSES, ROW_CENTERED_CLASSES
 from ui.css import (
@@ -24,22 +24,9 @@ from ui.helpers import format_date_label, format_distance_label, format_duration
 
 _logger = logging.getLogger(__name__)
 
-# Segment distances used for the critical velocity model (800 m and 5 km).
-_CV_SHORT_DISTANCE = 800
-_CV_LONG_DISTANCE = 5000
-
-
-def _format_pace(velocity_ms: float) -> str:
-    """Format a velocity in m/s as pace in min:ss /km."""
-    if velocity_ms <= 0:
-        return "–"
-    total_seconds_per_km = 1000 / velocity_ms
-    minutes = int(total_seconds_per_km // 60)
-    seconds = int(round(total_seconds_per_km % 60))
-    if seconds == 60:
-        minutes += 1
-        seconds = 0
-    return f"{minutes}:{seconds:02d} min/km"
+# Segment distances used for the critical power model (800 m and 5 km).
+_CP_SHORT_DISTANCE = 800
+_CP_LONG_DISTANCE = 5000
 
 
 def _build_best_segments_rows() -> list[dict[str, Any]]:
@@ -100,11 +87,11 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
     return rows
 
 
-def _compute_critical_velocity() -> CriticalVelocityResult | None:
-    """Compute critical velocity from best 800 m and 5 km segments."""
-    return state.workouts.get_critical_velocity(
-        short_distance=_CV_SHORT_DISTANCE,
-        long_distance=_CV_LONG_DISTANCE,
+def _compute_critical_power() -> CriticalPowerResult | None:
+    """Compute critical power from best 800 m and 5 km segments."""
+    return state.workouts.get_critical_power(
+        short_distance=_CP_SHORT_DISTANCE,
+        long_distance=_CP_LONG_DISTANCE,
         start_date=state.start_date,
         end_date=state.end_date,
     )
@@ -124,9 +111,9 @@ async def load_best_segments_data(force: bool = False) -> None:
 
     try:
         rows = await asyncio.to_thread(_build_best_segments_rows)
-        cv_result = await asyncio.to_thread(_compute_critical_velocity)
+        cp_result = await asyncio.to_thread(_compute_critical_power)
         state.best_segments_rows = rows
-        state.critical_velocity = cv_result
+        state.critical_power = cp_result
         state.best_segments_loaded = True
     except Exception:  # pylint: disable=broad-except
         _logger.exception("Failed to load best segments data")
@@ -135,56 +122,55 @@ async def load_best_segments_data(force: bool = False) -> None:
         render_best_segments_tab.refresh()
 
 
-def _render_critical_velocity_card(cv: CriticalVelocityResult) -> None:
-    """Render a card summarising the Critical Velocity model result."""
+def _render_critical_power_card(cp: CriticalPowerResult) -> None:
+    """Render a card summarising the Critical Power model result."""
     language_code = get_language()
     with ui.card().classes(ROW_CENTERED_CLASSES):
-        ui.label(t("Critical Velocity & W' estimate")).classes(LABEL_UPPERCASE_CLASSES)
+        ui.label(t("Critical Power & W' estimate")).classes(LABEL_UPPERCASE_CLASSES)
 
         short_label = format_distance_label(
-            cv["short_distance"],
+            cp["short_distance"],
             language_code,
             HALF_MARATHON_DISTANCE_M,
             MARATHON_DISTANCE_M,
         )
         long_label = format_distance_label(
-            cv["long_distance"],
+            cp["long_distance"],
             language_code,
             HALF_MARATHON_DISTANCE_M,
             MARATHON_DISTANCE_M,
         )
 
-        short_speed = (cv["short_distance"] / 1000) / (cv["avg_time_short_s"] / 3600)
-        long_speed = (cv["long_distance"] / 1000) / (cv["avg_time_long_s"] / 3600)
+        short_speed = (cp["short_distance"] / 1000) / (cp["avg_time_short_s"] / 3600)
+        long_speed = (cp["long_distance"] / 1000) / (cp["avg_time_long_s"] / 3600)
 
         rows = [
             {
                 "label": t("Avg. best {distance}").format(distance=short_label),
                 "value": (
-                    f"{format_duration_label(cv['avg_time_short_s'])}"
+                    f"{format_duration_label(cp['avg_time_short_s'])}"
                     f"  ({short_speed:.2f} km/h)"
+                    f"  –  {cp['avg_power_short_w']:.0f} W"
                 ),
-                "note": t("({count} segments)").format(count=cv["count_short"]),
+                "note": t("({count} segments)").format(count=cp["count_short"]),
             },
             {
                 "label": t("Avg. best {distance}").format(distance=long_label),
                 "value": (
-                    f"{format_duration_label(cv['avg_time_long_s'])}"
+                    f"{format_duration_label(cp['avg_time_long_s'])}"
                     f"  ({long_speed:.2f} km/h)"
+                    f"  –  {cp['avg_power_long_w']:.0f} W"
                 ),
-                "note": t("({count} segments)").format(count=cv["count_long"]),
+                "note": t("({count} segments)").format(count=cp["count_long"]),
             },
             {
-                "label": t("Critical Velocity (CV)"),
-                "value": (
-                    f"{cv['critical_velocity_ms'] * 3.6:.2f} km/h"
-                    f"  ({_format_pace(cv['critical_velocity_ms'])})"
-                ),
+                "label": t("Critical Power (CP)"),
+                "value": f"{cp['critical_power_w']:.0f} W",
                 "note": "",
             },
             {
-                "label": t("W' distance"),
-                "value": f"{cv['w_prime_distance_m']:.0f} m",
+                "label": t("W'"),
+                "value": f"{cp['w_prime_j'] / 1000:.1f} kJ",
                 "note": "",
             },
         ]
@@ -279,5 +265,5 @@ def render_best_segments_tab() -> None:
             """,
         )
 
-    if state.critical_velocity is not None:
-        _render_critical_velocity_card(state.critical_velocity)
+    if state.critical_power is not None:
+        _render_critical_power_card(state.critical_power)

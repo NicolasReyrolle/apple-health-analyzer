@@ -444,7 +444,7 @@ class TestBestSegmentsTabRendering:
         original_rows = state.best_segments_rows
         original_loading = state.best_segments_loading
         original_loaded = state.best_segments_loaded
-        original_cv = state.critical_velocity
+        original_cp = state.critical_power
 
         table_stub = DummyTable()
 
@@ -461,7 +461,7 @@ class TestBestSegmentsTabRendering:
             ]
             state.best_segments_loading = False
             state.best_segments_loaded = True
-            state.critical_velocity = None  # ensure CV card is not rendered
+            state.critical_power = None  # ensure CP card is not rendered
 
             with (
                 patch("ui.best_segments.ui.card", return_value=DummyContext()),
@@ -478,30 +478,32 @@ class TestBestSegmentsTabRendering:
             state.best_segments_rows = original_rows
             state.best_segments_loading = original_loading
             state.best_segments_loaded = original_loaded
-            state.critical_velocity = original_cv
+            state.critical_power = original_cp
 
-    def test_render_best_segments_tab_renders_cv_card_when_available(self) -> None:
-        """When critical_velocity is set, a second card with CV data should be rendered."""
+    def test_render_best_segments_tab_renders_cp_card_when_available(self) -> None:
+        """When critical_power is set, a second card with CP data should be rendered."""
         original_rows = state.best_segments_rows
         original_loading = state.best_segments_loading
         original_loaded = state.best_segments_loaded
-        original_cv = state.critical_velocity
+        original_cp = state.critical_power
 
         table_stub = DummyTable()
-        cv_table_stub = DummyTable()
-        table_stubs = [table_stub, cv_table_stub]
+        cp_table_stub = DummyTable()
+        table_stubs = [table_stub, cp_table_stub]
 
         try:
             state.best_segments_rows = []
             state.best_segments_loading = False
             state.best_segments_loaded = True
-            state.critical_velocity = {
+            state.critical_power = {
                 "short_distance": 800,
                 "long_distance": 5000,
                 "avg_time_short_s": 160.0,
                 "avg_time_long_s": 1250.0,
-                "critical_velocity_ms": 3.853,
-                "w_prime_distance_m": 184.0,
+                "avg_power_short_w": 350.0,
+                "avg_power_long_w": 250.0,
+                "critical_power_w": 235.0,
+                "w_prime_j": 18400.0,
                 "count_short": 3,
                 "count_long": 2,
             }
@@ -514,20 +516,20 @@ class TestBestSegmentsTabRendering:
             ):
                 layout.render_best_segments_tab.func()
 
-            # Called twice: once for best segments table, once for CV table
+            # Called twice: once for best segments table, once for CP table
             assert table_mock.call_count == 2
         finally:
             state.best_segments_rows = original_rows
             state.best_segments_loading = original_loading
             state.best_segments_loaded = original_loaded
-            state.critical_velocity = original_cv
+            state.critical_power = original_cp
 
-    def test_render_best_segments_tab_no_cv_card_when_cv_none(self) -> None:
-        """When critical_velocity is None, only the best-segments table is rendered."""
+    def test_render_best_segments_tab_no_cp_card_when_cp_none(self) -> None:
+        """When critical_power is None, only the best-segments table is rendered."""
         original_rows = state.best_segments_rows
         original_loading = state.best_segments_loading
         original_loaded = state.best_segments_loaded
-        original_cv = state.critical_velocity
+        original_cp = state.critical_power
 
         table_stub = DummyTable()
 
@@ -535,7 +537,7 @@ class TestBestSegmentsTabRendering:
             state.best_segments_rows = []
             state.best_segments_loading = False
             state.best_segments_loaded = True
-            state.critical_velocity = None
+            state.critical_power = None
 
             with (
                 patch("ui.best_segments.ui.card", return_value=DummyContext()),
@@ -544,13 +546,13 @@ class TestBestSegmentsTabRendering:
             ):
                 layout.render_best_segments_tab.func()
 
-            # Only the best-segments table; no CV card table
+            # Only the best-segments table; no CP card table
             table_mock.assert_called_once()
         finally:
             state.best_segments_rows = original_rows
             state.best_segments_loading = original_loading
             state.best_segments_loaded = original_loaded
-            state.critical_velocity = original_cv
+            state.critical_power = original_cp
 
 
 def test_render_body_tab_change_to_best_segments_schedules_async_load() -> None:

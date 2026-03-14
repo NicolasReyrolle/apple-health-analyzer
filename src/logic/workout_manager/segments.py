@@ -10,16 +10,20 @@ from logic.workout_route import WorkoutRoute
 if TYPE_CHECKING:
     from pandas import Timestamp
 
+_RUNNING_POWER_COL = "averageRunningPower"
 
-class CriticalVelocityResult(TypedDict):
-    """Result of a critical velocity calculation for two segment distances."""
+
+class CriticalPowerResult(TypedDict):
+    """Result of a critical power calculation for two segment distances."""
 
     short_distance: int
     long_distance: int
     avg_time_short_s: float
     avg_time_long_s: float
-    critical_velocity_ms: float
-    w_prime_distance_m: float
+    avg_power_short_w: float
+    avg_power_long_w: float
+    critical_power_w: float
+    w_prime_j: float
     count_short: int
     count_long: int
 
@@ -223,34 +227,40 @@ class WorkoutManagerSegmentsMixin:
 
         return self._build_best_segments_frame(results, topn)
 
-    def get_critical_velocity(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def get_critical_power(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         topn: int = 5,
         short_distance: int = 800,
         long_distance: int = 5000,
         start_date: Optional[Union[datetime, pd.Timestamp]] = None,
         end_date: Optional[Union[datetime, pd.Timestamp]] = None,
-    ) -> Optional["CriticalVelocityResult"]:
-        """Compute Critical Velocity (CV) and W' distance using the 2-parameter model.
+    ) -> Optional["CriticalPowerResult"]:
+        """Compute Critical Power (CP) and W' using the 2-parameter power-duration model.
 
-        The critical velocity model fits a linear relationship between distance and time:
-            d = CV * t + W'_d
-        where CV is the maximum sustainable velocity and W'_d is the anaerobic distance
-        reserve. Two distinct distances and their average best segment times are used.
+        The model fits a linear work-time relationship:
+            W = CP * t + W'
+        where W = P_avg * t is the total work done (Joules), CP is the maximum sustainable
+        power (Watts), and W' is the anaerobic work capacity (Joules).
+
+        For each target distance the average of the top-N best segment times and the
+        average ``averageRunningPower`` of those workouts are used as the two data points.
 
         Args:
-            topn: Number of best segments to average for each distance (default 5).
+            topn: Number of best segments to average per distance (default 5).
             short_distance: Shorter target distance in metres (default 800).
             long_distance: Longer target distance in metres (default 5000).
             start_date: Optional start date filter applied to workouts.
             end_date: Optional end date filter applied to workouts (inclusive).
 
         Returns:
-            A :class:`CriticalVelocityResult` dict, or ``None`` when either distance
-            has no matching best-segment data or when the two distances are equal
-            (which would cause a division-by-zero).
+            A :class:`CriticalPowerResult` dict, or ``None`` when either distance
+            has no matching segments with power data, or the model yields non-physical
+            values (CP ≤ 0 or W' ≤ 0), or the two distances are equal.
         """
         if short_distance >= long_distance:
+            return None
+
+        if _RUNNING_POWER_COL not in self.workouts.columns:
             return None
 
         segments = self.get_best_segments(
@@ -269,23 +279,43 @@ class WorkoutManagerSegmentsMixin:
         if short_rows.empty or long_rows.empty:
             return None
 
-        avg_time_short = float(short_rows["duration_s"].mean())
-        avg_time_long = float(long_rows["duration_s"].mean())
+        # Join each segment group with workout-level average power
+        power_lookup = self.workouts[["startDate", _RUNNING_POWER_COL]].dropna(
+            subset=[_RUNNING_POWER_COL]
+        )
+        short_with_power = short_rows.merge(power_lookup, on="startDate", how="inner")
+        long_with_power = long_rows.merge(power_lookup, on="startDate", how="inner")
+
+        if short_with_power.empty or long_with_power.empty:
+            return None
+
+        avg_time_short = float(short_with_power["duration_s"].mean())
+        avg_time_long = float(long_with_power["duration_s"].mean())
+        avg_power_short = float(short_with_power[_RUNNING_POWER_COL].mean())
+        avg_power_long = float(long_with_power[_RUNNING_POWER_COL].mean())
 
         time_diff = avg_time_long - avg_time_short
         if time_diff <= 0:
             return None
 
-        critical_velocity_ms = (long_distance - short_distance) / time_diff
-        w_prime_distance_m = short_distance - critical_velocity_ms * avg_time_short
+        work_short = avg_power_short * avg_time_short  # Joules
+        work_long = avg_power_long * avg_time_long  # Joules
 
-        return CriticalVelocityResult(
+        critical_power_w = (work_long - work_short) / time_diff
+        w_prime_j = work_short - critical_power_w * avg_time_short
+
+        if critical_power_w <= 0 or w_prime_j <= 0:
+            return None
+
+        return CriticalPowerResult(
             short_distance=short_distance,
             long_distance=long_distance,
             avg_time_short_s=avg_time_short,
             avg_time_long_s=avg_time_long,
-            critical_velocity_ms=critical_velocity_ms,
-            w_prime_distance_m=w_prime_distance_m,
-            count_short=len(short_rows),
-            count_long=len(long_rows),
+            avg_power_short_w=avg_power_short,
+            avg_power_long_w=avg_power_long,
+            critical_power_w=critical_power_w,
+            w_prime_j=w_prime_j,
+            count_short=len(short_with_power),
+            count_long=len(long_with_power),
         )

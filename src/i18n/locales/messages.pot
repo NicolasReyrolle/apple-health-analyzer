@@ -107,7 +107,7 @@ msgstr ""
 msgid "Open this tab to load best segments."
 msgstr ""
 
-msgid "Critical Velocity & W' estimate"
+msgid "Critical Power & W' estimate"
 msgstr ""
 
 msgid "Avg. best {distance}"
@@ -116,10 +116,10 @@ msgstr ""
 msgid "({count} segments)"
 msgstr ""
 
-msgid "Critical Velocity (CV)"
+msgid "Critical Power (CP)"
 msgstr ""
 
-msgid "W' distance"
+msgid "W'"
 msgstr ""
 
 msgid "Half-marathon"

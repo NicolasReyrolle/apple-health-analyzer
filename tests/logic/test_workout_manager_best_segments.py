@@ -535,8 +535,8 @@ class TestGetBestSegmentsDateFiltering:
         assert not result.empty
 
 
-class TestGetCriticalVelocity:
-    """Test suite for WorkoutManager.get_critical_velocity."""
+class TestGetCriticalPower:
+    """Test suite for WorkoutManager.get_critical_power."""
 
     @staticmethod
     def _make_speed_route(
@@ -569,10 +569,11 @@ class TestGetCriticalVelocity:
     def _make_manager_with_two_segments(
         self,
         time_800m: int,
+        power_800m: float,
         time_5000m: int,
+        power_5000m: float,
     ) -> WorkoutManager:
-        """Return a manager whose two routes cover exactly 800 m and 5000 m."""
-        # ~800 m route at 0.007° longitude; ~5000 m at 0.045°
+        """Return a manager with 800 m and 5000 m routes and workout-level average power."""
         route_800 = self._make_speed_route(
             datetime(2025, 1, 1, tzinfo=timezone.utc), 800.0, float(time_800m), 0.007
         )
@@ -588,6 +589,7 @@ class TestGetCriticalVelocity:
                         pd.Timestamp("2025-02-01"),
                     ],
                     "distance": [800.0, 5000.0],
+                    "averageRunningPower": [power_800m, power_5000m],
                     "route": [route_800, route_5000],
                 }
             )
@@ -597,7 +599,30 @@ class TestGetCriticalVelocity:
         """No workouts should return None."""
         manager = WorkoutManager()
 
-        result = manager.get_critical_velocity()
+        result = manager.get_critical_power()
+
+        assert result is None
+
+    def test_returns_none_when_power_column_missing(self) -> None:
+        """Return None when workouts have no running power data at all."""
+        route_800 = self._make_speed_route(
+            datetime(2025, 1, 1, tzinfo=timezone.utc), 800.0, 160.0, 0.007
+        )
+        route_5000 = self._make_speed_route(
+            datetime(2025, 2, 1, tzinfo=timezone.utc), 5000.0, 1250.0, 0.045
+        )
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running"],
+                    "startDate": [pd.Timestamp("2025-01-01"), pd.Timestamp("2025-02-01")],
+                    "distance": [800.0, 5000.0],
+                    "route": [route_800, route_5000],
+                }
+            )
+        )
+
+        result = manager.get_critical_power()
 
         assert result is None
 
@@ -612,12 +637,13 @@ class TestGetCriticalVelocity:
                     "activityType": ["Running"],
                     "startDate": [pd.Timestamp("2025-01-01")],
                     "distance": [5000.0],
+                    "averageRunningPower": [250.0],
                     "route": [route_5000],
                 }
             )
         )
 
-        result = manager.get_critical_velocity(
+        result = manager.get_critical_power(
             short_distance=10000,  # longer than this workout's distance
             long_distance=50000,
         )
@@ -628,43 +654,46 @@ class TestGetCriticalVelocity:
         """Return None when short_distance >= long_distance (degenerate inputs)."""
         manager = WorkoutManager()
 
-        assert manager.get_critical_velocity(short_distance=800, long_distance=800) is None
-        assert manager.get_critical_velocity(short_distance=5000, long_distance=800) is None
+        assert manager.get_critical_power(short_distance=800, long_distance=800) is None
+        assert manager.get_critical_power(short_distance=5000, long_distance=800) is None
 
-    def test_critical_velocity_formula(self) -> None:
-        """CV and W' should satisfy the 2-parameter model for known inputs."""
-        # Use large routes so the scale factor is close to 1.0 and segment times
-        # are driven purely by the route's built-in speed attribute.
-        time_800 = 160  # s  → speed = 5 m/s
-        time_5000 = 1250  # s → speed = 4 m/s
-        manager = self._make_manager_with_two_segments(time_800, time_5000)
+    def test_critical_power_formula(self) -> None:
+        """CP and W' should satisfy the 2-parameter model for known inputs."""
+        time_800 = 160  # s
+        power_800 = 350.0  # W
+        time_5000 = 1250  # s
+        power_5000 = 250.0  # W
+        manager = self._make_manager_with_two_segments(time_800, power_800, time_5000, power_5000)
 
-        result = manager.get_critical_velocity(
+        result = manager.get_critical_power(
             topn=1,
             short_distance=800,
             long_distance=5000,
         )
 
         assert result is not None
-        # Expected CV = (5000 - 800) / (1250 - 160) = 4200 / 1090 ≈ 3.853 m/s
-        # Expected W'_d = 800 - CV * 160 ≈ 800 - 616.5 ≈ 183.5 m
+        # W1 = 350 * 160 = 56000 J; W2 = 250 * 1250 = 312500 J
+        # CP = (312500 - 56000) / (1250 - 160) = 256500 / 1090 ≈ 235.3 W
+        # W' = 56000 - 235.3 * 160 ≈ 18352 J
         assert result["short_distance"] == 800
         assert result["long_distance"] == 5000
         assert result["avg_time_short_s"] == pytest.approx(time_800, rel=0.05)
         assert result["avg_time_long_s"] == pytest.approx(time_5000, rel=0.05)
-        assert result["critical_velocity_ms"] == pytest.approx(
-            (5000 - 800) / (time_5000 - time_800), rel=0.05
-        )
-        assert result["w_prime_distance_m"] == pytest.approx(
-            800 - result["critical_velocity_ms"] * result["avg_time_short_s"], rel=0.05
-        )
+        assert result["avg_power_short_w"] == pytest.approx(power_800, rel=0.01)
+        assert result["avg_power_long_w"] == pytest.approx(power_5000, rel=0.01)
+        work_short = power_800 * time_800
+        work_long = power_5000 * time_5000
+        expected_cp = (work_long - work_short) / (time_5000 - time_800)
+        expected_w_prime = work_short - expected_cp * time_800
+        assert result["critical_power_w"] == pytest.approx(expected_cp, rel=0.01)
+        assert result["w_prime_j"] == pytest.approx(expected_w_prime, rel=0.01)
         assert result["count_short"] == 1
         assert result["count_long"] == 1
 
     def test_averages_multiple_segments(self) -> None:
-        """With topn>1, the CV is based on the mean of the top-N segment times."""
-        # Create two 800 m workouts (times 160 s and 180 s → avg 170 s)
-        # and one 5000 m workout (time 1250 s).
+        """With topn>1, CP is based on the mean time and power across top-N segments."""
+        # Two 800 m workouts (160 s / 350 W and 180 s / 330 W → avg 170 s / 340 W)
+        # One 5000 m workout (1250 s / 250 W)
         route_800_fast = self._make_speed_route(
             datetime(2025, 1, 1, tzinfo=timezone.utc), 800.0, 160.0, 0.007
         )
@@ -684,14 +713,16 @@ class TestGetCriticalVelocity:
                         pd.Timestamp("2025-02-01"),
                     ],
                     "distance": [800.0, 800.0, 5000.0],
+                    "averageRunningPower": [350.0, 330.0, 250.0],
                     "route": [route_800_fast, route_800_slow, route_long],
                 }
             )
         )
 
-        result = manager.get_critical_velocity(topn=2, short_distance=800, long_distance=5000)
+        result = manager.get_critical_power(topn=2, short_distance=800, long_distance=5000)
 
         assert result is not None
         assert result["count_short"] == 2
         assert result["count_long"] == 1
         assert result["avg_time_short_s"] == pytest.approx(170.0, rel=0.05)
+        assert result["avg_power_short_w"] == pytest.approx(340.0, rel=0.01)

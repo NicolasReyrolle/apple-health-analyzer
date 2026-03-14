@@ -7,7 +7,7 @@ from typing import Any, Optional
 from nicegui import ui
 
 from logic.records_by_type import RecordsByType
-from logic.workout_manager import CriticalVelocityResult, WorkoutManager
+from logic.workout_manager import CriticalPowerResult, WorkoutManager
 
 
 class AppState:
@@ -55,7 +55,7 @@ class AppState:
         self.best_segments_loading: bool = False
         self.best_segments_loaded: bool = False
         self.best_segments_task: asyncio.Task[None] | None = None
-        self.critical_velocity: Optional[CriticalVelocityResult] = None
+        self.critical_power: Optional[CriticalPowerResult] = None
         self.selected_main_tab: str = "summary"
 
         self.selected_activity_type: str = "All"
