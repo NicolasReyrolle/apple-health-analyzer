@@ -243,7 +243,7 @@ class WorkoutManagerSegmentsMixin:
         return float(vals.mean())
 
     @staticmethod
-    def _compute_overlap_estimated_power(
+    def _compute_overlap_estimated_power(  # pylint: disable=too-many-locals
         rp_times: pd.Series,
         rp_end_times: pd.Series,
         rp_values: pd.Series,
@@ -272,6 +272,145 @@ class WorkoutManagerSegmentsMixin:
 
         weighted_sum = float((overlap_values * overlap_weights).sum())
         return (weighted_sum / total_weight, int(positive_overlap.sum()), total_weight)
+
+    @staticmethod
+    def _prepare_running_power_series(
+        running_power_df: Optional[pd.DataFrame],
+    ) -> tuple[Optional[pd.Series], Optional[pd.Series], Optional[pd.Series]]:
+        """Parse running power records into typed series for segment matching."""
+        if (
+            running_power_df is None
+            or running_power_df.empty
+            or "startDate" not in running_power_df.columns
+            or "value" not in running_power_df.columns
+        ):
+            return None, None, None
+
+        rp_times = pd.to_datetime(running_power_df["startDate"], format="ISO8601", errors="coerce")
+        rp_end_times: Optional[pd.Series] = None
+        if "endDate" in running_power_df.columns:
+            rp_end_times = pd.to_datetime(
+                running_power_df["endDate"], format="ISO8601", errors="coerce"
+            )
+        rp_values = pd.to_numeric(running_power_df["value"], errors="coerce")
+        return rp_times, rp_end_times, rp_values
+
+    def _build_workout_fallback_power(self) -> dict[Any, Optional[float]]:
+        """Build workout-level fallback lookup: startDate -> averageRunningPower."""
+        fallback: dict[Any, Optional[float]] = {}
+        avg_power_col = "averageRunningPower"
+        for workout in self.workouts.itertuples():
+            workout_start = getattr(workout, "startDate", None)
+            raw_power = (
+                getattr(workout, avg_power_col, None)
+                if avg_power_col in self.workouts.columns
+                else None
+            )
+            fallback[workout_start] = (
+                float(raw_power) if raw_power is not None and not pd.isna(raw_power) else None
+            )
+        return fallback
+
+    def _compute_segment_power_and_confidence(  # pylint: disable=too-many-locals
+        self,
+        row: Any,
+        power_series: tuple[Optional[pd.Series], Optional[pd.Series], Optional[pd.Series]],
+        workout_fallback: dict[Any, Optional[float]],
+    ) -> tuple[Optional[float], str]:
+        """Compute power value and confidence for one segment row."""
+        rp_times, rp_end_times, rp_values = power_series
+        seg_start = getattr(row, "segment_start", None)
+        seg_end = getattr(row, "segment_end", None)
+        workout_start = getattr(row, "startDate", None)
+
+        power, confidence = self._compute_power_from_records(
+            row,
+            workout_start,
+            seg_start,
+            seg_end,
+            rp_times,
+            rp_end_times,
+            rp_values,
+        )
+
+        if power is None:
+            workout_avg_power = workout_fallback.get(workout_start)
+            if workout_avg_power is not None:
+                power = workout_avg_power
+                confidence = "workout_fallback"
+
+        _logger.debug(
+            "Segment power computed "
+            "(workout_start=%s distance=%sm duration_s=%.2f power=%s confidence=%s)",
+            workout_start,
+            getattr(row, "distance", None),
+            float(getattr(row, "duration_s", 0.0)),
+            power,
+            confidence,
+        )
+        return power, confidence
+
+    def _compute_power_from_records(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+        self,
+        row: Any,
+        workout_start: Any,
+        seg_start: Any,
+        seg_end: Any,
+        rp_times: Optional[pd.Series],
+        rp_end_times: Optional[pd.Series],
+        rp_values: Optional[pd.Series],
+    ) -> tuple[Optional[float], str]:
+        """Compute power from running-power records only (measured or overlap-estimated)."""
+        if rp_times is None or rp_values is None or seg_start is None or seg_end is None:
+            return None, "missing"
+
+        seg_start_ts = pd.Timestamp(seg_start)
+        seg_end_ts = pd.Timestamp(seg_end)
+        measured_power = self._compute_measured_segment_power(
+            rp_times,
+            rp_values,
+            seg_start_ts,
+            seg_end_ts,
+        )
+        if measured_power is not None:
+            return measured_power, "measured"
+
+        _logger.debug(
+            "No measured RunningPower samples matched segment window "
+            "(workout_start=%s distance=%sm segment_start=%s segment_end=%s)",
+            workout_start,
+            getattr(row, "distance", None),
+            seg_start_ts,
+            seg_end_ts,
+        )
+
+        if rp_end_times is None:
+            return None, "missing"
+
+        lengths_match = len(rp_end_times) == len(rp_times) and len(rp_values) == len(rp_times)
+        if not lengths_match:
+            return None, "missing"
+
+        overlap_estimate = self._compute_overlap_estimated_power(
+            rp_times,
+            rp_end_times,
+            rp_values,
+            seg_start_ts,
+            seg_end_ts,
+        )
+        if overlap_estimate is None:
+            return None, "missing"
+
+        overlap_power, overlap_count, overlap_total_s = overlap_estimate
+        _logger.debug(
+            "Using overlap-estimated RunningPower "
+            "(workout_start=%s distance=%sm records=%s overlap_s=%.2f)",
+            workout_start,
+            getattr(row, "distance", None),
+            overlap_count,
+            overlap_total_s,
+        )
+        return overlap_power, "overlap_estimated"
 
     def annotate_segments_with_power(  # pylint: disable=too-many-locals
         self,
@@ -306,123 +445,17 @@ class WorkoutManagerSegmentsMixin:
             result["segment_power_confidence"] = "missing"
             return result
 
-        # Parse individual RunningPower record timestamps once for efficiency.
-        # Apple Health timestamps include timezone offsets, so parse as tz-aware and
-        # keep UTC normalisation from ISO8601 parser for consistent comparison with
-        # GPS segment times (which are always stored as UTC).
-        rp_times: Optional[pd.Series] = None
-        rp_end_times: Optional[pd.Series] = None
-        rp_values: Optional[pd.Series] = None
-        if (
-            running_power_df is not None
-            and not running_power_df.empty
-            and "startDate" in running_power_df.columns
-            and "value" in running_power_df.columns
-        ):
-            rp_times = pd.to_datetime(
-                running_power_df["startDate"], format="ISO8601", errors="coerce"
-            )
-            if "endDate" in running_power_df.columns:
-                rp_end_times = pd.to_datetime(
-                    running_power_df["endDate"], format="ISO8601", errors="coerce"
-                )
-            rp_values = pd.to_numeric(running_power_df["value"], errors="coerce")
-
-        # Build workout-level fallback lookup: startDate → (duration_s, avg_power_w).
-        workout_fallback: dict[Any, tuple[float, Optional[float]]] = {}
-        avg_power_col = "averageRunningPower"
-        for w in self.workouts.itertuples():
-            w_start = getattr(w, "startDate", None)
-            w_dur = float(getattr(w, "duration", 0.0) or 0.0)
-            raw_pwr = (
-                getattr(w, avg_power_col, None) if avg_power_col in self.workouts.columns else None
-            )
-            w_pwr = float(raw_pwr) if raw_pwr is not None and not pd.isna(raw_pwr) else None
-            workout_fallback[w_start] = (w_dur, w_pwr)
+        power_series = self._prepare_running_power_series(running_power_df)
+        workout_fallback = self._build_workout_fallback_power()
 
         avg_powers: list[Optional[float]] = []
         confidences: list[str] = []
         for row in segments.itertuples():
-            seg_start = getattr(row, "segment_start", None)
-            seg_end = getattr(row, "segment_end", None)
-            seg_duration = float(getattr(row, "duration_s", 0.0))
-            workout_start = getattr(row, "startDate", None)
-
-            power: Optional[float] = None
-            confidence = "missing"
-
-            # 1. Individual RunningPower records within the GPS segment time window.
-            if (
-                rp_times is not None
-                and rp_values is not None
-                and seg_start is not None
-                and seg_end is not None
-            ):
-                seg_start_ts = pd.Timestamp(seg_start)
-                seg_end_ts = pd.Timestamp(seg_end)
-                measured_power = self._compute_measured_segment_power(
-                    rp_times,
-                    rp_values,
-                    seg_start_ts,
-                    seg_end_ts,
-                )
-                if measured_power is not None:
-                    power = measured_power
-                    confidence = "measured"
-                else:
-                    _logger.debug(
-                        "No measured RunningPower samples matched segment window "
-                        "(workout_start=%s distance=%sm segment_start=%s segment_end=%s)",
-                        workout_start,
-                        getattr(row, "distance", None),
-                        seg_start_ts,
-                        seg_end_ts,
-                    )
-
-                # 1b. Overlap-based estimate from interval records when no direct match.
-                if (
-                    power is None
-                    and rp_end_times is not None
-                    and len(rp_end_times) == len(rp_times)
-                    and len(rp_values) == len(rp_times)
-                ):
-                    overlap_estimate = self._compute_overlap_estimated_power(
-                        rp_times,
-                        rp_end_times,
-                        rp_values,
-                        seg_start_ts,
-                        seg_end_ts,
-                    )
-                    if overlap_estimate is not None:
-                        overlap_power, overlap_count, overlap_total_s = overlap_estimate
-                        power = overlap_power
-                        confidence = "overlap_estimated"
-                        _logger.debug(
-                            "Using overlap-estimated RunningPower "
-                            "(workout_start=%s distance=%sm records=%s overlap_s=%.2f)",
-                            workout_start,
-                            getattr(row, "distance", None),
-                            overlap_count,
-                            overlap_total_s,
-                        )
-
-            # 3. Workout-level fallback.
-            if power is None and workout_start in workout_fallback:
-                _, workout_avg_pwr = workout_fallback[workout_start]
-                if workout_avg_pwr is not None:
-                    power = workout_avg_pwr
-                    confidence = "workout_fallback"
-
-            _logger.debug(
-                "Segment power computed "
-                "(workout_start=%s distance=%sm duration_s=%.2f power=%s confidence=%s)",
-                workout_start,
-                getattr(row, "distance", None),
-                seg_duration,
-                power,
-                confidence,
+            power, confidence = self._compute_segment_power_and_confidence(
+                row,
+                power_series,
+                workout_fallback,
             )
-
             avg_powers.append(power)
             confidences.append(confidence)
 
@@ -558,64 +591,77 @@ class WorkoutManagerSegmentsMixin:
         if short_distance >= long_distance:
             return _empty
 
-        segments = self.get_best_segments(
-            topn=topn,
-            distances=[short_distance, long_distance],
-            start_date=start_date,
-            end_date=end_date,
-        )
+        # Build available periods from filtered running workouts.
+        if hasattr(self, "_filter_workouts"):
+            runs = self._filter_workouts("Running", start_date, end_date)
+        else:
+            runs = self._fallback_filter_running_workouts(start_date, end_date)
 
-        if segments.empty:
+        if runs.empty:
             return _empty
 
-        segments = self.annotate_segments_with_power(segments, running_power_df)
-        segments = segments[segments["segment_avg_power"].notna()].copy()
-
-        if segments.empty:
-            return _empty
-
-        # Strip timezone before period conversion to avoid pandas UserWarning about
-        # dropping tz information; the date grouping only needs wall-clock dates.
-        segments["period_key"] = (
-            segments["startDate"].dt.tz_localize(None).dt.to_period(period)
-            if isinstance(segments["startDate"].dtype, pd.DatetimeTZDtype)
-            else segments["startDate"].dt.to_period(period)
+        runs_tz = (
+            runs["startDate"].dt.tz
+            if isinstance(runs["startDate"].dtype, pd.DatetimeTZDtype)
+            else None
         )
+        run_dates = (
+            runs["startDate"].dt.tz_localize(None)
+            if isinstance(runs["startDate"].dtype, pd.DatetimeTZDtype)
+            else runs["startDate"]
+        )
+        period_keys = run_dates.dt.to_period(period).dropna().sort_values().unique()
 
         results: list[dict[str, object]] = []
-        for period_key, group in segments.groupby("period_key", sort=True):
-            short_group = group[group["distance"] == short_distance]
-            long_group = group[group["distance"] == long_distance]
-
-            if short_group.empty or long_group.empty:
-                continue
-
-            avg_time_short = float(short_group["duration_s"].mean())
-            avg_time_long = float(long_group["duration_s"].mean())
-            avg_power_short = float(short_group["segment_avg_power"].mean())
-            avg_power_long = float(long_group["segment_avg_power"].mean())
-
-            time_diff = avg_time_long - avg_time_short
-            if time_diff <= 0:
-                continue
-
-            work_short = avg_power_short * avg_time_short
-            work_long = avg_power_long * avg_time_long
-            cp = (work_long - work_short) / time_diff
-            w_prime = work_short - cp * avg_time_short
-
-            if cp <= 0 or w_prime <= 0:
+        for period_key in period_keys:
+            period_start = period_key.start_time
+            period_end = period_key.end_time
+            if runs_tz is not None:
+                period_start = period_start.tz_localize(runs_tz)
+                period_end = period_end.tz_localize(runs_tz)
+            cp_result = self.get_critical_power(
+                running_power_df=running_power_df,
+                topn=topn,
+                short_distance=short_distance,
+                long_distance=long_distance,
+                start_date=period_start,
+                end_date=period_end,
+            )
+            if cp_result is None:
+                results.append(
+                    {
+                        "period": str(period_key),
+                        "critical_power_w": None,
+                        "w_prime_kj": None,
+                    }
+                )
                 continue
 
             results.append(
                 {
                     "period": str(period_key),
-                    "critical_power_w": round(cp, 1),
-                    "w_prime_kj": round(w_prime / 1000, 2),
+                    "critical_power_w": round(float(cp_result["critical_power_w"]), 1),
+                    "w_prime_kj": round(float(cp_result["w_prime_j"]) / 1000, 2),
                 }
             )
 
         if not results:
             return _empty
 
-        return pd.DataFrame(results)
+        # Keep interior None periods as chart gaps, but drop leading/trailing ones.
+        # Also fill months with zero workouts that fall between the first and last valid month.
+        valid_results = {r["period"]: r for r in results if r["critical_power_w"] is not None}
+        if not valid_results:
+            return _empty
+
+        results_by_period = {r["period"]: r for r in results}
+        sorted_valid = sorted(valid_results)
+        full_range = pd.period_range(sorted_valid[0], sorted_valid[-1], freq=period)
+        filled: list[dict[str, object]] = [
+            results_by_period.get(
+                str(pk),
+                {"period": str(pk), "critical_power_w": None, "w_prime_kj": None},
+            )
+            for pk in full_range
+        ]
+        return pd.DataFrame(filled)

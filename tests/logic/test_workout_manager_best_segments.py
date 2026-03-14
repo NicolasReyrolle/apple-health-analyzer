@@ -921,7 +921,7 @@ class TestGetCriticalPowerEvolution:
         assert list(result.columns) == ["period", "critical_power_w", "w_prime_kj"]
 
     def test_returns_empty_when_no_power_data(self) -> None:
-        """Return empty when no individual records and no workout stats available."""
+        """Periods with insufficient data to compute CP produce no output rows."""
         t = datetime(2025, 1, 1, tzinfo=timezone.utc)
         route = self._make_route(t, 800.0, 160.0, 0.007)
         manager = WorkoutManager(
@@ -935,7 +935,9 @@ class TestGetCriticalPowerEvolution:
             )
         )
 
-        assert manager.get_critical_power_evolution().empty
+        result = manager.get_critical_power_evolution()
+        assert result.empty
+        assert list(result.columns) == ["period", "critical_power_w", "w_prime_kj"]
 
     def test_evolution_groups_by_period(self) -> None:
         """Each calendar period with both distances produces one CP/W' row."""
@@ -967,7 +969,7 @@ class TestGetCriticalPowerEvolution:
         assert all(result["w_prime_kj"] > 0)
 
     def test_period_with_only_one_distance_is_skipped(self) -> None:
-        """A period with only the short distance but no long distance is omitted."""
+        """A period with only one distance produces no output row (CP requires both distances)."""
         t = datetime(2025, 1, 1, tzinfo=timezone.utc)
         manager = WorkoutManager(
             pd.DataFrame(
@@ -981,4 +983,84 @@ class TestGetCriticalPowerEvolution:
         )
         rp_df = pd.DataFrame([self._rp_record(t, 160.0, 350.0)])
 
-        assert manager.get_critical_power_evolution(running_power_df=rp_df, period="M").empty
+        result = manager.get_critical_power_evolution(running_power_df=rp_df, period="M")
+        assert result.empty
+        assert list(result.columns) == ["period", "critical_power_w", "w_prime_kj"]
+
+    def test_evolution_uses_topn_within_each_period(self) -> None:
+        """topn should be applied independently per period, not globally before grouping."""
+        data = [
+            # January
+            (datetime(2025, 1, 5, tzinfo=timezone.utc), 800.0, 170.0, 0.007, 300.0),
+            (datetime(2025, 1, 20, tzinfo=timezone.utc), 5000.0, 1300.0, 0.045, 220.0),
+            # February (globally faster for both distances)
+            (datetime(2025, 2, 5, tzinfo=timezone.utc), 800.0, 160.0, 0.007, 350.0),
+            (datetime(2025, 2, 20, tzinfo=timezone.utc), 5000.0, 1200.0, 0.045, 260.0),
+        ]
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"] * 4,
+                    "startDate": [pd.Timestamp(dt) for dt, *_ in data],
+                    "distance": [distance for _, distance, *_ in data],
+                    "route": [
+                        self._make_route(dt, distance, duration, lon)
+                        for dt, distance, duration, lon, _ in data
+                    ],
+                }
+            )
+        )
+        rp_df = pd.DataFrame(
+            [self._rp_record(dt, duration, power) for dt, _, duration, _, power in data]
+        )
+
+        result = manager.get_critical_power_evolution(running_power_df=rp_df, period="M", topn=1)
+
+        assert len(result) == 2
+        assert list(result["period"]) == ["2025-01", "2025-02"]
+        assert all(result["critical_power_w"] > 0)
+        assert all(result["w_prime_kj"] > 0)
+
+    def test_interior_gap_period_kept_as_none(self) -> None:
+        """A month between two valid CP months appears as None (chart gap), not dropped.
+
+        September and November have both 800m and 5000m segments with power → valid CP.
+        October has NO workouts at all. The result must still include all three months,
+        with October as a None gap so the chart x-axis is contiguous.
+        """
+        data = [
+            # September: 800m and 5000m → valid CP
+            (datetime(2025, 9, 5, tzinfo=timezone.utc), 800.0, 160.0, 0.007, 350.0),
+            (datetime(2025, 9, 20, tzinfo=timezone.utc), 5000.0, 1250.0, 0.045, 250.0),
+            # October: intentionally absent — simulates a month with zero workouts
+            # November: 800m and 5000m → valid CP
+            (datetime(2025, 11, 5, tzinfo=timezone.utc), 800.0, 158.0, 0.007, 355.0),
+            (datetime(2025, 11, 25, tzinfo=timezone.utc), 5000.0, 1200.0, 0.045, 255.0),
+        ]
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"] * 4,
+                    "startDate": [pd.Timestamp(dt) for dt, *_ in data],
+                    "distance": [d for _, d, *_ in data],
+                    "route": [
+                        self._make_route(dt, dist, dur, lon) for dt, dist, dur, lon, _ in data
+                    ],
+                }
+            )
+        )
+        rp_df = pd.DataFrame([self._rp_record(dt, dur, pwr) for dt, _, dur, _, pwr in data])
+
+        result = manager.get_critical_power_evolution(running_power_df=rp_df, period="M")
+
+        assert len(result) == 3
+        assert list(result["period"]) == ["2025-09", "2025-10", "2025-11"]
+        # September: valid CP
+        assert result.iloc[0]["critical_power_w"] is not None
+        assert result.iloc[0]["w_prime_kj"] is not None
+        # October: gap — no workouts at all in this month
+        assert pd.isna(result.iloc[1]["critical_power_w"])
+        assert pd.isna(result.iloc[1]["w_prime_kj"])
+        # November: valid CP
+        assert result.iloc[2]["critical_power_w"] is not None
+        assert result.iloc[2]["w_prime_kj"] is not None

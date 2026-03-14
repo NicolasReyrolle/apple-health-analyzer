@@ -19,25 +19,75 @@ from ._helpers import DummyRow, translated_message
 class TestRenderHealthDataTab:
     """Tests for render_health_data_tab behavior."""
 
-    def test_render_health_data_tab_converts_period_keys_to_strings(self) -> None:
-        """Convert pandas Period keys to strings for JSON-safe chart options."""
-        original_records_by_type: Any = state.records_by_type
-        original_period = state.trends_period
-
-        records_by_type_mock = MagicMock()
-        records_by_type_mock.heart_rate_stats.return_value = pd.DataFrame(
-            {
-                "period": [pd.Period("2025-01", freq="M")],
-                "avg": [67.0],
-                "min": [67.0],
-                "max": [67.0],
-                "count": [1],
-            }
-        )
+    def test_render_health_data_tab_shows_placeholder_when_not_loaded(self) -> None:
+        """Tab should show a lightweight placeholder before lazy loading runs."""
+        original_loading = state.health_data_loading
+        original_loaded = state.health_data_loaded
 
         try:
-            state.records_by_type = records_by_type_mock
-            state.trends_period = "M"
+            state.health_data_loading = False
+            state.health_data_loaded = False
+
+            with (
+                patch("ui.layout.ui.label") as label_mock,
+                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
+            ):
+                layout.render_health_data_tab.func()
+
+            render_generic_graph_mock.assert_not_called()
+            assert any(
+                "Open this tab to load health data" in str(call.args[0])
+                for call in label_mock.call_args_list
+                if call.args
+            )
+        finally:
+            state.health_data_loading = original_loading
+            state.health_data_loaded = original_loaded
+
+    def test_render_health_data_tab_shows_loading_state(self) -> None:
+        """Tab should render spinner while lazy loading is in progress."""
+        original_loading = state.health_data_loading
+        original_loaded = state.health_data_loaded
+
+        try:
+            state.health_data_loading = True
+            state.health_data_loaded = False
+
+            with (
+                patch("ui.layout.ui.row", return_value=DummyRow()),
+                patch("ui.layout.ui.spinner") as spinner_mock,
+                patch("ui.layout.ui.label") as label_mock,
+                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
+            ):
+                layout.render_health_data_tab.func()
+
+            spinner_mock.assert_called_once()
+            render_generic_graph_mock.assert_not_called()
+            assert any(
+                "Loading health data" in str(call.args[0])
+                for call in label_mock.call_args_list
+                if call.args
+            )
+        finally:
+            state.health_data_loading = original_loading
+            state.health_data_loaded = original_loaded
+
+    def test_render_health_data_tab_uses_cached_graphs(self) -> None:
+        """Loaded tab should render graphs from cached series without recomputation."""
+        original_loading = state.health_data_loading
+        original_loaded = state.health_data_loaded
+        original_graphs = state.health_data_graphs
+
+        try:
+            state.health_data_loading = False
+            state.health_data_loaded = True
+            state.health_data_graphs = {
+                "heart_rate": {"2025-01": 67.0},
+                "body_mass": {"2025-01": 70.5},
+                "vo2_max": {"2025-01": 51.2},
+                "critical_power": {"2025-01": None},
+                "w_prime": {"2025-01": None},
+            }
 
             with (
                 patch("ui.layout.ui.row", return_value=DummyRow()),
@@ -45,84 +95,16 @@ class TestRenderHealthDataTab:
             ):
                 layout.render_health_data_tab.func()
 
-            heart_rate_call = next(
+            cp_call = next(
                 call
                 for call in render_generic_graph_mock.call_args_list
-                if call.args and call.args[0] == "Resting HR frequency over time"
+                if call.args and call.args[0] == "Critical Power (CP) over time"
             )
-            chart_data = heart_rate_call.args[1]
-            assert isinstance(chart_data, dict)
-            assert list(chart_data.keys()) == ["2025-01"]  # type: ignore[arg-type]
+            assert cp_call.args[1] == {"2025-01": None}
         finally:
-            state.records_by_type = original_records_by_type
-            state.trends_period = original_period
-
-    def test_render_health_data_tab_serializes_missing_and_invalid_values(self) -> None:
-        """Serialize None/NaN/non-numeric avg values to explicit None for chart data."""
-        original_records_by_type: Any = state.records_by_type
-        original_period = state.trends_period
-
-        records_by_type_mock = MagicMock()
-        records_by_type_mock.heart_rate_stats.return_value = pd.DataFrame(
-            {
-                "period": [pd.Period("2025-01", freq="M")],
-                "avg": [None],
-                "min": [0.0],
-                "max": [0.0],
-                "count": [0],
-            }
-        )
-        records_by_type_mock.weight_stats.return_value = pd.DataFrame(
-            {
-                "period": [pd.Period("2025-01", freq="M")],
-                "avg": [float("nan")],
-                "min": [0.0],
-                "max": [0.0],
-                "count": [0],
-            }
-        )
-        records_by_type_mock.vo2_max_stats.return_value = pd.DataFrame(
-            {
-                "period": [pd.Period("2025-01", freq="M")],
-                "avg": ["invalid"],
-                "min": [0.0],
-                "max": [0.0],
-                "count": [0],
-            }
-        )
-
-        try:
-            state.records_by_type = records_by_type_mock
-            state.trends_period = "M"
-
-            with (
-                patch("ui.layout.ui.row", return_value=DummyRow()),
-                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
-            ):
-                layout.render_health_data_tab.func()
-
-            heart_rate_call = next(
-                call
-                for call in render_generic_graph_mock.call_args_list
-                if call.args and call.args[0] == "Resting HR frequency over time"
-            )
-            body_mass_call = next(
-                call
-                for call in render_generic_graph_mock.call_args_list
-                if call.args and call.args[0] == "Body Mass over time"
-            )
-            vo2_max_call = next(
-                call
-                for call in render_generic_graph_mock.call_args_list
-                if call.args and call.args[0] == "VO2 Max over time"
-            )
-
-            assert heart_rate_call.args[1]["2025-01"] is None
-            assert body_mass_call.args[1]["2025-01"] is None
-            assert vo2_max_call.args[1]["2025-01"] is None
-        finally:
-            state.records_by_type = original_records_by_type
-            state.trends_period = original_period
+            state.health_data_loading = original_loading
+            state.health_data_loaded = original_loaded
+            state.health_data_graphs = original_graphs
 
 
 class TestLoadWorkoutsFromFile:

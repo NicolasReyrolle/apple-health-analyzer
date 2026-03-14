@@ -65,6 +65,109 @@ def schedule_best_segments_load(force: bool = False) -> None:
         state.best_segments_task.add_done_callback(_clear_completed_task)
 
 
+def schedule_health_data_load(force: bool = False) -> None:
+    """Schedule health-data loading and keep a reference to the task."""
+
+    def _clear_completed_task(task: asyncio.Task[None]) -> None:
+        if state.health_data_task is task:
+            state.health_data_task = None
+
+    task: Any = asyncio.create_task(load_health_data_data(force=force))
+    state.health_data_task = task if hasattr(task, "add_done_callback") else None
+    if state.health_data_task is not None:
+        state.health_data_task.add_done_callback(_clear_completed_task)
+
+
+def _to_json_safe(d: dict[Hashable, Any]) -> dict[str, float | int | None]:
+    """Replace pd.NA/NaN with None for JSON-safe chart data."""
+    result: dict[str, float | int | None] = {}
+    for key, value in d.items():
+        normalized_key = str(key)
+        if value is None:
+            result[normalized_key] = None
+        elif isinstance(value, float) and pd.isna(value):
+            result[normalized_key] = None
+        elif isinstance(value, (int, float)):
+            result[normalized_key] = value
+        else:
+            result[normalized_key] = None
+    return result
+
+
+def _build_health_data_graphs() -> dict[str, dict[str, float | int | None]]:
+    """Build cached chart series for the health data tab."""
+    heart_rate_stats = state.records_by_type.heart_rate_stats(
+        period=state.trends_period,
+        context=RecordsByType.HeartRateMeasureContext.SEDENTARY,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
+    body_mass_stats = state.records_by_type.weight_stats(
+        period=state.trends_period,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
+    vo2_max_stats = state.records_by_type.vo2_max_stats(
+        period=state.trends_period,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
+    cp_evolution = state.workouts.get_critical_power_evolution(
+        running_power_df=state.records_by_type.get("RunningPower"),
+        period=state.trends_period,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
+
+    return {
+        "heart_rate": _to_json_safe(
+            heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
+            .set_index("period")["avg"]
+            .to_dict()
+        ),
+        "body_mass": _to_json_safe(
+            body_mass_stats.assign(period=body_mass_stats["period"].astype(str))
+            .set_index("period")["avg"]
+            .to_dict()
+        ),
+        "vo2_max": _to_json_safe(
+            vo2_max_stats.assign(period=vo2_max_stats["period"].astype(str))
+            .set_index("period")["avg"]
+            .to_dict()
+        ),
+        "critical_power": _to_json_safe(
+            {}
+            if cp_evolution.empty
+            else cp_evolution.set_index("period")["critical_power_w"].to_dict()
+        ),
+        "w_prime": _to_json_safe(
+            {} if cp_evolution.empty else cp_evolution.set_index("period")["w_prime_kj"].to_dict()
+        ),
+    }
+
+
+async def load_health_data_data(force: bool = False) -> None:
+    """Load health data asynchronously for the tab, with concurrency guard."""
+    if state.health_data_loading:
+        return
+    if state.health_data_loaded and not force:
+        return
+    if not state.file_loaded:
+        return
+
+    state.health_data_loading = True
+    render_health_data_tab.refresh()
+
+    try:
+        state.health_data_graphs = await asyncio.to_thread(_build_health_data_graphs)
+        state.health_data_loaded = True
+    except Exception:  # pylint: disable=broad-except
+        _logger.exception("Failed to load health data tab")
+    finally:
+        state.health_data_loading = False
+        render_health_data_tab.refresh()
+
+
 def handle_json_export() -> None:
     """Handle exporting data to JSON format."""
     json_data = state.workouts.export_to_json(
@@ -191,6 +294,24 @@ def _reset_best_segments_state() -> None:
     state.best_segments_loaded = False
 
 
+def _reset_health_data_state() -> None:
+    """Invalidate cached health-data graphs and cancel stale in-flight loads."""
+    health_data_task: Any = getattr(state, "health_data_task", None)
+    if isinstance(health_data_task, asyncio.Task) and not health_data_task.done():
+        health_data_task.cancel()
+
+    state.health_data_task = None
+    state.health_data_loading = False
+    state.health_data_loaded = False
+    state.health_data_graphs = {
+        "heart_rate": {},
+        "body_mass": {},
+        "vo2_max": {},
+        "critical_power": {},
+        "w_prime": {},
+    }
+
+
 def refresh_data() -> None:
     """Refresh the displayed data."""
     _logger.info(
@@ -203,6 +324,7 @@ def refresh_data() -> None:
     _refresh_summary_metrics()
     _refresh_longest_workout_metrics()
     _reset_best_segments_state()
+    _reset_health_data_state()
 
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()
@@ -212,6 +334,8 @@ def refresh_data() -> None:
     # If user is already on the tab, load asynchronously after invalidation.
     if state.selected_main_tab == "best_segments":
         schedule_best_segments_load()
+    if state.selected_main_tab == "health_data":
+        schedule_health_data_load()
 
 
 @ui.refreshable
@@ -480,6 +604,8 @@ def render_body() -> None:
         state.selected_main_tab = tab_name
         if tab_name == "best_segments":
             schedule_best_segments_load()
+        elif tab_name == "health_data":
+            schedule_health_data_load()
 
     with ui.tabs(on_change=_on_tab_change).classes(TABS_FULL_CLASSES) as tabs:
         ui.tab("summary", t("Overview"))
@@ -595,6 +721,14 @@ def render_activity_graphs() -> None:
 
 def render_trends_tab() -> None:
     """Render the trends tab with period selection and graphs."""
+
+    def _on_trends_period_change() -> None:
+        _reset_health_data_state()
+        render_trends_graphs.refresh()
+        render_health_data_tab.refresh()
+        if state.selected_main_tab == "health_data":
+            schedule_health_data_load()
+
     with ui.row().classes(ROW_CENTERED_CLASSES):
         ui.label(t("Aggregate by:")).classes(LABEL_SECTION_CLASSES)
         ui.radio(
@@ -604,7 +738,7 @@ def render_trends_tab() -> None:
                 "Q": t("Quarter"),
                 "Y": t("Year"),
             },
-            on_change=render_trends_graphs.refresh,
+            on_change=_on_trends_period_change,
         ).bind_value(state, "trends_period").props("inline")
 
     render_trends_graphs()
@@ -675,97 +809,49 @@ def render_trends_graphs() -> None:
 def render_health_data_tab() -> None:
     """Render the health data tab with filters and graphs."""
 
-    def to_json_safe(d: dict[Hashable, Any]) -> dict[str, float | int | None]:
-        """Replace pd.NA/NaN with None for JSON-safe chart data."""
-        result: dict[str, float | int | None] = {}
-        for key, value in d.items():
-            normalized_key = str(key)
-            if value is None:
-                result[normalized_key] = None
-            elif isinstance(value, float) and pd.isna(value):
-                result[normalized_key] = None
-            elif isinstance(value, (int, float)):
-                result[normalized_key] = value
-            else:
-                result[normalized_key] = None
-        return result
+    if state.health_data_loading:
+        with ui.row().classes(ROW_CENTERED_CLASSES):
+            ui.spinner(size="lg")
+            ui.label(t("Loading health data..."))
+        return
+
+    if not state.health_data_loaded:
+        ui.label(t("Open this tab to load health data.")).classes(LABEL_MUTED_CLASSES)
+        return
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        heart_rate_stats = state.records_by_type.heart_rate_stats(
-            period=state.trends_period,
-            context=RecordsByType.HeartRateMeasureContext.SEDENTARY,
-            start_date=state.start_date,
-            end_date=state.end_date,
-        )
         render_generic_graph(
             t("Resting HR frequency over time"),
-            to_json_safe(
-                heart_rate_stats.assign(period=heart_rate_stats["period"].astype(str))
-                .set_index("period")["avg"]
-                .to_dict()
-            ),
+            state.health_data_graphs.get("heart_rate", {}),
             "bpm",
             graph_type="line",
         )
-
-        body_mass_stats = state.records_by_type.weight_stats(
-            period=state.trends_period,
-            start_date=state.start_date,
-            end_date=state.end_date,
-        )
         render_generic_graph(
             t("Body Mass over time"),
-            to_json_safe(
-                body_mass_stats.assign(period=body_mass_stats["period"].astype(str))
-                .set_index("period")["avg"]
-                .to_dict()
-            ),
+            state.health_data_graphs.get("body_mass", {}),
             "kg",
             graph_type="line",
         )
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        vo2_max_stats = state.records_by_type.vo2_max_stats(
-            period=state.trends_period,
-            start_date=state.start_date,
-            end_date=state.end_date,
-        )
         render_generic_graph(
             t("VO2 Max over time"),
-            to_json_safe(
-                vo2_max_stats.assign(period=vo2_max_stats["period"].astype(str))
-                .set_index("period")["avg"]
-                .to_dict()
-            ),
+            state.health_data_graphs.get("vo2_max", {}),
             "ml/kg/min",
             graph_type="line",
         )
 
     with ui.row().classes(ROW_CENTERED_CLASSES):
-        cp_evolution = state.workouts.get_critical_power_evolution(
-            running_power_df=state.records_by_type.get("RunningPower"),
-            period=state.trends_period,
-            start_date=state.start_date,
-            end_date=state.end_date,
-        )
         render_generic_graph(
             t("Critical Power (CP) over time"),
-            to_json_safe(
-                {}
-                if cp_evolution.empty
-                else cp_evolution.set_index("period")["critical_power_w"].to_dict()
-            ),
+            state.health_data_graphs.get("critical_power", {}),
             "W",
             graph_type="line",
             show_trend=False,
         )
         render_generic_graph(
             t("W' over time"),
-            to_json_safe(
-                {}
-                if cp_evolution.empty
-                else cp_evolution.set_index("period")["w_prime_kj"].to_dict()
-            ),
+            state.health_data_graphs.get("w_prime", {}),
             "kJ",
             graph_type="line",
             show_trend=False,
