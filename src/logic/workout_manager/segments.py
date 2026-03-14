@@ -10,7 +10,10 @@ from logic.workout_route import WorkoutRoute
 if TYPE_CHECKING:
     from pandas import Timestamp
 
-_RUNNING_POWER_COL = "averageRunningPower"
+# Fallback tolerance: workout-level average power is only used as a fallback for
+# the per-segment power when the workout duration is within this fraction of the
+# segment duration (i.e. the whole workout ≈ the segment being analysed).
+_WORKOUT_SEGMENT_DURATION_TOLERANCE = 0.10
 
 
 class CriticalPowerResult(TypedDict):
@@ -86,7 +89,9 @@ class WorkoutManagerSegmentsMixin:
     @staticmethod
     def _empty_best_segments_frame() -> pd.DataFrame:
         """Return an empty DataFrame with the stable best-segment schema."""
-        return pd.DataFrame(columns=["startDate", "distance", "duration_s"])
+        return pd.DataFrame(
+            columns=["startDate", "distance", "duration_s", "segment_start", "segment_end"]
+        )
 
     @staticmethod
     def _get_run_distance_m(run_record: Any) -> Optional[float]:
@@ -99,31 +104,28 @@ class WorkoutManagerSegmentsMixin:
     @staticmethod
     def _build_best_segments_frame(results: list[list[Any]], topn: int) -> pd.DataFrame:
         """Sort and keep the fastest Top-N segments per requested distance."""
-        df = pd.DataFrame(results, columns=["startDate", "distance", "duration_s"])
+        df = pd.DataFrame(
+            results, columns=["startDate", "distance", "duration_s", "segment_start", "segment_end"]
+        )
         df = df.sort_values(["distance", "duration_s"], ascending=[True, True])
         return df.groupby("distance").head(topn).reset_index(drop=True)
 
     @staticmethod
-    def _get_fastest_duration_for_distance(
+    def _get_fastest_segment_window(
         route_traces: list[WorkoutRoute],
         distance_m: float,
         distance_scale_factor: float,
-    ) -> Optional[float]:
-        """Return the fastest valid segment duration for one distance across all traces."""
-        return min(
-            (
-                duration_s
-                for route_trace in route_traces
-                for duration_s in [
-                    route_trace.find_fastest_segment(
-                        distance_m,
-                        distance_scale_factor=distance_scale_factor,
-                    )
-                ]
-                if duration_s is not None
-            ),
-            default=None,
-        )
+    ) -> Optional[tuple[float, datetime, datetime]]:
+        """Return (duration_s, start_time, end_time) for the fastest segment across traces."""
+        best: Optional[tuple[float, datetime, datetime]] = None
+        for route_trace in route_traces:
+            result = route_trace.find_fastest_segment_window(
+                distance_m,
+                distance_scale_factor=distance_scale_factor,
+            )
+            if result is not None and (best is None or result[0] < best[0]):
+                best = result
+        return best
 
     def _get_run_best_segment_rows(
         self,
@@ -147,15 +149,16 @@ class WorkoutManagerSegmentsMixin:
             if run_distance_m is not None and float(distance) > run_distance_m:
                 continue
 
-            duration_s = self._get_fastest_duration_for_distance(
+            window = self._get_fastest_segment_window(
                 route_traces,
                 float(distance),
                 distance_scale_factor,
             )
-            if duration_s is None:
+            if window is None:
                 continue
 
-            rows.append([run_record.startDate, distance, duration_s])
+            duration_s, seg_start, seg_end = window
+            rows.append([run_record.startDate, distance, duration_s, seg_start, seg_end])
 
         return rows
 
@@ -195,7 +198,7 @@ class WorkoutManagerSegmentsMixin:
             end_date: Optional end date to filter workouts (inclusive)
 
         Returns:
-            DataFrame with columns: startDate, distance, duration_s
+            DataFrame with columns: startDate, distance, duration_s, segment_start, segment_end
         """
         if distances is None:
             distances = self.DEFAULT_SEGMENT_DISTANCES
@@ -227,8 +230,109 @@ class WorkoutManagerSegmentsMixin:
 
         return self._build_best_segments_frame(results, topn)
 
+    def annotate_segments_with_power(  # pylint: disable=too-many-locals
+        self,
+        segments: pd.DataFrame,
+        running_power_df: Optional[pd.DataFrame],
+    ) -> pd.DataFrame:
+        """Add ``segment_avg_power`` column to a best-segments DataFrame.
+
+        Power for each segment is determined with the following priority:
+
+        1. **Individual records**: mean value of ``HKQuantityTypeIdentifierRunningPower``
+           records whose ``startDate`` falls within ``[segment_start, segment_end]``.
+        2. **Workout-level fallback**: ``averageRunningPower`` from the workout statistics
+           is used *only* when the workout duration is within
+           :data:`_WORKOUT_SEGMENT_DURATION_TOLERANCE` (10 %) of the segment duration,
+           meaning the whole workout is essentially the segment being measured.
+        3. ``None`` when neither source provides usable data.
+
+        Args:
+            segments: DataFrame returned by :meth:`get_best_segments` (must have
+                ``startDate``, ``duration_s``, ``segment_start``, ``segment_end``).
+            running_power_df: Optional DataFrame of individual ``RunningPower`` records
+                with columns ``startDate`` (raw ISO-8601 string) and ``value`` (float W).
+
+        Returns:
+            Copy of *segments* with an additional ``segment_avg_power`` column
+            (float Watts, or ``None``).
+        """
+        result = segments.copy()
+        if segments.empty or "segment_start" not in segments.columns:
+            result["segment_avg_power"] = None
+            return result
+
+        # Parse individual RunningPower record timestamps once for efficiency.
+        # Apple Health timestamps include timezone offsets, so parse as tz-aware and
+        # keep UTC normalisation from ISO8601 parser for consistent comparison with
+        # GPS segment times (which are always stored as UTC).
+        rp_times: Optional[pd.Series] = None
+        rp_values: Optional[pd.Series] = None
+        if (
+            running_power_df is not None
+            and not running_power_df.empty
+            and "startDate" in running_power_df.columns
+            and "value" in running_power_df.columns
+        ):
+            rp_times = pd.to_datetime(
+                running_power_df["startDate"], format="ISO8601", errors="coerce"
+            )
+            rp_values = pd.to_numeric(running_power_df["value"], errors="coerce")
+
+        # Build workout-level fallback lookup: startDate → (duration_s, avg_power_w).
+        workout_fallback: dict[Any, tuple[float, Optional[float]]] = {}
+        avg_power_col = "averageRunningPower"
+        for w in self.workouts.itertuples():
+            w_start = getattr(w, "startDate", None)
+            w_dur = float(getattr(w, "duration", 0.0) or 0.0)
+            raw_pwr = (
+                getattr(w, avg_power_col, None) if avg_power_col in self.workouts.columns else None
+            )
+            w_pwr = float(raw_pwr) if raw_pwr is not None and not pd.isna(raw_pwr) else None
+            workout_fallback[w_start] = (w_dur, w_pwr)
+
+        avg_powers: list[Optional[float]] = []
+        for row in segments.itertuples():
+            seg_start = getattr(row, "segment_start", None)
+            seg_end = getattr(row, "segment_end", None)
+            seg_duration = float(getattr(row, "duration_s", 0.0))
+            workout_start = getattr(row, "startDate", None)
+
+            power: Optional[float] = None
+
+            # 1. Individual RunningPower records within the GPS segment time window.
+            if (
+                rp_times is not None
+                and rp_values is not None
+                and seg_start is not None
+                and seg_end is not None
+            ):
+                seg_start_ts = pd.Timestamp(seg_start)
+                seg_end_ts = pd.Timestamp(seg_end)
+                mask = (rp_times >= seg_start_ts) & (rp_times <= seg_end_ts) & rp_values.notna()
+                vals = rp_values[mask]
+                if not vals.empty:
+                    power = float(vals.mean())
+
+            # 2. Workout-level fallback when the workout ≈ the segment.
+            if power is None and workout_start in workout_fallback:
+                workout_dur, workout_avg_pwr = workout_fallback[workout_start]
+                if (
+                    workout_avg_pwr is not None
+                    and workout_dur > 0
+                    and abs(seg_duration - workout_dur) / workout_dur
+                    <= _WORKOUT_SEGMENT_DURATION_TOLERANCE
+                ):
+                    power = workout_avg_pwr
+
+            avg_powers.append(power)
+
+        result["segment_avg_power"] = avg_powers
+        return result
+
     def get_critical_power(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-return-statements
         self,
+        running_power_df: Optional[pd.DataFrame] = None,
         topn: int = 5,
         short_distance: int = 800,
         long_distance: int = 5000,
@@ -242,10 +346,13 @@ class WorkoutManagerSegmentsMixin:
         where W = P_avg * t is the total work done (Joules), CP is the maximum sustainable
         power (Watts), and W' is the anaerobic work capacity (Joules).
 
-        For each target distance the average of the top-N best segment times and the
-        average ``averageRunningPower`` of those workouts are used as the two data points.
+        Per-segment average power is derived from individual ``RunningPower`` health
+        records within the segment GPS time window (see :meth:`annotate_segments_with_power`).
 
         Args:
+            running_power_df: DataFrame of individual ``HKQuantityTypeIdentifierRunningPower``
+                records (columns ``startDate``, ``value``). Pass
+                ``records_by_type.get("RunningPower")`` from the app state.
             topn: Number of best segments to average per distance (default 5).
             short_distance: Shorter target distance in metres (default 800).
             long_distance: Longer target distance in metres (default 5000).
@@ -260,9 +367,6 @@ class WorkoutManagerSegmentsMixin:
         if short_distance >= long_distance:
             return None
 
-        if _RUNNING_POWER_COL not in self.workouts.columns:
-            return None
-
         segments = self.get_best_segments(
             topn=topn,
             distances=[short_distance, long_distance],
@@ -273,26 +377,22 @@ class WorkoutManagerSegmentsMixin:
         if segments.empty:
             return None
 
-        short_rows = segments[segments["distance"] == short_distance]
-        long_rows = segments[segments["distance"] == long_distance]
+        segments = self.annotate_segments_with_power(segments, running_power_df)
+
+        short_rows = segments[
+            (segments["distance"] == short_distance) & segments["segment_avg_power"].notna()
+        ]
+        long_rows = segments[
+            (segments["distance"] == long_distance) & segments["segment_avg_power"].notna()
+        ]
 
         if short_rows.empty or long_rows.empty:
             return None
 
-        # Join each segment group with workout-level average power
-        power_lookup = self.workouts[["startDate", _RUNNING_POWER_COL]].dropna(
-            subset=[_RUNNING_POWER_COL]
-        )
-        short_with_power = short_rows.merge(power_lookup, on="startDate", how="inner")
-        long_with_power = long_rows.merge(power_lookup, on="startDate", how="inner")
-
-        if short_with_power.empty or long_with_power.empty:
-            return None
-
-        avg_time_short = float(short_with_power["duration_s"].mean())
-        avg_time_long = float(long_with_power["duration_s"].mean())
-        avg_power_short = float(short_with_power[_RUNNING_POWER_COL].mean())
-        avg_power_long = float(long_with_power[_RUNNING_POWER_COL].mean())
+        avg_time_short = float(short_rows["duration_s"].mean())
+        avg_time_long = float(long_rows["duration_s"].mean())
+        avg_power_short = float(short_rows["segment_avg_power"].mean())
+        avg_power_long = float(long_rows["segment_avg_power"].mean())
 
         time_diff = avg_time_long - avg_time_short
         if time_diff <= 0:
@@ -316,12 +416,13 @@ class WorkoutManagerSegmentsMixin:
             avg_power_long_w=avg_power_long,
             critical_power_w=critical_power_w,
             w_prime_j=w_prime_j,
-            count_short=len(short_with_power),
-            count_long=len(long_with_power),
+            count_short=len(short_rows),
+            count_long=len(long_rows),
         )
 
     def get_critical_power_evolution(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
         self,
+        running_power_df: Optional[pd.DataFrame] = None,
         period: str = "M",
         short_distance: int = 800,
         long_distance: int = 5000,
@@ -336,6 +437,9 @@ class WorkoutManagerSegmentsMixin:
         Periods with insufficient segment data for either distance are omitted.
 
         Args:
+            running_power_df: DataFrame of individual ``HKQuantityTypeIdentifierRunningPower``
+                records (columns ``startDate``, ``value``). Pass
+                ``records_by_type.get("RunningPower")`` from the app state.
             period: Pandas period alias (e.g. ``"M"`` monthly, ``"Q"`` quarterly,
                 ``"Y"`` yearly).  Must match the ``trends_period`` codes used
                 elsewhere in the app.
@@ -354,9 +458,6 @@ class WorkoutManagerSegmentsMixin:
         if short_distance >= long_distance:
             return _empty
 
-        if _RUNNING_POWER_COL not in self.workouts.columns:
-            return _empty
-
         segments = self.get_best_segments(
             topn=topn,
             distances=[short_distance, long_distance],
@@ -367,23 +468,22 @@ class WorkoutManagerSegmentsMixin:
         if segments.empty:
             return _empty
 
-        power_lookup = self.workouts[["startDate", _RUNNING_POWER_COL]].dropna(
-            subset=[_RUNNING_POWER_COL]
-        )
-        segments_with_power = segments.merge(power_lookup, on="startDate", how="inner")
+        segments = self.annotate_segments_with_power(segments, running_power_df)
+        segments = segments[segments["segment_avg_power"].notna()].copy()
 
-        if segments_with_power.empty:
+        if segments.empty:
             return _empty
 
-        segments_with_power = segments_with_power.copy()
         # Strip timezone before period conversion to avoid pandas UserWarning about
         # dropping tz information; the date grouping only needs wall-clock dates.
-        segments_with_power["period_key"] = (
-            segments_with_power["startDate"].dt.tz_localize(None).dt.to_period(period)
+        segments["period_key"] = (
+            segments["startDate"].dt.tz_localize(None).dt.to_period(period)
+            if isinstance(segments["startDate"].dtype, pd.DatetimeTZDtype)
+            else segments["startDate"].dt.to_period(period)
         )
 
         results: list[dict[str, object]] = []
-        for period_key, group in segments_with_power.groupby("period_key", sort=True):
+        for period_key, group in segments.groupby("period_key", sort=True):
             short_group = group[group["distance"] == short_distance]
             long_group = group[group["distance"] == long_distance]
 
@@ -392,8 +492,8 @@ class WorkoutManagerSegmentsMixin:
 
             avg_time_short = float(short_group["duration_s"].mean())
             avg_time_long = float(long_group["duration_s"].mean())
-            avg_power_short = float(short_group[_RUNNING_POWER_COL].mean())
-            avg_power_long = float(long_group[_RUNNING_POWER_COL].mean())
+            avg_power_short = float(short_group["segment_avg_power"].mean())
+            avg_power_long = float(long_group["segment_avg_power"].mean())
 
             time_diff = avg_time_long - avg_time_short
             if time_diff <= 0:

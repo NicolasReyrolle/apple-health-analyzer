@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 
+import ui.best_segments as best_segments_module
 from app_state import state
 from logic.workout_manager import STANDARD_SEGMENT_DISTANCES
 from ui import layout
-import ui.best_segments as best_segments_module
 
 from ._helpers import DummyComponent, DummyContext, DummyTab, DummyTable, DummyTabs
 
@@ -36,6 +36,9 @@ class TestBestSegmentsTabData:
                     "duration_s": 404.0,
                 }
             ]
+        )
+        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
+            segment_avg_power=None
         )
 
         try:
@@ -99,6 +102,9 @@ class TestBestSegmentsTabData:
                 },
             ]
         )
+        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
+            segment_avg_power=None
+        )
 
         try:
             state.workouts = workouts_mock
@@ -144,6 +150,9 @@ class TestBestSegmentsTabData:
                     "duration_s": 404.0,
                 }
             ]
+        )
+        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
+            segment_avg_power=None
         )
 
         try:
@@ -318,6 +327,7 @@ class TestBestSegmentsTabData:
         workouts_mock.get_best_segments.return_value = _BestSegmentsFrame(
             [("1000", empty_group), ("5000", valid_group)]
         )
+        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df
 
         try:
             state.workouts = workouts_mock
@@ -387,6 +397,9 @@ class TestBestSegmentsTabData:
                 }
             ]
         )
+        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
+            segment_avg_power=None
+        )
 
         try:
             state.workouts = workouts_mock
@@ -445,8 +458,6 @@ class TestBestSegmentsTabRendering:
         original_rows = state.best_segments_rows
         original_loading = state.best_segments_loading
         original_loaded = state.best_segments_loaded
-        original_cp = state.critical_power
-
         table_stub = DummyTable()
 
         try:
@@ -463,7 +474,6 @@ class TestBestSegmentsTabRendering:
             ]
             state.best_segments_loading = False
             state.best_segments_loaded = True
-            state.critical_power = None  # ensure CP card is not rendered
 
             with (
                 patch("ui.best_segments.ui.card", return_value=DummyContext()),
@@ -480,58 +490,12 @@ class TestBestSegmentsTabRendering:
             state.best_segments_rows = original_rows
             state.best_segments_loading = original_loading
             state.best_segments_loaded = original_loaded
-            state.critical_power = original_cp
 
-    def test_render_best_segments_tab_renders_cp_card_when_available(self) -> None:
-        """When critical_power is set, a second card with CP data should be rendered."""
+    def test_render_best_segments_tab_only_one_table_when_loaded(self) -> None:
+        """Loaded state with no CP card should render exactly one table."""
         original_rows = state.best_segments_rows
         original_loading = state.best_segments_loading
         original_loaded = state.best_segments_loaded
-        original_cp = state.critical_power
-
-        table_stub = DummyTable()
-        cp_table_stub = DummyTable()
-        table_stubs = [table_stub, cp_table_stub]
-
-        try:
-            state.best_segments_rows = []
-            state.best_segments_loading = False
-            state.best_segments_loaded = True
-            state.critical_power = {
-                "short_distance": 800,
-                "long_distance": 5000,
-                "avg_time_short_s": 160.0,
-                "avg_time_long_s": 1250.0,
-                "avg_power_short_w": 350.0,
-                "avg_power_long_w": 250.0,
-                "critical_power_w": 235.0,
-                "w_prime_j": 18400.0,
-                "count_short": 3,
-                "count_long": 2,
-            }
-
-            with (
-                patch("ui.best_segments.ui.card", return_value=DummyContext()),
-                patch("ui.best_segments.ui.label", return_value=DummyComponent()),
-                patch("ui.best_segments.ui.table", side_effect=table_stubs) as table_mock,
-                patch("ui.best_segments.get_language", return_value="en"),
-            ):
-                layout.render_best_segments_tab.func()
-
-            # Called twice: once for best segments table, once for CP table
-            assert table_mock.call_count == 2
-        finally:
-            state.best_segments_rows = original_rows
-            state.best_segments_loading = original_loading
-            state.best_segments_loaded = original_loaded
-            state.critical_power = original_cp
-
-    def test_render_best_segments_tab_no_cp_card_when_cp_none(self) -> None:
-        """When critical_power is None, only the best-segments table is rendered."""
-        original_rows = state.best_segments_rows
-        original_loading = state.best_segments_loading
-        original_loaded = state.best_segments_loaded
-        original_cp = state.critical_power
 
         table_stub = DummyTable()
 
@@ -539,7 +503,6 @@ class TestBestSegmentsTabRendering:
             state.best_segments_rows = []
             state.best_segments_loading = False
             state.best_segments_loaded = True
-            state.critical_power = None
 
             with (
                 patch("ui.best_segments.ui.card", return_value=DummyContext()),
@@ -548,13 +511,12 @@ class TestBestSegmentsTabRendering:
             ):
                 layout.render_best_segments_tab.func()
 
-            # Only the best-segments table; no CP card table
+            # Only the best-segments table; CP card was removed
             table_mock.assert_called_once()
         finally:
             state.best_segments_rows = original_rows
             state.best_segments_loading = original_loading
             state.best_segments_loaded = original_loaded
-            state.critical_power = original_cp
 
 
 def test_render_body_tab_change_to_best_segments_schedules_async_load() -> None:

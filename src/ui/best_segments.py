@@ -4,7 +4,6 @@ import asyncio
 import logging
 from typing import Any
 
-import pandas as pd
 from nicegui import ui
 
 from app_state import state
@@ -13,7 +12,6 @@ from logic.workout_manager import (
     HALF_MARATHON_DISTANCE_M,
     MARATHON_DISTANCE_M,
     STANDARD_SEGMENT_DISTANCES,
-    CriticalPowerResult,
 )
 from ui.charts import LABEL_UPPERCASE_CLASSES, ROW_CENTERED_CLASSES
 from ui.css import (
@@ -24,22 +22,6 @@ from ui.css import (
 from ui.helpers import format_date_label, format_distance_label, format_duration_label
 
 _logger = logging.getLogger(__name__)
-
-# Segment distances used for the critical power model (800 m and 5 km).
-_CP_SHORT_DISTANCE = 800
-_CP_LONG_DISTANCE = 5000
-
-
-def _get_workout_power_lookup() -> dict:
-    """Return a {startDate → average_running_power_W} mapping when data is available."""
-    power_col = "averageRunningPower"
-    workouts_df = getattr(state.workouts, "workouts", None)
-    if not isinstance(workouts_df, pd.DataFrame):
-        return {}
-    if power_col not in workouts_df.columns:
-        return {}
-    rows = workouts_df[["startDate", power_col]].dropna(subset=[power_col])
-    return dict(zip(rows["startDate"], rows[power_col]))
 
 
 def _build_best_segments_rows() -> list[dict[str, Any]]:
@@ -55,8 +37,13 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
         end_date=state.end_date,
     )
     _logger.debug("Best segments data:\n%s", best_segments)
+
+    # Annotate with per-segment average power from individual RunningPower records,
+    # falling back to workout-level statistics only when the workout ≈ the segment.
+    running_power_df = state.records_by_type.get("RunningPower")
+    annotated = state.workouts.annotate_segments_with_power(best_segments, running_power_df)
+
     language_code = get_language()
-    power_lookup = _get_workout_power_lookup()
 
     def _format_entry(
         distance_m: float, duration_s: float, start_date: Any, power_w: Any
@@ -77,7 +64,7 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
         }
 
     rows: list[dict[str, Any]] = []
-    for _, group_df in best_segments.groupby("distance", sort=True):
+    for _, group_df in annotated.groupby("distance", sort=True):
         records = list(group_df.sort_values("duration_s").itertuples(index=False))
         if not records:
             continue
@@ -87,7 +74,7 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
         if start_date is None:
             continue
 
-        power_w = power_lookup.get(start_date)
+        power_w = getattr(records[0], "segment_avg_power", None)
         parent: dict[str, Any] = {
             **_format_entry(
                 distance_m, float(getattr(records[0], "duration_s", 0.0)), start_date, power_w
@@ -98,7 +85,7 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
                     distance_m,
                     float(getattr(record, "duration_s", 0.0)),
                     getattr(record, "startDate"),
-                    power_lookup.get(getattr(record, "startDate")),
+                    getattr(record, "segment_avg_power", None),
                 )
                 for record in records[1:]
                 if getattr(record, "startDate", None) is not None
@@ -107,16 +94,6 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
         rows.append(parent)
 
     return rows
-
-
-def _compute_critical_power() -> CriticalPowerResult | None:
-    """Compute critical power from best 800 m and 5 km segments."""
-    return state.workouts.get_critical_power(
-        short_distance=_CP_SHORT_DISTANCE,
-        long_distance=_CP_LONG_DISTANCE,
-        start_date=state.start_date,
-        end_date=state.end_date,
-    )
 
 
 async def load_best_segments_data(force: bool = False) -> None:
@@ -133,80 +110,13 @@ async def load_best_segments_data(force: bool = False) -> None:
 
     try:
         rows = await asyncio.to_thread(_build_best_segments_rows)
-        cp_result = await asyncio.to_thread(_compute_critical_power)
         state.best_segments_rows = rows
-        state.critical_power = cp_result
         state.best_segments_loaded = True
     except Exception:  # pylint: disable=broad-except
         _logger.exception("Failed to load best segments data")
     finally:
         state.best_segments_loading = False
         render_best_segments_tab.refresh()
-
-
-def _render_critical_power_card(cp: CriticalPowerResult) -> None:
-    """Render a card summarising the Critical Power model result."""
-    language_code = get_language()
-    with ui.card().classes(ROW_CENTERED_CLASSES):
-        ui.label(t("Critical Power & W' estimate")).classes(LABEL_UPPERCASE_CLASSES)
-
-        short_label = format_distance_label(
-            cp["short_distance"],
-            language_code,
-            HALF_MARATHON_DISTANCE_M,
-            MARATHON_DISTANCE_M,
-        )
-        long_label = format_distance_label(
-            cp["long_distance"],
-            language_code,
-            HALF_MARATHON_DISTANCE_M,
-            MARATHON_DISTANCE_M,
-        )
-
-        short_speed = (cp["short_distance"] / 1000) / (cp["avg_time_short_s"] / 3600)
-        long_speed = (cp["long_distance"] / 1000) / (cp["avg_time_long_s"] / 3600)
-
-        rows = [
-            {
-                "label": t("Avg. best {distance}").format(distance=short_label),
-                "value": (
-                    f"{format_duration_label(cp['avg_time_short_s'])}"
-                    f"  ({short_speed:.2f} km/h)"
-                    f"  –  {cp['avg_power_short_w']:.0f} W"
-                ),
-                "note": t("({count} segments)").format(count=cp["count_short"]),
-            },
-            {
-                "label": t("Avg. best {distance}").format(distance=long_label),
-                "value": (
-                    f"{format_duration_label(cp['avg_time_long_s'])}"
-                    f"  ({long_speed:.2f} km/h)"
-                    f"  –  {cp['avg_power_long_w']:.0f} W"
-                ),
-                "note": t("({count} segments)").format(count=cp["count_long"]),
-            },
-            {
-                "label": t("Critical Power (CP)"),
-                "value": f"{cp['critical_power_w']:.0f} W",
-                "note": "",
-            },
-            {
-                "label": t("W'"),
-                "value": f"{cp['w_prime_j'] / 1000:.1f} kJ",
-                "note": "",
-            },
-        ]
-
-        columns = [
-            {"name": "label", "label": "", "field": "label", "align": "left"},
-            {"name": "value", "label": "", "field": "value", "align": "left"},
-            {"name": "note", "label": "", "field": "note", "align": "left"},
-        ]
-        ui.table(
-            columns=columns,
-            rows=rows,
-            row_key="label",
-        ).classes(TABLE_FULL_CLASSES).props("hide-header flat")
 
 
 @ui.refreshable
@@ -288,6 +198,3 @@ def render_best_segments_tab() -> None:
             </q-tr>
             """,
         )
-
-    if state.critical_power is not None:
-        _render_critical_power_card(state.critical_power)

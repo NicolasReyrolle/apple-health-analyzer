@@ -119,6 +119,25 @@ class TestComplexRealWorldRecords:
         assert stats.iloc[0]["count"] == 2
         assert stats.iloc[0]["avg"] == 68.5
 
+    def test_parse_running_power_records(self, create_health_zip: Callable[..., str]) -> None:
+        """RunningPower records should be parsed into records_by_type."""
+        xml_content = build_health_export_xml([load_export_fragment("record_running_power.xml")])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        parser = ExportParser()
+        with parser:
+            result = parser.parse(str(zip_path))
+
+        assert "RunningPower" in result.records_by_type
+        rp_df = result.records_by_type["RunningPower"]
+        assert isinstance(rp_df, pd.DataFrame)
+        assert len(rp_df) == 3
+        assert "startDate" in rp_df.columns
+        assert "value" in rp_df.columns
+        # Values should be numeric: 200, 220, 240
+        values = pd.to_numeric(rp_df["value"], errors="coerce").dropna().tolist()
+        assert sorted(values) == [200, 220, 240]
+
 
 class TestToNumber:
     """Test suite for ExportParser.to_number static method."""

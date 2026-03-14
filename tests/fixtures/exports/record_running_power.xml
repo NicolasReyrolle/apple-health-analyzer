@@ -1,0 +1,3 @@
+<Record type="HKQuantityTypeIdentifierRunningPower" sourceName="Apple Watch" sourceVersion="11.6.1" unit="W" creationDate="2025-09-16 17:15:51 +0100" startDate="2025-09-16 16:14:51 +0100" endDate="2025-09-16 16:14:52 +0100" value="200"/>
+ <Record type="HKQuantityTypeIdentifierRunningPower" sourceName="Apple Watch" sourceVersion="11.6.1" unit="W" creationDate="2025-09-16 17:15:51 +0100" startDate="2025-09-16 16:15:51 +0100" endDate="2025-09-16 16:15:52 +0100" value="220"/>
+ <Record type="HKQuantityTypeIdentifierRunningPower" sourceName="Apple Watch" sourceVersion="11.6.1" unit="W" creationDate="2025-09-16 17:15:51 +0100" startDate="2025-09-16 16:16:51 +0100" endDate="2025-09-16 16:16:52 +0100" value="240"/>
