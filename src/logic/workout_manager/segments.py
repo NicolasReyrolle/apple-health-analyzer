@@ -223,7 +223,7 @@ class WorkoutManagerSegmentsMixin:
 
         return self._build_best_segments_frame(results, topn)
 
-    def get_critical_velocity(
+    def get_critical_velocity(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         topn: int = 5,
         short_distance: int = 800,

@@ -538,50 +538,46 @@ class TestGetBestSegmentsDateFiltering:
 class TestGetCriticalVelocity:
     """Test suite for WorkoutManager.get_critical_velocity."""
 
+    @staticmethod
+    def _make_speed_route(
+        start_time: datetime,
+        distance_m: float,
+        duration_s: float,
+        end_longitude: float,
+    ) -> WorkoutRoute:
+        """Create a 2-point route driven by speed attribute for the given distance/time."""
+        speed = distance_m / duration_s
+        return WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=start_time,
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=speed,
+                ),
+                RoutePoint(
+                    time=start_time + pd.Timedelta(seconds=duration_s),
+                    latitude=0.0,
+                    longitude=end_longitude,
+                    altitude=0.0,
+                    speed=speed,
+                ),
+            ]
+        )
+
     def _make_manager_with_two_segments(
         self,
         time_800m: int,
         time_5000m: int,
     ) -> WorkoutManager:
         """Return a manager whose two routes cover exactly 800 m and 5000 m."""
-        # ~800 m route at 0.007° longitude (~780 m haversine, speed-based OK)
-        route_800 = WorkoutRoute(
-            points=[
-                RoutePoint(
-                    time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                    latitude=0.0,
-                    longitude=0.0,
-                    altitude=0.0,
-                    speed=800 / time_800m,
-                ),
-                RoutePoint(
-                    time=datetime(2025, 1, 1, tzinfo=timezone.utc)
-                    + pd.Timedelta(seconds=time_800m),
-                    latitude=0.0,
-                    longitude=0.007,
-                    altitude=0.0,
-                    speed=800 / time_800m,
-                ),
-            ]
+        # ~800 m route at 0.007° longitude; ~5000 m at 0.045°
+        route_800 = self._make_speed_route(
+            datetime(2025, 1, 1, tzinfo=timezone.utc), 800.0, float(time_800m), 0.007
         )
-        route_5000 = WorkoutRoute(
-            points=[
-                RoutePoint(
-                    time=datetime(2025, 2, 1, tzinfo=timezone.utc),
-                    latitude=0.0,
-                    longitude=0.0,
-                    altitude=0.0,
-                    speed=5000 / time_5000m,
-                ),
-                RoutePoint(
-                    time=datetime(2025, 2, 1, tzinfo=timezone.utc)
-                    + pd.Timedelta(seconds=time_5000m),
-                    latitude=0.0,
-                    longitude=0.045,
-                    altitude=0.0,
-                    speed=5000 / time_5000m,
-                ),
-            ]
+        route_5000 = self._make_speed_route(
+            datetime(2025, 2, 1, tzinfo=timezone.utc), 5000.0, float(time_5000m), 0.045
         )
         return WorkoutManager(
             pd.DataFrame(
@@ -607,23 +603,8 @@ class TestGetCriticalVelocity:
 
     def test_returns_none_when_short_distance_missing(self) -> None:
         """Return None when no best segment exists for the short distance."""
-        route_5000 = WorkoutRoute(
-            points=[
-                RoutePoint(
-                    time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                    latitude=0.0,
-                    longitude=0.0,
-                    altitude=0.0,
-                    speed=5000 / 1500,
-                ),
-                RoutePoint(
-                    time=datetime(2025, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=1500),
-                    latitude=0.0,
-                    longitude=0.045,
-                    altitude=0.0,
-                    speed=5000 / 1500,
-                ),
-            ]
+        route_5000 = self._make_speed_route(
+            datetime(2025, 1, 1, tzinfo=timezone.utc), 5000.0, 1500.0, 0.045
         )
         manager = WorkoutManager(
             pd.DataFrame(
@@ -684,62 +665,14 @@ class TestGetCriticalVelocity:
         """With topn>1, the CV is based on the mean of the top-N segment times."""
         # Create two 800 m workouts (times 160 s and 180 s → avg 170 s)
         # and one 5000 m workout (time 1250 s).
-        speed1 = 800 / 160
-        speed2 = 800 / 180
-        speed_long = 5000 / 1250
-        route_800_fast = WorkoutRoute(
-            points=[
-                RoutePoint(
-                    time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                    latitude=0.0,
-                    longitude=0.0,
-                    altitude=0.0,
-                    speed=speed1,
-                ),
-                RoutePoint(
-                    time=datetime(2025, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=160),
-                    latitude=0.0,
-                    longitude=0.007,
-                    altitude=0.0,
-                    speed=speed1,
-                ),
-            ]
+        route_800_fast = self._make_speed_route(
+            datetime(2025, 1, 1, tzinfo=timezone.utc), 800.0, 160.0, 0.007
         )
-        route_800_slow = WorkoutRoute(
-            points=[
-                RoutePoint(
-                    time=datetime(2025, 1, 2, tzinfo=timezone.utc),
-                    latitude=0.0,
-                    longitude=0.0,
-                    altitude=0.0,
-                    speed=speed2,
-                ),
-                RoutePoint(
-                    time=datetime(2025, 1, 2, tzinfo=timezone.utc) + timedelta(seconds=180),
-                    latitude=0.0,
-                    longitude=0.007,
-                    altitude=0.0,
-                    speed=speed2,
-                ),
-            ]
+        route_800_slow = self._make_speed_route(
+            datetime(2025, 1, 2, tzinfo=timezone.utc), 800.0, 180.0, 0.007
         )
-        route_long = WorkoutRoute(
-            points=[
-                RoutePoint(
-                    time=datetime(2025, 2, 1, tzinfo=timezone.utc),
-                    latitude=0.0,
-                    longitude=0.0,
-                    altitude=0.0,
-                    speed=speed_long,
-                ),
-                RoutePoint(
-                    time=datetime(2025, 2, 1, tzinfo=timezone.utc) + timedelta(seconds=1250),
-                    latitude=0.0,
-                    longitude=0.045,
-                    altitude=0.0,
-                    speed=speed_long,
-                ),
-            ]
+        route_long = self._make_speed_route(
+            datetime(2025, 2, 1, tzinfo=timezone.utc), 5000.0, 1250.0, 0.045
         )
         manager = WorkoutManager(
             pd.DataFrame(
