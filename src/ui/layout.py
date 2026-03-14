@@ -740,3 +740,30 @@ def render_health_data_tab() -> None:
             "ml/kg/min",
             graph_type="line",
         )
+
+    with ui.row().classes(ROW_CENTERED_CLASSES):
+        cp_evolution = state.workouts.get_critical_power_evolution(
+            period=state.trends_period,
+            start_date=state.start_date,
+            end_date=state.end_date,
+        )
+        render_generic_graph(
+            t("Critical Power (CP) over time"),
+            to_json_safe(
+                {} if cp_evolution.empty
+                else cp_evolution.set_index("period")["critical_power_w"].to_dict()
+            ),
+            "W",
+            graph_type="line",
+            show_trend=False,
+        )
+        render_generic_graph(
+            t("W' over time"),
+            to_json_safe(
+                {} if cp_evolution.empty
+                else cp_evolution.set_index("period")["w_prime_kj"].to_dict()
+            ),
+            "kJ",
+            graph_type="line",
+            show_trend=False,
+        )

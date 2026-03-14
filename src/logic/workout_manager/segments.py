@@ -227,7 +227,7 @@ class WorkoutManagerSegmentsMixin:
 
         return self._build_best_segments_frame(results, topn)
 
-    def get_critical_power(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def get_critical_power(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-return-statements
         self,
         topn: int = 5,
         short_distance: int = 800,
@@ -319,3 +319,103 @@ class WorkoutManagerSegmentsMixin:
             count_short=len(short_with_power),
             count_long=len(long_with_power),
         )
+
+    def get_critical_power_evolution(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+        self,
+        period: str = "M",
+        short_distance: int = 800,
+        long_distance: int = 5000,
+        topn: int = 5,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> pd.DataFrame:
+        """Compute Critical Power (CP) and W' for each time period.
+
+        For each period (e.g. month), the top-N best segments for both distances
+        that fall within that period are averaged to derive one (CP, W') data point.
+        Periods with insufficient segment data for either distance are omitted.
+
+        Args:
+            period: Pandas period alias (e.g. ``"M"`` monthly, ``"Q"`` quarterly,
+                ``"Y"`` yearly).  Must match the ``trends_period`` codes used
+                elsewhere in the app.
+            short_distance: Shorter target distance in metres (default 800).
+            long_distance: Longer target distance in metres (default 5000).
+            topn: Number of best segments to include per distance per period.
+            start_date: Optional start date filter.
+            end_date: Optional end date filter (inclusive).
+
+        Returns:
+            DataFrame with columns ``period`` (str), ``critical_power_w`` (float),
+            ``w_prime_kj`` (float).  Empty if insufficient data.
+        """
+        _empty = pd.DataFrame(columns=["period", "critical_power_w", "w_prime_kj"])
+
+        if short_distance >= long_distance:
+            return _empty
+
+        if _RUNNING_POWER_COL not in self.workouts.columns:
+            return _empty
+
+        segments = self.get_best_segments(
+            topn=topn,
+            distances=[short_distance, long_distance],
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        if segments.empty:
+            return _empty
+
+        power_lookup = self.workouts[["startDate", _RUNNING_POWER_COL]].dropna(
+            subset=[_RUNNING_POWER_COL]
+        )
+        segments_with_power = segments.merge(power_lookup, on="startDate", how="inner")
+
+        if segments_with_power.empty:
+            return _empty
+
+        segments_with_power = segments_with_power.copy()
+        # Strip timezone before period conversion to avoid pandas UserWarning about
+        # dropping tz information; the date grouping only needs wall-clock dates.
+        segments_with_power["period_key"] = (
+            segments_with_power["startDate"].dt.tz_localize(None).dt.to_period(period)
+        )
+
+        results: list[dict[str, object]] = []
+        for period_key, group in segments_with_power.groupby("period_key", sort=True):
+            short_group = group[group["distance"] == short_distance]
+            long_group = group[group["distance"] == long_distance]
+
+            if short_group.empty or long_group.empty:
+                continue
+
+            avg_time_short = float(short_group["duration_s"].mean())
+            avg_time_long = float(long_group["duration_s"].mean())
+            avg_power_short = float(short_group[_RUNNING_POWER_COL].mean())
+            avg_power_long = float(long_group[_RUNNING_POWER_COL].mean())
+
+            time_diff = avg_time_long - avg_time_short
+            if time_diff <= 0:
+                continue
+
+            work_short = avg_power_short * avg_time_short
+            work_long = avg_power_long * avg_time_long
+            cp = (work_long - work_short) / time_diff
+            w_prime = work_short - cp * avg_time_short
+
+            if cp <= 0 or w_prime <= 0:
+                continue
+
+            results.append(
+                {
+                    "period": str(period_key),
+                    "critical_power_w": round(cp, 1),
+                    "w_prime_kj": round(w_prime / 1000, 2),
+                }
+            )
+
+        if not results:
+            return _empty
+
+        return pd.DataFrame(results)

@@ -122,6 +122,15 @@ msgstr ""
 msgid "W'"
 msgstr ""
 
+msgid "Avg Power"
+msgstr ""
+
+msgid "Critical Power (CP) over time"
+msgstr ""
+
+msgid "W' over time"
+msgstr ""
+
 msgid "Half-marathon"
 msgstr ""
 

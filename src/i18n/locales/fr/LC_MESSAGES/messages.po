@@ -127,6 +127,15 @@ msgstr "Puissance Critique (PC)"
 msgid "W'"
 msgstr "W'"
 
+msgid "Avg Power"
+msgstr "Puiss. moy."
+
+msgid "Critical Power (CP) over time"
+msgstr "Puissance Critique (PC) au fil du temps"
+
+msgid "W' over time"
+msgstr "W' au fil du temps"
+
 msgid "Half-marathon"
 msgstr "Semi-marathon"
 

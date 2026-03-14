@@ -726,3 +726,112 @@ class TestGetCriticalPower:
         assert result["count_long"] == 1
         assert result["avg_time_short_s"] == pytest.approx(170.0, rel=0.05)
         assert result["avg_power_short_w"] == pytest.approx(340.0, rel=0.01)
+
+
+class TestGetCriticalPowerEvolution:
+    """Test suite for WorkoutManager.get_critical_power_evolution."""
+
+    @staticmethod
+    def _make_speed_route(
+        start_time: datetime,
+        distance_m: float,
+        duration_s: float,
+        end_longitude: float,
+    ) -> WorkoutRoute:
+        speed = distance_m / duration_s
+        return WorkoutRoute(
+            points=[
+                RoutePoint(time=start_time, latitude=0.0, longitude=0.0, altitude=0.0, speed=speed),
+                RoutePoint(
+                    time=start_time + pd.Timedelta(seconds=duration_s),
+                    latitude=0.0,
+                    longitude=end_longitude,
+                    altitude=0.0,
+                    speed=speed,
+                ),
+            ]
+        )
+
+    def test_returns_empty_for_empty_manager(self) -> None:
+        """No workouts returns an empty DataFrame with expected columns."""
+        manager = WorkoutManager()
+
+        result = manager.get_critical_power_evolution()
+
+        assert result.empty
+        assert list(result.columns) == ["period", "critical_power_w", "w_prime_kj"]
+
+    def test_returns_empty_when_power_column_missing(self) -> None:
+        """Return empty when no running power data is available."""
+        route = self._make_speed_route(
+            datetime(2025, 1, 1, tzinfo=timezone.utc), 800.0, 160.0, 0.007
+        )
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-01-01")],
+                    "distance": [800.0],
+                    "route": [route],
+                }
+            )
+        )
+
+        result = manager.get_critical_power_evolution()
+
+        assert result.empty
+
+    def test_evolution_groups_by_period(self) -> None:
+        """Each calendar period with both distances produces one CP/W' row."""
+        # Month 1: 800 m (160 s / 350 W) + 5000 m (1250 s / 250 W)
+        # Month 2: 800 m (155 s / 360 W) + 5000 m (1200 s / 260 W)
+        routes_and_data = [
+            (datetime(2025, 1, 5, tzinfo=timezone.utc), 800.0, 160.0, 0.007, 350.0),
+            (datetime(2025, 1, 20, tzinfo=timezone.utc), 5000.0, 1250.0, 0.045, 250.0),
+            (datetime(2025, 2, 5, tzinfo=timezone.utc), 800.0, 155.0, 0.007, 360.0),
+            (datetime(2025, 2, 20, tzinfo=timezone.utc), 5000.0, 1200.0, 0.045, 260.0),
+        ]
+        routes = [
+            self._make_speed_route(dt, dist, dur, lon)
+            for dt, dist, dur, lon, _ in routes_and_data
+        ]
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"] * 4,
+                    "startDate": [pd.Timestamp(dt) for dt, *_ in routes_and_data],
+                    "distance": [d for _, d, *_ in routes_and_data],
+                    "averageRunningPower": [p for *_, p in routes_and_data],
+                    "route": routes,
+                }
+            )
+        )
+
+        result = manager.get_critical_power_evolution(period="M")
+
+        assert len(result) == 2
+        assert list(result.columns) == ["period", "critical_power_w", "w_prime_kj"]
+        # Both periods should have positive CP and W'
+        assert all(result["critical_power_w"] > 0)
+        assert all(result["w_prime_kj"] > 0)
+
+    def test_period_with_only_one_distance_is_skipped(self) -> None:
+        """A period with only the short distance but no long distance is omitted."""
+        route_800 = self._make_speed_route(
+            datetime(2025, 1, 1, tzinfo=timezone.utc), 800.0, 160.0, 0.007
+        )
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-01-01")],
+                    "distance": [800.0],
+                    "averageRunningPower": [350.0],
+                    "route": [route_800],
+                }
+            )
+        )
+
+        result = manager.get_critical_power_evolution(period="M")
+
+        assert result.empty

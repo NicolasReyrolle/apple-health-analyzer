@@ -54,6 +54,7 @@ class TestBestSegmentsTabData:
                     "distance": "1.0 km",
                     "duration": "6 min 44 s",
                     "average_speed": "8.91 km/h",
+                    "avg_power": "–",
                     "start_date": "09/16/2025",
                     "children": [],
                 }
@@ -455,6 +456,7 @@ class TestBestSegmentsTabRendering:
                     "distance": "1.0 km",
                     "duration": "6 min 44 s",
                     "average_speed": "8.91 km/h",
+                    "avg_power": "–",
                     "start_date": "09/16/2025",
                     "children": [],
                 }

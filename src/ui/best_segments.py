@@ -4,6 +4,7 @@ import asyncio
 import logging
 from typing import Any
 
+import pandas as pd
 from nicegui import ui
 
 from app_state import state
@@ -29,6 +30,18 @@ _CP_SHORT_DISTANCE = 800
 _CP_LONG_DISTANCE = 5000
 
 
+def _get_workout_power_lookup() -> dict:
+    """Return a {startDate → average_running_power_W} mapping when data is available."""
+    power_col = "averageRunningPower"
+    workouts_df = getattr(state.workouts, "workouts", None)
+    if not isinstance(workouts_df, pd.DataFrame):
+        return {}
+    if power_col not in workouts_df.columns:
+        return {}
+    rows = workouts_df[["startDate", power_col]].dropna(subset=[power_col])
+    return dict(zip(rows["startDate"], rows[power_col]))
+
+
 def _build_best_segments_rows() -> list[dict[str, Any]]:
     """Compute and format best segments rows for tab rendering.
 
@@ -43,9 +56,13 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
     )
     _logger.debug("Best segments data:\n%s", best_segments)
     language_code = get_language()
+    power_lookup = _get_workout_power_lookup()
 
-    def _format_entry(distance_m: float, duration_s: float, start_date: Any) -> dict[str, str]:
+    def _format_entry(
+        distance_m: float, duration_s: float, start_date: Any, power_w: Any
+    ) -> dict[str, str]:
         average_speed = (distance_m / 1000) / (duration_s / 3600) if duration_s > 0 else 0.0
+        avg_power_str = f"{float(power_w):.0f} W" if power_w is not None else "–"
         return {
             "distance": format_distance_label(
                 distance_m,
@@ -55,6 +72,7 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
             ),
             "duration": format_duration_label(duration_s),
             "average_speed": f"{average_speed:.2f} km/h",
+            "avg_power": avg_power_str,
             "start_date": format_date_label(start_date, language_code),
         }
 
@@ -69,14 +87,18 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
         if start_date is None:
             continue
 
+        power_w = power_lookup.get(start_date)
         parent: dict[str, Any] = {
-            **_format_entry(distance_m, float(getattr(records[0], "duration_s", 0.0)), start_date),
+            **_format_entry(
+                distance_m, float(getattr(records[0], "duration_s", 0.0)), start_date, power_w
+            ),
             "id": str(int(distance_m)),
             "children": [
                 _format_entry(
                     distance_m,
                     float(getattr(record, "duration_s", 0.0)),
                     getattr(record, "startDate"),
+                    power_lookup.get(getattr(record, "startDate")),
                 )
                 for record in records[1:]
                 if getattr(record, "startDate", None) is not None
@@ -200,6 +222,7 @@ def render_best_segments_tab() -> None:
                 "label": t("Average Speed"),
                 "field": "average_speed",
             },
+            {"name": "avg_power", "label": t("Avg Power"), "field": "avg_power"},
             {"name": "start_date", "label": t("Date"), "field": "start_date"},
         ]
 
@@ -255,6 +278,7 @@ def render_best_segments_tab() -> None:
                                     #{{ i + 2 }}&nbsp;&nbsp;
                                     {{ child.duration }}&nbsp;&nbsp;
                                     {{ child.average_speed }}&nbsp;&nbsp;
+                                    {{ child.avg_power }}&nbsp;&nbsp;
                                     {{ child.start_date }}
                                 </span>
                             </q-item-section>
