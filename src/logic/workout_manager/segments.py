@@ -1,19 +1,17 @@
 """Best-segment mixin for WorkoutManager."""
 
 from datetime import datetime
+import logging
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, TypedDict, Union
 
 import pandas as pd
 
 from logic.workout_route import WorkoutRoute
 
+_logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from pandas import Timestamp
-
-# Fallback tolerance: workout-level average power is only used as a fallback for
-# the per-segment power when the workout duration is within this fraction of the
-# segment duration (i.e. the whole workout ≈ the segment being analysed).
-_WORKOUT_SEGMENT_DURATION_TOLERANCE = 0.10
 
 
 class CriticalPowerResult(TypedDict):
@@ -230,6 +228,51 @@ class WorkoutManagerSegmentsMixin:
 
         return self._build_best_segments_frame(results, topn)
 
+    @staticmethod
+    def _compute_measured_segment_power(
+        rp_times: pd.Series,
+        rp_values: pd.Series,
+        seg_start_ts: pd.Timestamp,
+        seg_end_ts: pd.Timestamp,
+    ) -> Optional[float]:
+        """Compute mean power from records whose startDate falls within segment bounds."""
+        mask = (rp_times >= seg_start_ts) & (rp_times <= seg_end_ts) & rp_values.notna()
+        vals = rp_values[mask]
+        if vals.empty:
+            return None
+        return float(vals.mean())
+
+    @staticmethod
+    def _compute_overlap_estimated_power(
+        rp_times: pd.Series,
+        rp_end_times: pd.Series,
+        rp_values: pd.Series,
+        seg_start_ts: pd.Timestamp,
+        seg_end_ts: pd.Timestamp,
+    ) -> Optional[tuple[float, int, float]]:
+        """Estimate power from overlap duration between power intervals and segment window."""
+        overlap_mask = (rp_times <= seg_end_ts) & (rp_end_times >= seg_start_ts) & rp_values.notna()
+        if not overlap_mask.any():
+            return None
+
+        overlap_start_raw = rp_times[overlap_mask]
+        overlap_end_raw = rp_end_times[overlap_mask]
+        overlap_start = overlap_start_raw.where(overlap_start_raw >= seg_start_ts, seg_start_ts)
+        overlap_end = overlap_end_raw.where(overlap_end_raw <= seg_end_ts, seg_end_ts)
+        overlap_seconds = (overlap_end - overlap_start).dt.total_seconds()
+        positive_overlap = overlap_seconds > 0
+        if not positive_overlap.any():
+            return None
+
+        overlap_values = rp_values[overlap_mask][positive_overlap]
+        overlap_weights = overlap_seconds[positive_overlap]
+        total_weight = float(overlap_weights.sum())
+        if total_weight <= 0:
+            return None
+
+        weighted_sum = float((overlap_values * overlap_weights).sum())
+        return (weighted_sum / total_weight, int(positive_overlap.sum()), total_weight)
+
     def annotate_segments_with_power(  # pylint: disable=too-many-locals
         self,
         segments: pd.DataFrame,
@@ -241,11 +284,10 @@ class WorkoutManagerSegmentsMixin:
 
         1. **Individual records**: mean value of ``HKQuantityTypeIdentifierRunningPower``
            records whose ``startDate`` falls within ``[segment_start, segment_end]``.
-        2. **Workout-level fallback**: ``averageRunningPower`` from the workout statistics
-           is used *only* when the workout duration is within
-           :data:`_WORKOUT_SEGMENT_DURATION_TOLERANCE` (10 %) of the segment duration,
-           meaning the whole workout is essentially the segment being measured.
-        3. ``None`` when neither source provides usable data.
+          2. **Overlap-estimated**: weighted estimate from overlapping
+              ``RunningPower`` interval records (requires both ``startDate`` and ``endDate``).
+          3. **Workout-level fallback**: ``averageRunningPower`` from workout statistics.
+        4. ``None`` when neither source provides usable data.
 
         Args:
             segments: DataFrame returned by :meth:`get_best_segments` (must have
@@ -255,11 +297,13 @@ class WorkoutManagerSegmentsMixin:
 
         Returns:
             Copy of *segments* with an additional ``segment_avg_power`` column
-            (float Watts, or ``None``).
+            (float Watts, or ``None``) and ``segment_power_confidence`` with one of:
+            ``measured``, ``overlap_estimated``, ``workout_fallback``, ``missing``.
         """
         result = segments.copy()
         if segments.empty or "segment_start" not in segments.columns:
             result["segment_avg_power"] = None
+            result["segment_power_confidence"] = "missing"
             return result
 
         # Parse individual RunningPower record timestamps once for efficiency.
@@ -267,6 +311,7 @@ class WorkoutManagerSegmentsMixin:
         # keep UTC normalisation from ISO8601 parser for consistent comparison with
         # GPS segment times (which are always stored as UTC).
         rp_times: Optional[pd.Series] = None
+        rp_end_times: Optional[pd.Series] = None
         rp_values: Optional[pd.Series] = None
         if (
             running_power_df is not None
@@ -277,6 +322,10 @@ class WorkoutManagerSegmentsMixin:
             rp_times = pd.to_datetime(
                 running_power_df["startDate"], format="ISO8601", errors="coerce"
             )
+            if "endDate" in running_power_df.columns:
+                rp_end_times = pd.to_datetime(
+                    running_power_df["endDate"], format="ISO8601", errors="coerce"
+                )
             rp_values = pd.to_numeric(running_power_df["value"], errors="coerce")
 
         # Build workout-level fallback lookup: startDate → (duration_s, avg_power_w).
@@ -292,6 +341,7 @@ class WorkoutManagerSegmentsMixin:
             workout_fallback[w_start] = (w_dur, w_pwr)
 
         avg_powers: list[Optional[float]] = []
+        confidences: list[str] = []
         for row in segments.itertuples():
             seg_start = getattr(row, "segment_start", None)
             seg_end = getattr(row, "segment_end", None)
@@ -299,6 +349,7 @@ class WorkoutManagerSegmentsMixin:
             workout_start = getattr(row, "startDate", None)
 
             power: Optional[float] = None
+            confidence = "missing"
 
             # 1. Individual RunningPower records within the GPS segment time window.
             if (
@@ -309,25 +360,74 @@ class WorkoutManagerSegmentsMixin:
             ):
                 seg_start_ts = pd.Timestamp(seg_start)
                 seg_end_ts = pd.Timestamp(seg_end)
-                mask = (rp_times >= seg_start_ts) & (rp_times <= seg_end_ts) & rp_values.notna()
-                vals = rp_values[mask]
-                if not vals.empty:
-                    power = float(vals.mean())
+                measured_power = self._compute_measured_segment_power(
+                    rp_times,
+                    rp_values,
+                    seg_start_ts,
+                    seg_end_ts,
+                )
+                if measured_power is not None:
+                    power = measured_power
+                    confidence = "measured"
+                else:
+                    _logger.debug(
+                        "No measured RunningPower samples matched segment window "
+                        "(workout_start=%s distance=%sm segment_start=%s segment_end=%s)",
+                        workout_start,
+                        getattr(row, "distance", None),
+                        seg_start_ts,
+                        seg_end_ts,
+                    )
 
-            # 2. Workout-level fallback when the workout ≈ the segment.
-            if power is None and workout_start in workout_fallback:
-                workout_dur, workout_avg_pwr = workout_fallback[workout_start]
+                # 1b. Overlap-based estimate from interval records when no direct match.
                 if (
-                    workout_avg_pwr is not None
-                    and workout_dur > 0
-                    and abs(seg_duration - workout_dur) / workout_dur
-                    <= _WORKOUT_SEGMENT_DURATION_TOLERANCE
+                    power is None
+                    and rp_end_times is not None
+                    and len(rp_end_times) == len(rp_times)
+                    and len(rp_values) == len(rp_times)
                 ):
+                    overlap_estimate = self._compute_overlap_estimated_power(
+                        rp_times,
+                        rp_end_times,
+                        rp_values,
+                        seg_start_ts,
+                        seg_end_ts,
+                    )
+                    if overlap_estimate is not None:
+                        overlap_power, overlap_count, overlap_total_s = overlap_estimate
+                        power = overlap_power
+                        confidence = "overlap_estimated"
+                        _logger.debug(
+                            "Using overlap-estimated RunningPower "
+                            "(workout_start=%s distance=%sm records=%s overlap_s=%.2f)",
+                            workout_start,
+                            getattr(row, "distance", None),
+                            overlap_count,
+                            overlap_total_s,
+                        )
+
+            # 3. Workout-level fallback.
+            if power is None and workout_start in workout_fallback:
+                _, workout_avg_pwr = workout_fallback[workout_start]
+                if workout_avg_pwr is not None:
                     power = workout_avg_pwr
+                    confidence = "workout_fallback"
+
+            _logger.debug(
+                "Segment power computed "
+                "(workout_start=%s distance=%sm duration_s=%.2f power=%s confidence=%s)",
+                workout_start,
+                getattr(row, "distance", None),
+                seg_duration,
+                power,
+                confidence,
+            )
 
             avg_powers.append(power)
+            confidences.append(confidence)
 
         result["segment_avg_power"] = avg_powers
+        result["segment_power_confidence"] = confidences
         return result
 
     def get_critical_power(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-return-statements

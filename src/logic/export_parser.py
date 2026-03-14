@@ -240,6 +240,7 @@ class ExportParser:
         record_data = {
             "type": record_type,
             "startDate": elem.get("startDate"),
+            "endDate": elem.get("endDate"),
             "value": self.to_number(elem.get("value")),
         }
         # Include metadata entries as additional fields

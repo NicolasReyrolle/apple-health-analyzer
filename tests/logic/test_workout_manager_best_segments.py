@@ -578,6 +578,10 @@ class TestAnnotateSegmentsWithPower:
     def _record_df(timestamp: str, value: float) -> pd.DataFrame:
         return pd.DataFrame({"startDate": [timestamp], "value": [value]})
 
+    @staticmethod
+    def _record_interval_df(start_ts: str, end_ts: str, value: float) -> pd.DataFrame:
+        return pd.DataFrame({"startDate": [start_ts], "endDate": [end_ts], "value": [value]})
+
     def _make_manager(
         self, duration_s: float, workout_duration_s: float, avg_power: float | None = None
     ) -> WorkoutManager:
@@ -603,7 +607,9 @@ class TestAnnotateSegmentsWithPower:
         result = manager.annotate_segments_with_power(segments, rp_df)
 
         assert "segment_avg_power" in result.columns
+        assert "segment_power_confidence" in result.columns
         assert result["segment_avg_power"].iloc[0] == pytest.approx(320.0)
+        assert result["segment_power_confidence"].iloc[0] == "measured"
 
     def test_record_outside_window_yields_none(self) -> None:
         """Power record entirely outside the segment window should not be used."""
@@ -615,6 +621,26 @@ class TestAnnotateSegmentsWithPower:
         result = manager.annotate_segments_with_power(segments, rp_df)
 
         assert result["segment_avg_power"].iloc[0] is None
+        assert result["segment_power_confidence"].iloc[0] == "missing"
+
+    def test_uses_overlap_estimate_when_no_startdate_match(self) -> None:
+        """Interval overlap should estimate segment power when no startDate lies inside window."""
+        manager = self._make_manager(duration_s=160.0, workout_duration_s=3600.0)
+        segments = manager.get_best_segments(topn=1, distances=[1000])
+
+        seg_start = pd.Timestamp(segments["segment_start"].iloc[0])
+        # Starts just before segment start, ends inside segment: no measured match,
+        # but should be captured by overlap estimation.
+        rp_df = self._record_interval_df(
+            (seg_start - pd.Timedelta(seconds=5)).isoformat(),
+            (seg_start + pd.Timedelta(seconds=20)).isoformat(),
+            300.0,
+        )
+
+        result = manager.annotate_segments_with_power(segments, rp_df)
+
+        assert result["segment_avg_power"].iloc[0] == pytest.approx(300.0)
+        assert result["segment_power_confidence"].iloc[0] == "overlap_estimated"
 
     def test_falls_back_to_workout_stats_when_durations_close(self) -> None:
         """Workout avg power should be used when workout duration ≈ segment duration."""
@@ -625,16 +651,18 @@ class TestAnnotateSegmentsWithPower:
         result = manager.annotate_segments_with_power(segments, None)
 
         assert result["segment_avg_power"].iloc[0] == pytest.approx(280.0)
+        assert result["segment_power_confidence"].iloc[0] == "workout_fallback"
 
-    def test_no_fallback_when_workout_duration_far_from_segment(self) -> None:
-        """Workout avg power must NOT be used when workout is much longer than segment."""
-        # Segment ≈ 160 s, workout = 3600 s (>10 % difference)
+    def test_falls_back_to_workout_stats_when_no_segment_match(self) -> None:
+        """Workout avg power should be used as third-priority fallback."""
+        # Segment ≈ 160 s, workout = 3600 s (still fallback when no better source)
         manager = self._make_manager(duration_s=160.0, workout_duration_s=3600.0, avg_power=280.0)
         segments = manager.get_best_segments(topn=1, distances=[1000])
 
         result = manager.annotate_segments_with_power(segments, None)
 
-        assert result["segment_avg_power"].iloc[0] is None
+        assert result["segment_avg_power"].iloc[0] == pytest.approx(280.0)
+        assert result["segment_power_confidence"].iloc[0] == "workout_fallback"
 
     def test_individual_records_take_priority_over_workout_stats(self) -> None:
         """Individual records should override workout-level avg power."""
@@ -646,6 +674,7 @@ class TestAnnotateSegmentsWithPower:
         result = manager.annotate_segments_with_power(segments, rp_df)
 
         assert result["segment_avg_power"].iloc[0] == pytest.approx(350.0)
+        assert result["segment_power_confidence"].iloc[0] == "measured"
 
     def test_empty_segments_returns_empty_with_column(self) -> None:
         """Empty segments DataFrame should return empty with segment_avg_power column."""
@@ -656,6 +685,39 @@ class TestAnnotateSegmentsWithPower:
 
         assert result.empty
         assert "segment_avg_power" in result.columns
+        assert "segment_power_confidence" in result.columns
+
+    def test_real_fixture_2024_12_26_uses_overlap_estimated_power(self, tmp_path: Path) -> None:
+        """Real 2024-12-26 run should compute segment power from overlapping intervals."""
+        workout_xml = load_export_fragment("workout_running_too_fast.xml")
+        power_xml = load_export_fragment("record_running_power.xml")
+        route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
+        route_files = sorted(route_dir.glob("route_2024-12-26_*.gpx"))
+
+        zip_path = tmp_path / "running_too_fast_with_power.zip"
+        with ZipFile(zip_path, "w") as zf:
+            zf.writestr(
+                "apple_health_export/export.xml",
+                build_health_export_xml([workout_xml, power_xml]),
+            )
+            for route_file in route_files:
+                zf.writestr(
+                    f"apple_health_export/workout-routes/{route_file.name}",
+                    route_file.read_bytes(),
+                )
+
+        parser = ExportParser()
+        with parser:
+            parsed = parser.parse(str(zip_path))
+
+        manager = WorkoutManager(parsed.workouts)
+        segments = manager.get_best_segments(topn=1, distances=[100])
+        rp_df = parsed.records_by_type.get("RunningPower")
+        annotated = manager.annotate_segments_with_power(segments, rp_df)
+
+        assert len(annotated) == 1
+        assert annotated["segment_avg_power"].notna().iloc[0]
+        assert annotated["segment_power_confidence"].iloc[0] == "overlap_estimated"
 
 
 class TestGetCriticalPower:
