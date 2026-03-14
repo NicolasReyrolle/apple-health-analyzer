@@ -533,3 +533,232 @@ class TestGetBestSegmentsDateFiltering:
         )
 
         assert not result.empty
+
+
+class TestGetCriticalVelocity:
+    """Test suite for WorkoutManager.get_critical_velocity."""
+
+    def _make_manager_with_two_segments(
+        self,
+        time_800m: int,
+        time_5000m: int,
+    ) -> WorkoutManager:
+        """Return a manager whose two routes cover exactly 800 m and 5000 m."""
+        # ~800 m route at 0.007° longitude (~780 m haversine, speed-based OK)
+        route_800 = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=800 / time_800m,
+                ),
+                RoutePoint(
+                    time=datetime(2025, 1, 1, tzinfo=timezone.utc)
+                    + pd.Timedelta(seconds=time_800m),
+                    latitude=0.0,
+                    longitude=0.007,
+                    altitude=0.0,
+                    speed=800 / time_800m,
+                ),
+            ]
+        )
+        route_5000 = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=datetime(2025, 2, 1, tzinfo=timezone.utc),
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=5000 / time_5000m,
+                ),
+                RoutePoint(
+                    time=datetime(2025, 2, 1, tzinfo=timezone.utc)
+                    + pd.Timedelta(seconds=time_5000m),
+                    latitude=0.0,
+                    longitude=0.045,
+                    altitude=0.0,
+                    speed=5000 / time_5000m,
+                ),
+            ]
+        )
+        return WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running"],
+                    "startDate": [
+                        pd.Timestamp("2025-01-01"),
+                        pd.Timestamp("2025-02-01"),
+                    ],
+                    "distance": [800.0, 5000.0],
+                    "route": [route_800, route_5000],
+                }
+            )
+        )
+
+    def test_returns_none_for_empty_manager(self) -> None:
+        """No workouts should return None."""
+        manager = WorkoutManager()
+
+        result = manager.get_critical_velocity()
+
+        assert result is None
+
+    def test_returns_none_when_short_distance_missing(self) -> None:
+        """Return None when no best segment exists for the short distance."""
+        route_5000 = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=5000 / 1500,
+                ),
+                RoutePoint(
+                    time=datetime(2025, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=1500),
+                    latitude=0.0,
+                    longitude=0.045,
+                    altitude=0.0,
+                    speed=5000 / 1500,
+                ),
+            ]
+        )
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "startDate": [pd.Timestamp("2025-01-01")],
+                    "distance": [5000.0],
+                    "route": [route_5000],
+                }
+            )
+        )
+
+        result = manager.get_critical_velocity(
+            short_distance=10000,  # longer than this workout's distance
+            long_distance=50000,
+        )
+
+        assert result is None
+
+    def test_returns_none_when_short_ge_long(self) -> None:
+        """Return None when short_distance >= long_distance (degenerate inputs)."""
+        manager = WorkoutManager()
+
+        assert manager.get_critical_velocity(short_distance=800, long_distance=800) is None
+        assert manager.get_critical_velocity(short_distance=5000, long_distance=800) is None
+
+    def test_critical_velocity_formula(self) -> None:
+        """CV and W' should satisfy the 2-parameter model for known inputs."""
+        # Use large routes so the scale factor is close to 1.0 and segment times
+        # are driven purely by the route's built-in speed attribute.
+        time_800 = 160  # s  → speed = 5 m/s
+        time_5000 = 1250  # s → speed = 4 m/s
+        manager = self._make_manager_with_two_segments(time_800, time_5000)
+
+        result = manager.get_critical_velocity(
+            topn=1,
+            short_distance=800,
+            long_distance=5000,
+        )
+
+        assert result is not None
+        # Expected CV = (5000 - 800) / (1250 - 160) = 4200 / 1090 ≈ 3.853 m/s
+        # Expected W'_d = 800 - CV * 160 ≈ 800 - 616.5 ≈ 183.5 m
+        assert result["short_distance"] == 800
+        assert result["long_distance"] == 5000
+        assert result["avg_time_short_s"] == pytest.approx(time_800, rel=0.05)
+        assert result["avg_time_long_s"] == pytest.approx(time_5000, rel=0.05)
+        assert result["critical_velocity_ms"] == pytest.approx(
+            (5000 - 800) / (time_5000 - time_800), rel=0.05
+        )
+        assert result["w_prime_distance_m"] == pytest.approx(
+            800 - result["critical_velocity_ms"] * result["avg_time_short_s"], rel=0.05
+        )
+        assert result["count_short"] == 1
+        assert result["count_long"] == 1
+
+    def test_averages_multiple_segments(self) -> None:
+        """With topn>1, the CV is based on the mean of the top-N segment times."""
+        # Create two 800 m workouts (times 160 s and 180 s → avg 170 s)
+        # and one 5000 m workout (time 1250 s).
+        speed1 = 800 / 160
+        speed2 = 800 / 180
+        speed_long = 5000 / 1250
+        route_800_fast = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=speed1,
+                ),
+                RoutePoint(
+                    time=datetime(2025, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=160),
+                    latitude=0.0,
+                    longitude=0.007,
+                    altitude=0.0,
+                    speed=speed1,
+                ),
+            ]
+        )
+        route_800_slow = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=datetime(2025, 1, 2, tzinfo=timezone.utc),
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=speed2,
+                ),
+                RoutePoint(
+                    time=datetime(2025, 1, 2, tzinfo=timezone.utc) + timedelta(seconds=180),
+                    latitude=0.0,
+                    longitude=0.007,
+                    altitude=0.0,
+                    speed=speed2,
+                ),
+            ]
+        )
+        route_long = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=datetime(2025, 2, 1, tzinfo=timezone.utc),
+                    latitude=0.0,
+                    longitude=0.0,
+                    altitude=0.0,
+                    speed=speed_long,
+                ),
+                RoutePoint(
+                    time=datetime(2025, 2, 1, tzinfo=timezone.utc) + timedelta(seconds=1250),
+                    latitude=0.0,
+                    longitude=0.045,
+                    altitude=0.0,
+                    speed=speed_long,
+                ),
+            ]
+        )
+        manager = WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Running"],
+                    "startDate": [
+                        pd.Timestamp("2025-01-01"),
+                        pd.Timestamp("2025-01-02"),
+                        pd.Timestamp("2025-02-01"),
+                    ],
+                    "distance": [800.0, 800.0, 5000.0],
+                    "route": [route_800_fast, route_800_slow, route_long],
+                }
+            )
+        )
+
+        result = manager.get_critical_velocity(topn=2, short_distance=800, long_distance=5000)
+
+        assert result is not None
+        assert result["count_short"] == 2
+        assert result["count_long"] == 1
+        assert result["avg_time_short_s"] == pytest.approx(170.0, rel=0.05)

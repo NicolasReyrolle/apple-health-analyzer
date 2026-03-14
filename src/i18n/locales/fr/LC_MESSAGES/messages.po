@@ -112,6 +112,21 @@ msgstr "Chargement des meilleurs segments..."
 msgid "Open this tab to load best segments."
 msgstr "Ouvrez cet onglet pour charger les meilleurs segments."
 
+msgid "Critical Velocity & W' estimate"
+msgstr "Estimation de la Vitesse Critique & W'"
+
+msgid "Avg. best {distance}"
+msgstr "Meilleur moy. {distance}"
+
+msgid "({count} segments)"
+msgstr "({count} segments)"
+
+msgid "Critical Velocity (CV)"
+msgstr "Vitesse Critique (VC)"
+
+msgid "W' distance"
+msgstr "Distance W'"
+
 msgid "Half-marathon"
 msgstr "Semi-marathon"
 

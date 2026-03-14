@@ -1,7 +1,7 @@
 """Best-segment mixin for WorkoutManager."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, TypedDict, Union
 
 import pandas as pd
 
@@ -9,6 +9,19 @@ from logic.workout_route import WorkoutRoute
 
 if TYPE_CHECKING:
     from pandas import Timestamp
+
+
+class CriticalVelocityResult(TypedDict):
+    """Result of a critical velocity calculation for two segment distances."""
+
+    short_distance: int
+    long_distance: int
+    avg_time_short_s: float
+    avg_time_long_s: float
+    critical_velocity_ms: float
+    w_prime_distance_m: float
+    count_short: int
+    count_long: int
 
 
 class WorkoutManagerSegmentsMixin:
@@ -209,3 +222,70 @@ class WorkoutManagerSegmentsMixin:
             return self._empty_best_segments_frame()
 
         return self._build_best_segments_frame(results, topn)
+
+    def get_critical_velocity(
+        self,
+        topn: int = 5,
+        short_distance: int = 800,
+        long_distance: int = 5000,
+        start_date: Optional[Union[datetime, pd.Timestamp]] = None,
+        end_date: Optional[Union[datetime, pd.Timestamp]] = None,
+    ) -> Optional["CriticalVelocityResult"]:
+        """Compute Critical Velocity (CV) and W' distance using the 2-parameter model.
+
+        The critical velocity model fits a linear relationship between distance and time:
+            d = CV * t + W'_d
+        where CV is the maximum sustainable velocity and W'_d is the anaerobic distance
+        reserve. Two distinct distances and their average best segment times are used.
+
+        Args:
+            topn: Number of best segments to average for each distance (default 5).
+            short_distance: Shorter target distance in metres (default 800).
+            long_distance: Longer target distance in metres (default 5000).
+            start_date: Optional start date filter applied to workouts.
+            end_date: Optional end date filter applied to workouts (inclusive).
+
+        Returns:
+            A :class:`CriticalVelocityResult` dict, or ``None`` when either distance
+            has no matching best-segment data or when the two distances are equal
+            (which would cause a division-by-zero).
+        """
+        if short_distance >= long_distance:
+            return None
+
+        segments = self.get_best_segments(
+            topn=topn,
+            distances=[short_distance, long_distance],
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        if segments.empty:
+            return None
+
+        short_rows = segments[segments["distance"] == short_distance]
+        long_rows = segments[segments["distance"] == long_distance]
+
+        if short_rows.empty or long_rows.empty:
+            return None
+
+        avg_time_short = float(short_rows["duration_s"].mean())
+        avg_time_long = float(long_rows["duration_s"].mean())
+
+        time_diff = avg_time_long - avg_time_short
+        if time_diff <= 0:
+            return None
+
+        critical_velocity_ms = (long_distance - short_distance) / time_diff
+        w_prime_distance_m = short_distance - critical_velocity_ms * avg_time_short
+
+        return CriticalVelocityResult(
+            short_distance=short_distance,
+            long_distance=long_distance,
+            avg_time_short_s=avg_time_short,
+            avg_time_long_s=avg_time_long,
+            critical_velocity_ms=critical_velocity_ms,
+            w_prime_distance_m=w_prime_distance_m,
+            count_short=len(short_rows),
+            count_long=len(long_rows),
+        )

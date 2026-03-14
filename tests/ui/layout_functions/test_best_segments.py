@@ -444,6 +444,7 @@ class TestBestSegmentsTabRendering:
         original_rows = state.best_segments_rows
         original_loading = state.best_segments_loading
         original_loaded = state.best_segments_loaded
+        original_cv = state.critical_velocity
 
         table_stub = DummyTable()
 
@@ -460,6 +461,7 @@ class TestBestSegmentsTabRendering:
             ]
             state.best_segments_loading = False
             state.best_segments_loaded = True
+            state.critical_velocity = None  # ensure CV card is not rendered
 
             with (
                 patch("ui.best_segments.ui.card", return_value=DummyContext()),
@@ -476,6 +478,79 @@ class TestBestSegmentsTabRendering:
             state.best_segments_rows = original_rows
             state.best_segments_loading = original_loading
             state.best_segments_loaded = original_loaded
+            state.critical_velocity = original_cv
+
+    def test_render_best_segments_tab_renders_cv_card_when_available(self) -> None:
+        """When critical_velocity is set, a second card with CV data should be rendered."""
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
+        original_cv = state.critical_velocity
+
+        table_stub = DummyTable()
+        cv_table_stub = DummyTable()
+        table_stubs = [table_stub, cv_table_stub]
+
+        try:
+            state.best_segments_rows = []
+            state.best_segments_loading = False
+            state.best_segments_loaded = True
+            state.critical_velocity = {
+                "short_distance": 800,
+                "long_distance": 5000,
+                "avg_time_short_s": 160.0,
+                "avg_time_long_s": 1250.0,
+                "critical_velocity_ms": 3.853,
+                "w_prime_distance_m": 184.0,
+                "count_short": 3,
+                "count_long": 2,
+            }
+
+            with (
+                patch("ui.best_segments.ui.card", return_value=DummyContext()),
+                patch("ui.best_segments.ui.label", return_value=DummyComponent()),
+                patch("ui.best_segments.ui.table", side_effect=table_stubs) as table_mock,
+                patch("ui.best_segments.get_language", return_value="en"),
+            ):
+                layout.render_best_segments_tab.func()
+
+            # Called twice: once for best segments table, once for CV table
+            assert table_mock.call_count == 2
+        finally:
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
+            state.critical_velocity = original_cv
+
+    def test_render_best_segments_tab_no_cv_card_when_cv_none(self) -> None:
+        """When critical_velocity is None, only the best-segments table is rendered."""
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
+        original_cv = state.critical_velocity
+
+        table_stub = DummyTable()
+
+        try:
+            state.best_segments_rows = []
+            state.best_segments_loading = False
+            state.best_segments_loaded = True
+            state.critical_velocity = None
+
+            with (
+                patch("ui.best_segments.ui.card", return_value=DummyContext()),
+                patch("ui.best_segments.ui.label", return_value=DummyComponent()),
+                patch("ui.best_segments.ui.table", return_value=table_stub) as table_mock,
+            ):
+                layout.render_best_segments_tab.func()
+
+            # Only the best-segments table; no CV card table
+            table_mock.assert_called_once()
+        finally:
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
+            state.critical_velocity = original_cv
 
 
 def test_render_body_tab_change_to_best_segments_schedules_async_load() -> None:

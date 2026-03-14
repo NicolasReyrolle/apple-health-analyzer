@@ -2,12 +2,12 @@
 
 import asyncio
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from nicegui import ui
 
 from logic.records_by_type import RecordsByType
-from logic.workout_manager import WorkoutManager
+from logic.workout_manager import CriticalVelocityResult, WorkoutManager
 
 
 class AppState:
@@ -55,6 +55,7 @@ class AppState:
         self.best_segments_loading: bool = False
         self.best_segments_loaded: bool = False
         self.best_segments_task: asyncio.Task[None] | None = None
+        self.critical_velocity: Optional[CriticalVelocityResult] = None
         self.selected_main_tab: str = "summary"
 
         self.selected_activity_type: str = "All"
