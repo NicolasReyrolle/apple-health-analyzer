@@ -247,7 +247,9 @@ def render_best_segments_tab() -> None:
                                         :name="child.avg_power_confidence_icon"
                                         size="12px"
                                     >
-                                        <q-tooltip>{{ child.avg_power_confidence_tooltip }}</q-tooltip>
+                                            <q-tooltip>
+                                                {{ child.avg_power_confidence_tooltip }}
+                                            </q-tooltip>
                                     </q-icon>
                                     &nbsp;&nbsp;
                                     {{ child.start_date }}

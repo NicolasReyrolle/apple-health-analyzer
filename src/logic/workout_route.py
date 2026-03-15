@@ -246,10 +246,7 @@ class WorkoutRoute:
                 break
 
             duration_s = (self.points[end_idx].time - self.points[start_idx].time).total_seconds()
-            if duration_s > 0:
-                if best is None:
-                    best = (duration_s, self.points[start_idx].time, self.points[end_idx].time)
-                elif duration_s < best[0]:
-                    best = (duration_s, self.points[start_idx].time, self.points[end_idx].time)
+            if duration_s > 0 and (best is None or duration_s < best[0]):
+                best = (duration_s, self.points[start_idx].time, self.points[end_idx].time)
 
         return best

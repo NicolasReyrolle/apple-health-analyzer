@@ -650,13 +650,16 @@ class WorkoutManagerSegmentsMixin:
 
         # Keep interior None periods as chart gaps, but drop leading/trailing ones.
         # Also fill months with zero workouts that fall between the first and last valid month.
-        valid_results = {r["period"]: r for r in results if r["critical_power_w"] is not None}
-        if not valid_results:
+        valid_periods = sorted(
+            str(result["period"]) for result in results if result["critical_power_w"] is not None
+        )
+        if not valid_periods:
             return _empty
 
-        results_by_period = {r["period"]: r for r in results}
-        sorted_valid = sorted(valid_results)
-        full_range = pd.period_range(sorted_valid[0], sorted_valid[-1], freq=period)
+        results_by_period: dict[str, dict[str, object]] = {
+            str(result["period"]): result for result in results
+        }
+        full_range = pd.period_range(valid_periods[0], valid_periods[-1], freq=period)
         filled: list[dict[str, object]] = [
             results_by_period.get(
                 str(pk),

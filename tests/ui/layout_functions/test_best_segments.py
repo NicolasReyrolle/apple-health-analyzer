@@ -16,6 +16,21 @@ from ui import layout
 from ._helpers import DummyComponent, DummyContext, DummyTab, DummyTable, DummyTabs
 
 
+def _annotate_with_missing_power(df: pd.DataFrame, _running_power_df: object) -> pd.DataFrame:
+    """Return a copy with missing segment power values."""
+    return df.assign(segment_avg_power=None)
+
+
+def _annotate_with_nan_power(df: pd.DataFrame, _running_power_df: object) -> pd.DataFrame:
+    """Return a copy with NaN segment power values."""
+    return df.assign(segment_avg_power=float("nan"))
+
+
+def _annotate_passthrough(df: pd.DataFrame, _running_power_df: object) -> pd.DataFrame:
+    """Return the unmodified DataFrame."""
+    return df
+
+
 class TestBestSegmentsTabData:
     """Tests for best-segments computation and async loading."""
 
@@ -37,9 +52,7 @@ class TestBestSegmentsTabData:
                 }
             ]
         )
-        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
-            segment_avg_power=None
-        )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_missing_power
 
         try:
             state.workouts = workouts_mock
@@ -104,9 +117,7 @@ class TestBestSegmentsTabData:
                 },
             ]
         )
-        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
-            segment_avg_power=None
-        )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_missing_power
 
         try:
             state.workouts = workouts_mock
@@ -153,9 +164,7 @@ class TestBestSegmentsTabData:
                 }
             ]
         )
-        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
-            segment_avg_power=float("nan")
-        )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_nan_power
 
         try:
             state.workouts = workouts_mock
@@ -193,9 +202,7 @@ class TestBestSegmentsTabData:
                 }
             ]
         )
-        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
-            segment_avg_power=None
-        )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_missing_power
 
         try:
             state.workouts = workouts_mock
@@ -369,7 +376,7 @@ class TestBestSegmentsTabData:
         workouts_mock.get_best_segments.return_value = _BestSegmentsFrame(
             [("1000", empty_group), ("5000", valid_group)]
         )
-        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_passthrough
 
         try:
             state.workouts = workouts_mock
@@ -439,9 +446,7 @@ class TestBestSegmentsTabData:
                 }
             ]
         )
-        workouts_mock.annotate_segments_with_power.side_effect = lambda df, _: df.assign(
-            segment_avg_power=None
-        )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_missing_power
 
         try:
             state.workouts = workouts_mock
