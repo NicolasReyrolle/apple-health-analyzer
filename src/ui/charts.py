@@ -118,7 +118,33 @@ def render_generic_graph(
     categories = [d["name"] for d in chart_data]
     data_points = list(values.values())
 
-    series: list[dict[str, object]] = [{"data": data_points, "type": graph_type}]
+    if graph_type == "line":
+        # Two-layer approach: a muted "bridge" series beneath (connectNulls=True) makes the
+        # interpolated gap segments visible in a distinct colour, while the main series on
+        # top (connectNulls=False) draws actual data in the normal colour and covers the
+        # bridge wherever real values exist.
+        series: list[dict[str, object]] = [
+            {
+                "data": data_points,
+                "type": "line",
+                "connectNulls": True,
+                "symbol": "none",
+                "lineStyle": {"type": "dashed", "width": 1},
+                "itemStyle": {"color": "#aaaaaa"},  # Muted grey for interpolated gaps
+                "tooltip": {"show": False},
+                "z": 1,
+            },
+            {
+                "data": data_points,
+                "type": "line",
+                "connectNulls": False,
+                "symbol": "circle",
+                "symbolSize": 4,
+                "z": 2,
+            },
+        ]
+    else:
+        series = [{"data": data_points, "type": graph_type}]
     if show_trend:
         series.append(
             {
