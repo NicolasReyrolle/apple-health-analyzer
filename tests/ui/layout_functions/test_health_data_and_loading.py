@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -9,6 +10,7 @@ from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
 
 import pandas as pd
+import pytest
 
 from app_state import state
 from ui import layout
@@ -247,3 +249,61 @@ class TestLoadWorkoutsFromFile:
                         )
 
         assert any(msg == "tr:Processed 3 workouts..." for _progress, msg in events)
+
+
+class TestToJsonSafe:
+    """Tests for the _to_json_safe helper (Period-key normalisation and value coercion)."""
+
+    def test_string_keys_are_preserved(self) -> None:
+        """String keys should pass through unchanged."""
+        result = layout._to_json_safe({"2025-01": 60.0, "2025-02": 70})
+        assert list(result.keys()) == ["2025-01", "2025-02"]
+
+    def test_period_keys_are_converted_to_str(self) -> None:
+        """pandas Period keys must be converted to strings so output is JSON-safe."""
+        period_key = pd.Period("2025-01", freq="M")
+        result = layout._to_json_safe({period_key: 55.0})
+        assert "2025-01" in result
+        json.dumps(result)  # must not raise
+
+    def test_none_values_are_preserved(self) -> None:
+        """None values must remain None (chart gap markers)."""
+        result = layout._to_json_safe({"2025-01": None})
+        assert result["2025-01"] is None
+
+    def test_float_nan_is_coerced_to_none(self) -> None:
+        """float NaN must be replaced with None for JSON safety."""
+        result = layout._to_json_safe({"2025-01": float("nan")})
+        assert result["2025-01"] is None
+        json.dumps(result)  # must not raise
+
+    def test_pandas_na_is_coerced_to_none(self) -> None:
+        """pd.NA must be replaced with None (isinstance check uses pd.isna)."""
+        result = layout._to_json_safe({"2025-01": pd.NA})
+        assert result["2025-01"] is None
+        json.dumps(result)  # must not raise
+
+    def test_non_numeric_string_value_is_coerced_to_none(self) -> None:
+        """Non-numeric, non-None values must be coerced to None."""
+        result = layout._to_json_safe({"2025-01": "unexpected"})
+        assert result["2025-01"] is None
+
+    def test_valid_numeric_values_are_retained(self) -> None:
+        """int and float values must be retained as-is."""
+        result = layout._to_json_safe({"a": 42, "b": 3.14})
+        assert result["a"] == 42
+        assert result["b"] == pytest.approx(3.14)
+        json.dumps(result)  # must not raise
+
+    def test_output_is_always_json_serialisable(self) -> None:
+        """Mixed input with Period keys, NaN, None, valid numbers must be JSON-safe."""
+        p1 = pd.Period("2025-Q1", freq="Q")
+        p2 = pd.Period("2025-Q2", freq="Q")
+        mixed: dict[Any, Any] = {p1: 300.0, p2: float("nan"), "2025-Q3": None, "2025-Q4": 250}
+        result = layout._to_json_safe(mixed)
+        serialised = json.dumps(result)
+        parsed = json.loads(serialised)
+        assert parsed[str(p1)] == pytest.approx(300.0)
+        assert parsed[str(p2)] is None
+        assert parsed["2025-Q3"] is None
+        assert parsed["2025-Q4"] == 250
