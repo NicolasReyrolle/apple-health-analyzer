@@ -72,7 +72,7 @@ def schedule_health_data_load(force: bool = False) -> None:
         if state.health_data_task is task:
             state.health_data_task = None
 
-    task: Any = asyncio.create_task(load_health_data_data(force=force))
+    task: Any = asyncio.create_task(load_health_data(force=force))
     state.health_data_task = task if hasattr(task, "add_done_callback") else None
     if state.health_data_task is not None:
         state.health_data_task.add_done_callback(_clear_completed_task)
@@ -146,7 +146,7 @@ def _build_health_data_graphs() -> dict[str, dict[str, float | int | None]]:
     }
 
 
-async def load_health_data_data(force: bool = False) -> None:
+async def load_health_data(force: bool = False) -> None:
     """Load health data asynchronously for the tab, with concurrency guard."""
     if state.health_data_loading:
         return

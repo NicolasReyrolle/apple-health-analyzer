@@ -567,7 +567,11 @@ class WorkoutManagerSegmentsMixin:
 
         For each period (e.g. month), the top-N best segments for both distances
         that fall within that period are averaged to derive one (CP, W') data point.
-        Periods with insufficient segment data for either distance are omitted.
+        Periods with insufficient segment data for either distance are retained in
+        the result with ``NaN``/``None`` metric values to create gaps in charts.
+        Periods between the first and last period with any valid data are also
+        included (and will have ``NaN``/``None`` values if they lack sufficient
+        segment data).
 
         Args:
             running_power_df: DataFrame of individual ``HKQuantityTypeIdentifierRunningPower``
@@ -584,7 +588,9 @@ class WorkoutManagerSegmentsMixin:
 
         Returns:
             DataFrame with columns ``period`` (str), ``critical_power_w`` (float),
-            ``w_prime_kj`` (float).  Empty if insufficient data.
+            ``w_prime_kj`` (float).  Periods without sufficient data will still be
+            present but have ``NaN``/``None`` for these metrics. Empty if there is
+            no data in any period.
         """
         _empty = pd.DataFrame(columns=["period", "critical_power_w", "w_prime_kj"])
 

@@ -40,7 +40,8 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
     _logger.debug("Best segments data:\n%s", best_segments)
 
     # Annotate with per-segment average power from individual RunningPower records,
-    # falling back to workout-level statistics only when the workout ≈ the segment.
+    # falling back to workout-level statistics when segment power cannot be derived
+    # from those records.
     running_power_df = state.records_by_type.get("RunningPower")
     annotated = state.workouts.annotate_segments_with_power(best_segments, running_power_df)
 
