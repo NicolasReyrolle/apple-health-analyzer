@@ -8,6 +8,7 @@ from .manager import (
     STANDARD_SEGMENT_DISTANCES,
     WorkoutManager as _WorkoutManager,
 )
+from .segments import CriticalPowerResult
 
 
 class WorkoutManager(_WorkoutManager):
@@ -31,5 +32,6 @@ __all__ = [
     "STANDARD_SEGMENT_DISTANCES",
     "HALF_MARATHON_DISTANCE_M",
     "MARATHON_DISTANCE_M",
+    "CriticalPowerResult",
     "datetime",
 ]

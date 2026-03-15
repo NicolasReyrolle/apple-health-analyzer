@@ -107,6 +107,48 @@ msgstr ""
 msgid "Open this tab to load best segments."
 msgstr ""
 
+msgid "Loading health data..."
+msgstr ""
+
+msgid "Open this tab to load health data."
+msgstr ""
+
+msgid "Critical Power & W' estimate"
+msgstr ""
+
+msgid "Avg. best {distance}"
+msgstr ""
+
+msgid "({count} segments)"
+msgstr ""
+
+msgid "Critical Power (CP)"
+msgstr ""
+
+msgid "W'"
+msgstr ""
+
+msgid "Avg Power"
+msgstr ""
+
+msgid "Measured from segment samples"
+msgstr ""
+
+msgid "Estimated from overlapping power intervals"
+msgstr ""
+
+msgid "Using workout average power fallback"
+msgstr ""
+
+msgid "No matching power data"
+msgstr ""
+
+msgid "Critical Power (CP) over time"
+msgstr ""
+
+msgid "W' over time"
+msgstr ""
+
 msgid "Half-marathon"
 msgstr ""
 

@@ -161,7 +161,7 @@ def test_render_trends_tab_radio_bound_to_state() -> None:
 
 
 def test_render_trends_tab_radio_calls_refresh_on_change() -> None:
-    """Test that render_trends_tab radio button triggers graphs refresh on change."""
+    """Test that the radio on_change callback triggers render_trends_graphs.refresh."""
 
     radio_instances: list[_DummyRadio] = []
 
@@ -175,12 +175,19 @@ def test_render_trends_tab_radio_calls_refresh_on_change() -> None:
         with patch("ui.layout.ui.label"):
             with patch("ui.layout.ui.radio", side_effect=_radio_factory) as radio_mock:
                 with patch("ui.layout.render_trends_graphs") as render_graphs_mock:
-                    layout.render_trends_tab()
+                    with patch("ui.layout.render_health_data_tab"):
+                        with patch("ui.layout._reset_health_data_state"):
+                            with patch("ui.layout.schedule_health_data_load"):
+                                layout.render_trends_tab()
 
-    # Verify on_change callback is set to render_trends_graphs.refresh
-    assert radio_mock.call_count == 1
-    radio_instance = radio_instances[0]
-    assert radio_instance.on_change == render_graphs_mock.refresh
+                                assert radio_mock.call_count == 1
+                                radio_instance = radio_instances[0]
+                                assert radio_instance.on_change is not None
+
+                                # Invoke inside patch scope so mocks are still active
+                                radio_instance.on_change()
+
+    render_graphs_mock.refresh.assert_called_once()
 
 
 def test_change_language_reloads_ui_without_triggering_file_load() -> None:

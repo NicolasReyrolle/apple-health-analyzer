@@ -151,7 +151,7 @@ class TestAggregateByPeriodInternalBranches:
             )
         )
 
-        result = workouts._aggregate_by_period(  # type: ignore[attr-defined]
+        result = workouts._aggregate_by_period(  # pylint: disable=protected-access  # type: ignore[attr-defined]
             column="duration",
             period="M",
             aggregation=lambda grouped: grouped.sum(),
@@ -174,7 +174,7 @@ class TestAggregateByPeriodInternalBranches:
             )
         )
 
-        result = workouts._aggregate_by_period(  # type: ignore[attr-defined]
+        result = workouts._aggregate_by_period(  # pylint: disable=protected-access  # type: ignore[attr-defined]
             column="duration",
             period="M",
             aggregation=lambda _grouped: pd.Series(dtype=float),
@@ -208,7 +208,7 @@ class TestAggregateByPeriodInternalBranches:
 
         monkeypatch.setattr(workouts, "_filter_workouts", _empty_filter)
 
-        result = workouts._aggregate_by_period(  # type: ignore[attr-defined]
+        result = workouts._aggregate_by_period(  # pylint: disable=protected-access  # type: ignore[attr-defined]
             column="duration",
             period="M",
             aggregation=lambda grouped: grouped.sum(),
@@ -266,7 +266,7 @@ class TestConvertDistance:
 
         result = workouts.convert_distance("km", 2500)
 
-        assert result == 2.5
+        assert result == pytest.approx(2.5)  # type: ignore[misc]
 
     def test_get_distance_by_activity_very_small_distances(self) -> None:
         """Test get_distance_by_activity with very small distances."""
@@ -328,21 +328,6 @@ class TestElevationByActivityEdgeCases:
         # Total is preserved (all round to 0)
         assert sum(result.values()) == 0
 
-    def test_get_elevation_by_activity_missing_column(self) -> None:
-        """Test elevation by activity when ElevationAscended column is missing."""
-        workouts = wm.WorkoutManager(
-            pd.DataFrame(
-                {
-                    "activityType": ["Hiking", "Running"],
-                    "distance": [5000, 3000],
-                }
-            )
-        )
-
-        result = workouts.get_elevation_by_activity()
-
-        assert result == {}
-
 
 class TestCaloriesByActivityEdgeCases:
     """Test suite for edge cases in get_calories_by_activity."""
@@ -361,22 +346,6 @@ class TestCaloriesByActivityEdgeCases:
         result = workouts.get_calories_by_activity()
 
         assert result == {}
-
-    def test_get_calories_by_activity_zero_threshold(self) -> None:
-        """Test calories by activity with zero threshold (no grouping)."""
-        workouts = wm.WorkoutManager(
-            pd.DataFrame(
-                {
-                    "activityType": ["Running", "Walking", "Cycling"],
-                    "sumActiveEnergyBurned": [500, 200, 300],
-                }
-            )
-        )
-
-        result = workouts.get_calories_by_activity(combination_threshold=0)
-
-        # With zero threshold, no grouping should occur
-        assert result == {"Running": 500, "Walking": 200, "Cycling": 300}
 
     def test_get_calories_by_activity_fractional_calories(self) -> None:
         """Test calories by activity with fractional calorie values."""

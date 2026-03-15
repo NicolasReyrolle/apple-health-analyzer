@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -9,6 +10,7 @@ from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
 
 import pandas as pd
+import pytest
 
 from app_state import state
 from ui import layout
@@ -19,25 +21,75 @@ from ._helpers import DummyRow, translated_message
 class TestRenderHealthDataTab:
     """Tests for render_health_data_tab behavior."""
 
-    def test_render_health_data_tab_converts_period_keys_to_strings(self) -> None:
-        """Convert pandas Period keys to strings for JSON-safe chart options."""
-        original_records_by_type: Any = state.records_by_type
-        original_period = state.trends_period
-
-        records_by_type_mock = MagicMock()
-        records_by_type_mock.heart_rate_stats.return_value = pd.DataFrame(
-            {
-                "period": [pd.Period("2025-01", freq="M")],
-                "avg": [67.0],
-                "min": [67.0],
-                "max": [67.0],
-                "count": [1],
-            }
-        )
+    def test_render_health_data_tab_shows_placeholder_when_not_loaded(self) -> None:
+        """Tab should show a lightweight placeholder before lazy loading runs."""
+        original_loading = state.health_data_loading
+        original_loaded = state.health_data_loaded
 
         try:
-            state.records_by_type = records_by_type_mock
-            state.trends_period = "M"
+            state.health_data_loading = False
+            state.health_data_loaded = False
+
+            with (
+                patch("ui.layout.ui.label") as label_mock,
+                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
+            ):
+                layout.render_health_data_tab.func()
+
+            render_generic_graph_mock.assert_not_called()
+            assert any(
+                "Open this tab to load health data" in str(call.args[0])
+                for call in label_mock.call_args_list
+                if call.args
+            )
+        finally:
+            state.health_data_loading = original_loading
+            state.health_data_loaded = original_loaded
+
+    def test_render_health_data_tab_shows_loading_state(self) -> None:
+        """Tab should render spinner while lazy loading is in progress."""
+        original_loading = state.health_data_loading
+        original_loaded = state.health_data_loaded
+
+        try:
+            state.health_data_loading = True
+            state.health_data_loaded = False
+
+            with (
+                patch("ui.layout.ui.row", return_value=DummyRow()),
+                patch("ui.layout.ui.spinner") as spinner_mock,
+                patch("ui.layout.ui.label") as label_mock,
+                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
+            ):
+                layout.render_health_data_tab.func()
+
+            spinner_mock.assert_called_once()
+            render_generic_graph_mock.assert_not_called()
+            assert any(
+                "Loading health data" in str(call.args[0])
+                for call in label_mock.call_args_list
+                if call.args
+            )
+        finally:
+            state.health_data_loading = original_loading
+            state.health_data_loaded = original_loaded
+
+    def test_render_health_data_tab_uses_cached_graphs(self) -> None:
+        """Loaded tab should render graphs from cached series without recomputation."""
+        original_loading = state.health_data_loading
+        original_loaded = state.health_data_loaded
+        original_graphs = state.health_data_graphs
+
+        try:
+            state.health_data_loading = False
+            state.health_data_loaded = True
+            state.health_data_graphs = {
+                "heart_rate": {"2025-01": 67.0},
+                "body_mass": {"2025-01": 70.5},
+                "vo2_max": {"2025-01": 51.2},
+                "critical_power": {"2025-01": None},
+                "w_prime": {"2025-01": None},
+            }
 
             with (
                 patch("ui.layout.ui.row", return_value=DummyRow()),
@@ -45,84 +97,16 @@ class TestRenderHealthDataTab:
             ):
                 layout.render_health_data_tab.func()
 
-            heart_rate_call = next(
+            cp_call = next(
                 call
                 for call in render_generic_graph_mock.call_args_list
-                if call.args and call.args[0] == "Resting HR frequency over time"
+                if call.args and call.args[0] == "Critical Power (CP) over time"
             )
-            chart_data = heart_rate_call.args[1]
-            assert isinstance(chart_data, dict)
-            assert list(chart_data.keys()) == ["2025-01"]  # type: ignore[arg-type]
+            assert cp_call.args[1] == {"2025-01": None}
         finally:
-            state.records_by_type = original_records_by_type
-            state.trends_period = original_period
-
-    def test_render_health_data_tab_serializes_missing_and_invalid_values(self) -> None:
-        """Serialize None/NaN/non-numeric avg values to explicit None for chart data."""
-        original_records_by_type: Any = state.records_by_type
-        original_period = state.trends_period
-
-        records_by_type_mock = MagicMock()
-        records_by_type_mock.heart_rate_stats.return_value = pd.DataFrame(
-            {
-                "period": [pd.Period("2025-01", freq="M")],
-                "avg": [None],
-                "min": [0.0],
-                "max": [0.0],
-                "count": [0],
-            }
-        )
-        records_by_type_mock.weight_stats.return_value = pd.DataFrame(
-            {
-                "period": [pd.Period("2025-01", freq="M")],
-                "avg": [float("nan")],
-                "min": [0.0],
-                "max": [0.0],
-                "count": [0],
-            }
-        )
-        records_by_type_mock.vo2_max_stats.return_value = pd.DataFrame(
-            {
-                "period": [pd.Period("2025-01", freq="M")],
-                "avg": ["invalid"],
-                "min": [0.0],
-                "max": [0.0],
-                "count": [0],
-            }
-        )
-
-        try:
-            state.records_by_type = records_by_type_mock
-            state.trends_period = "M"
-
-            with (
-                patch("ui.layout.ui.row", return_value=DummyRow()),
-                patch("ui.layout.render_generic_graph") as render_generic_graph_mock,
-            ):
-                layout.render_health_data_tab.func()
-
-            heart_rate_call = next(
-                call
-                for call in render_generic_graph_mock.call_args_list
-                if call.args and call.args[0] == "Resting HR frequency over time"
-            )
-            body_mass_call = next(
-                call
-                for call in render_generic_graph_mock.call_args_list
-                if call.args and call.args[0] == "Body Mass over time"
-            )
-            vo2_max_call = next(
-                call
-                for call in render_generic_graph_mock.call_args_list
-                if call.args and call.args[0] == "VO2 Max over time"
-            )
-
-            assert heart_rate_call.args[1]["2025-01"] is None
-            assert body_mass_call.args[1]["2025-01"] is None
-            assert vo2_max_call.args[1]["2025-01"] is None
-        finally:
-            state.records_by_type = original_records_by_type
-            state.trends_period = original_period
+            state.health_data_loading = original_loading
+            state.health_data_loaded = original_loaded
+            state.health_data_graphs = original_graphs
 
 
 class TestLoadWorkoutsFromFile:
@@ -265,3 +249,61 @@ class TestLoadWorkoutsFromFile:
                         )
 
         assert any(msg == "tr:Processed 3 workouts..." for _progress, msg in events)
+
+
+class TestToJsonSafe:
+    """Tests for the _to_json_safe helper (Period-key normalisation and value coercion)."""
+
+    def test_string_keys_are_preserved(self) -> None:
+        """String keys should pass through unchanged."""
+        result = layout._to_json_safe({"2025-01": 60.0, "2025-02": 70})
+        assert list(result.keys()) == ["2025-01", "2025-02"]
+
+    def test_period_keys_are_converted_to_str(self) -> None:
+        """pandas Period keys must be converted to strings so output is JSON-safe."""
+        period_key = pd.Period("2025-01", freq="M")
+        result = layout._to_json_safe({period_key: 55.0})
+        assert "2025-01" in result
+        json.dumps(result)  # must not raise
+
+    def test_none_values_are_preserved(self) -> None:
+        """None values must remain None (chart gap markers)."""
+        result = layout._to_json_safe({"2025-01": None})
+        assert result["2025-01"] is None
+
+    def test_float_nan_is_coerced_to_none(self) -> None:
+        """float NaN must be replaced with None for JSON safety."""
+        result = layout._to_json_safe({"2025-01": float("nan")})
+        assert result["2025-01"] is None
+        json.dumps(result)  # must not raise
+
+    def test_pandas_na_is_coerced_to_none(self) -> None:
+        """pd.NA must be replaced with None (isinstance check uses pd.isna)."""
+        result = layout._to_json_safe({"2025-01": pd.NA})
+        assert result["2025-01"] is None
+        json.dumps(result)  # must not raise
+
+    def test_non_numeric_string_value_is_coerced_to_none(self) -> None:
+        """Non-numeric, non-None values must be coerced to None."""
+        result = layout._to_json_safe({"2025-01": "unexpected"})
+        assert result["2025-01"] is None
+
+    def test_valid_numeric_values_are_retained(self) -> None:
+        """int and float values must be retained as-is."""
+        result = layout._to_json_safe({"a": 42, "b": 3.14})
+        assert result["a"] == 42
+        assert result["b"] == pytest.approx(3.14)
+        json.dumps(result)  # must not raise
+
+    def test_output_is_always_json_serialisable(self) -> None:
+        """Mixed input with Period keys, NaN, None, valid numbers must be JSON-safe."""
+        p1 = pd.Period("2025-Q1", freq="Q")
+        p2 = pd.Period("2025-Q2", freq="Q")
+        mixed: dict[Any, Any] = {p1: 300.0, p2: float("nan"), "2025-Q3": None, "2025-Q4": 250}
+        result = layout._to_json_safe(mixed)
+        serialised = json.dumps(result)
+        parsed = json.loads(serialised)
+        assert parsed[str(p1)] == pytest.approx(300.0)
+        assert parsed[str(p2)] is None
+        assert parsed["2025-Q3"] is None
+        assert parsed["2025-Q4"] == 250

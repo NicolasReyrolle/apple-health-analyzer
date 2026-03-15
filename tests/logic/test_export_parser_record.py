@@ -79,7 +79,7 @@ class TestComplexRealWorldRecords:
         assert len(health_data) == 14
 
         sample_record = health_data.iloc[0]
-        assert sample_record["value"] == 67
+        assert sample_record["value"] == pytest.approx(67, abs=1e-9)  # type: ignore[arg-type]
         assert sample_record["startDate"] == "2022-01-17 16:34:57 +0100"
         assert sample_record["HeartRateMotionContext"] == 1
 
@@ -117,7 +117,28 @@ class TestComplexRealWorldRecords:
 
         assert len(stats) == 1
         assert stats.iloc[0]["count"] == 2
-        assert stats.iloc[0]["avg"] == 68.5
+        assert stats.iloc[0]["avg"] == pytest.approx(68.5, abs=1e-9)  # type: ignore[arg-type]
+
+    def test_parse_running_power_records(self, create_health_zip: Callable[..., str]) -> None:
+        """RunningPower records should be parsed into records_by_type."""
+        xml_content = build_health_export_xml([load_export_fragment("record_running_power.xml")])
+        zip_path = create_health_zip(xml_content=xml_content)
+
+        parser = ExportParser()
+        with parser:
+            result = parser.parse(str(zip_path))
+
+        assert "RunningPower" in result.records_by_type
+        rp_df = result.records_by_type["RunningPower"]
+        assert isinstance(rp_df, pd.DataFrame)
+        assert len(rp_df) > 0
+        assert "startDate" in rp_df.columns
+        assert "endDate" in rp_df.columns
+        assert "value" in rp_df.columns
+        assert rp_df["endDate"].notna().all()
+        # Values should be numeric for at least some rows.
+        values = pd.to_numeric(rp_df["value"], errors="coerce").dropna().tolist()
+        assert len(values) > 0
 
 
 class TestToNumber:
@@ -134,7 +155,7 @@ class TestToNumber:
 
     def test_to_number_with_float_string(self) -> None:
         """Test that float string returns float."""
-        assert ExportParser.to_number("3.14") == 3.14
+        assert ExportParser.to_number("3.14") == pytest.approx(3.14)  # type: ignore[arg-type]
         assert isinstance(ExportParser.to_number("3.14"), float)
 
     def test_to_number_with_float_that_is_integer(self) -> None:
@@ -149,7 +170,7 @@ class TestToNumber:
 
     def test_to_number_with_negative_float(self) -> None:
         """Test that negative float string returns float."""
-        assert ExportParser.to_number("-2.5") == -2.5
+        assert ExportParser.to_number("-2.5") == pytest.approx(-2.5)  # type: ignore[arg-type]
         assert isinstance(ExportParser.to_number("-2.5"), float)
 
     def test_to_number_with_zero(self) -> None:
@@ -159,7 +180,7 @@ class TestToNumber:
 
     def test_to_number_with_zero_float(self) -> None:
         """Test that '0.0' returns int 0."""
-        assert ExportParser.to_number("0.0") == 0
+        assert ExportParser.to_number("0.0") == pytest.approx(0, abs=1e-9)  # type: ignore[arg-type]
         assert isinstance(ExportParser.to_number("0.0"), int)
 
     def test_to_number_with_scientific_notation(self) -> None:
@@ -180,7 +201,7 @@ class TestToNumber:
     def test_to_number_with_leading_trailing_whitespace(self) -> None:
         """Test that numeric string with whitespace is parsed correctly."""
         assert ExportParser.to_number("  42  ") == 42
-        assert ExportParser.to_number("  3.14  ") == 3.14
+        assert ExportParser.to_number("  3.14  ") == pytest.approx(3.14)  # type: ignore[arg-type]
 
     def test_to_number_with_very_large_number(self) -> None:
         """Test that very large numbers are handled correctly."""
@@ -191,7 +212,7 @@ class TestToNumber:
     def test_to_number_with_very_small_float(self) -> None:
         """Test that very small floats are handled correctly."""
         result = ExportParser.to_number("0.0000001")
-        assert result == 0.0000001
+        assert result == pytest.approx(0.0000001, abs=1e-9)  # type: ignore[arg-type]
         assert isinstance(result, float)
 
 
@@ -210,7 +231,7 @@ class TestParseMetadataValue:  # pylint: disable=too-few-public-methods
         """Parse a numeric metadata value that includes a unit."""
         value, unit = ExportParser.parse_metadata_value("100 m")
 
-        assert value == 100.0
+        assert value == pytest.approx(100.0, abs=1e-9)  # type: ignore[arg-type]
         assert isinstance(value, float)
         assert unit == "m"
 
@@ -233,7 +254,7 @@ class TestParseMetadataValue:  # pylint: disable=too-few-public-methods
         """Handle multiple spaces between number and unit correctly."""
         value, unit = ExportParser.parse_metadata_value("100  m")
 
-        assert value == 100.0
+        assert value == pytest.approx(100.0, abs=1e-9)  # type: ignore[arg-type]
         assert isinstance(value, float)
         assert unit == "m"
 
@@ -344,5 +365,5 @@ class TestExportParserInternalBranches:
 
         heart_rate_df = result.records_by_type["HeartRate"]
         sample = heart_rate_df.iloc[0]
-        assert sample["CustomKey"] == 100.0
+        assert sample["CustomKey"] == pytest.approx(100.0, abs=1e-9)  # type: ignore[arg-type]
         assert sample["CustomKeyUnit"] == "m"

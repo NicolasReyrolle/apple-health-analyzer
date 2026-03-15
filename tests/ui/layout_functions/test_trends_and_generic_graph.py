@@ -6,9 +6,10 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from app_state import state
+from ui import charts
 from ui import layout
 
-from ._helpers import DummyRow
+from ._helpers import DummyComponent, DummyRow
 
 
 class TestRenderTrendsGraphs:
@@ -198,3 +199,74 @@ class TestRenderGenericGraph:
         series = chart_options["series"]
         assert len(series) == 1
         assert series[0]["type"] == "bar"
+
+    def test_render_generic_graph_line_type_marks_gap_bridges(self) -> None:
+        """Line graphs should include a bridge layer with connectNulls for inferred segments."""
+        values = {"2024-01": 10, "2024-02": None, "2024-03": 20}
+
+        with (
+            patch("ui.layout.ui.card", return_value=DummyRow()),
+            patch("ui.layout.ui.label"),
+            patch("ui.layout.ui.echart") as echart_mock,
+        ):
+            layout.render_generic_graph(
+                "Distance by month",
+                values,
+                "km",
+                graph_type="line",
+                show_trend=False,
+            )
+
+        chart_options = echart_mock.call_args.args[0]
+        series = chart_options["series"]
+        assert len(series) == 2
+        assert series[0]["type"] == "line"
+        assert series[0]["connectNulls"] is True
+        assert series[1]["type"] == "line"
+        assert series[1]["connectNulls"] is False
+
+
+class TestChartsModuleComponents:
+    """Tests for chart helpers implemented in ui.charts."""
+
+    def test_stat_card_binds_tooltip_when_configured(self) -> None:
+        """stat_card should create and bind tooltip when tooltip refs are provided."""
+        tooltip_component = DummyComponent()
+
+        with (
+            patch("ui.charts.ui.card", return_value=DummyRow()),
+            patch("ui.charts.ui.row", return_value=DummyRow()),
+            patch("ui.charts.ui.label", return_value=DummyComponent()),
+            patch("ui.charts.ui.tooltip", return_value=tooltip_component) as tooltip_mock,
+        ):
+            charts.stat_card(
+                "Distance",
+                value_ref={"distance": "10.0"},
+                key="distance",
+                unit="km",
+                tooltip_ref={"distance_tip": "10.0 km"},
+                tooltip_key="distance_tip",
+            )
+
+        tooltip_mock.assert_called_once()
+
+    def test_render_pie_rose_graph_builds_pie_series(self) -> None:
+        """render_pie_rose_graph should emit a pie series with roseType and chart data."""
+        values = {"Running": 3, "Cycling": 1}
+
+        with (
+            patch("ui.charts.ui.card", return_value=DummyRow()),
+            patch("ui.charts.ui.label"),
+            patch("ui.charts.ui.echart") as echart_mock,
+        ):
+            charts.render_pie_rose_graph("Activities", values)
+
+        chart_options = echart_mock.call_args.args[0]
+        series = chart_options["series"]
+        assert len(series) == 1
+        assert series[0]["type"] == "pie"
+        assert series[0]["roseType"] == "rose"
+        assert series[0]["data"] == [
+            {"value": 3, "name": "Running"},
+            {"value": 1, "name": "Cycling"},
+        ]

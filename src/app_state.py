@@ -55,6 +55,16 @@ class AppState:
         self.best_segments_loading: bool = False
         self.best_segments_loaded: bool = False
         self.best_segments_task: asyncio.Task[None] | None = None
+        self.health_data_graphs: dict[str, dict[str, float | int | None]] = {
+            "heart_rate": {},
+            "body_mass": {},
+            "vo2_max": {},
+            "critical_power": {},
+            "w_prime": {},
+        }
+        self.health_data_loading: bool = False
+        self.health_data_loaded: bool = False
+        self.health_data_task: asyncio.Task[None] | None = None
         self.selected_main_tab: str = "summary"
 
         self.selected_activity_type: str = "All"

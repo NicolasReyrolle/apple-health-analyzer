@@ -8,12 +8,27 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 
+import ui.best_segments as best_segments_module
 from app_state import state
 from logic.workout_manager import STANDARD_SEGMENT_DISTANCES
 from ui import layout
-import ui.best_segments as best_segments_module
 
 from ._helpers import DummyComponent, DummyContext, DummyTab, DummyTable, DummyTabs
+
+
+def _annotate_with_missing_power(df: pd.DataFrame, _running_power_df: object) -> pd.DataFrame:
+    """Return a copy with missing segment power values."""
+    return df.assign(segment_avg_power=None)
+
+
+def _annotate_with_nan_power(df: pd.DataFrame, _running_power_df: object) -> pd.DataFrame:
+    """Return a copy with NaN segment power values."""
+    return df.assign(segment_avg_power=float("nan"))
+
+
+def _annotate_passthrough(df: pd.DataFrame, _running_power_df: object) -> pd.DataFrame:
+    """Return the unmodified DataFrame."""
+    return df
 
 
 class TestBestSegmentsTabData:
@@ -37,6 +52,7 @@ class TestBestSegmentsTabData:
                 }
             ]
         )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_missing_power
 
         try:
             state.workouts = workouts_mock
@@ -54,6 +70,9 @@ class TestBestSegmentsTabData:
                     "distance": "1.0 km",
                     "duration": "6 min 44 s",
                     "average_speed": "8.91 km/h",
+                    "avg_power": "–",
+                    "avg_power_confidence_icon": "help_outline",
+                    "avg_power_confidence_tooltip": "No matching power data",
                     "start_date": "09/16/2025",
                     "children": [],
                 }
@@ -98,6 +117,7 @@ class TestBestSegmentsTabData:
                 },
             ]
         )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_missing_power
 
         try:
             state.workouts = workouts_mock
@@ -126,6 +146,44 @@ class TestBestSegmentsTabData:
             state.best_segments_loading = original_loading
             state.best_segments_loaded = original_loaded
 
+    async def test_load_best_segments_data_renders_nan_power_as_dash(self) -> None:
+        """NaN segment power should be shown as missing value, not as literal nan W."""
+        original_workouts: Any = state.workouts
+        original_file_loaded = state.file_loaded
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
+
+        workouts_mock = MagicMock()
+        workouts_mock.get_best_segments.return_value = pd.DataFrame(
+            [
+                {
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "distance": 1000,
+                    "duration_s": 404.0,
+                }
+            ]
+        )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_nan_power
+
+        try:
+            state.workouts = workouts_mock
+            state.file_loaded = True
+            state.best_segments_rows = []
+            state.best_segments_loading = False
+            state.best_segments_loaded = False
+
+            with patch("ui.layout.render_best_segments_tab.refresh"):
+                await layout.load_best_segments_data(force=True)
+
+            assert state.best_segments_rows[0]["avg_power"] == "–"
+        finally:
+            state.workouts = original_workouts
+            state.file_loaded = original_file_loaded
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
+
     async def test_load_best_segments_data_formats_date_by_language(self) -> None:
         """Date formatting should follow selected language (fr: dd/mm/yyyy)."""
         original_workouts: Any = state.workouts
@@ -144,6 +202,7 @@ class TestBestSegmentsTabData:
                 }
             ]
         )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_missing_power
 
         try:
             state.workouts = workouts_mock
@@ -317,6 +376,7 @@ class TestBestSegmentsTabData:
         workouts_mock.get_best_segments.return_value = _BestSegmentsFrame(
             [("1000", empty_group), ("5000", valid_group)]
         )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_passthrough
 
         try:
             state.workouts = workouts_mock
@@ -386,6 +446,7 @@ class TestBestSegmentsTabData:
                 }
             ]
         )
+        workouts_mock.annotate_segments_with_power.side_effect = _annotate_with_missing_power
 
         try:
             state.workouts = workouts_mock
@@ -444,7 +505,6 @@ class TestBestSegmentsTabRendering:
         original_rows = state.best_segments_rows
         original_loading = state.best_segments_loading
         original_loaded = state.best_segments_loaded
-
         table_stub = DummyTable()
 
         try:
@@ -454,6 +514,7 @@ class TestBestSegmentsTabRendering:
                     "distance": "1.0 km",
                     "duration": "6 min 44 s",
                     "average_speed": "8.91 km/h",
+                    "avg_power": "–",
                     "start_date": "09/16/2025",
                     "children": [],
                 }
@@ -472,6 +533,33 @@ class TestBestSegmentsTabRendering:
             assert len(table_stub.slots) == 2
             assert table_stub.slots[0][0] == "header"
             assert table_stub.slots[1][0] == "body"
+        finally:
+            state.best_segments_rows = original_rows
+            state.best_segments_loading = original_loading
+            state.best_segments_loaded = original_loaded
+
+    def test_render_best_segments_tab_only_one_table_when_loaded(self) -> None:
+        """Loaded state with no CP card should render exactly one table."""
+        original_rows = state.best_segments_rows
+        original_loading = state.best_segments_loading
+        original_loaded = state.best_segments_loaded
+
+        table_stub = DummyTable()
+
+        try:
+            state.best_segments_rows = []
+            state.best_segments_loading = False
+            state.best_segments_loaded = True
+
+            with (
+                patch("ui.best_segments.ui.card", return_value=DummyContext()),
+                patch("ui.best_segments.ui.label", return_value=DummyComponent()),
+                patch("ui.best_segments.ui.table", return_value=table_stub) as table_mock,
+            ):
+                layout.render_best_segments_tab.func()
+
+            # Only the best-segments table; CP card was removed
+            table_mock.assert_called_once()
         finally:
             state.best_segments_rows = original_rows
             state.best_segments_loading = original_loading

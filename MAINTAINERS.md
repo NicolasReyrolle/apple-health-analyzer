@@ -2,6 +2,18 @@
 
 This document contains development, testing, and maintenance notes for `apple-health-analyzer`.
 
+## Roadmap and Planning
+
+Roadmap planning is issue-driven and tracked in GitHub milestones/issues rather than a local `roadmap.md` file.
+
+Current top-level roadmap issues:
+
+- P1 Health Data: <https://github.com/NicolasReyrolle/apple-health-analyzer/issues/110>
+- P2 Visualizations: <https://github.com/NicolasReyrolle/apple-health-analyzer/issues/111>
+- P3 Routes: <https://github.com/NicolasReyrolle/apple-health-analyzer/issues/112>
+- P4 Analytics: <https://github.com/NicolasReyrolle/apple-health-analyzer/issues/113>
+- Quick Wins umbrella: <https://github.com/NicolasReyrolle/apple-health-analyzer/issues/114>
+
 ## Development Setup
 
 ### Run tests
@@ -85,7 +97,7 @@ The workout manager implementation is split into a dedicated package:
 - `src/logic/workout_manager/manager.py`: core `WorkoutManager` class and exported segment distance constants.
 - `src/logic/workout_manager/aggregations.py`: filtering, totals, and period/activity aggregations.
 - `src/logic/workout_manager/export.py`: summary statistics and CSV/JSON export.
-- `src/logic/workout_manager/segments.py`: best-segment search over running routes.
+- `src/logic/workout_manager/segments.py`: best-segment search over running routes, segment power annotation, and CP/W' calculations.
 - `src/logic/workout_manager/__init__.py`: public compatibility exports for `logic.workout_manager` imports.
 
 Keep importing from `logic.workout_manager` in app/tests unless there is a specific reason to target internal modules.

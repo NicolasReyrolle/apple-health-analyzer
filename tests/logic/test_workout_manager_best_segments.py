@@ -1,4 +1,4 @@
-"""Tests for WorkoutManager.get_best_segments."""
+"""Tests for WorkoutManager.get_best_segments and date-filtering."""
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -40,7 +40,13 @@ class TestGetBestSegments:
         result = manager.get_best_segments(topn=3, distances=[1000])
 
         assert result.empty
-        assert list(result.columns) == ["startDate", "distance", "duration_s"]
+        assert list(result.columns) == [
+            "startDate",
+            "distance",
+            "duration_s",
+            "segment_start",
+            "segment_end",
+        ]
 
     def test_returns_empty_when_topn_is_non_positive(self) -> None:
         """Non-positive topn should return an empty DataFrame."""
@@ -57,7 +63,13 @@ class TestGetBestSegments:
         result = manager.get_best_segments(topn=0, distances=[1000])
 
         assert result.empty
-        assert list(result.columns) == ["startDate", "distance", "duration_s"]
+        assert list(result.columns) == [
+            "startDate",
+            "distance",
+            "duration_s",
+            "segment_start",
+            "segment_end",
+        ]
 
     def test_selects_fastest_segments_and_applies_topn(self) -> None:
         """topn should keep the fastest (smallest duration) segments per distance."""
@@ -398,7 +410,13 @@ class TestGetBestSegments:
         result = manager.get_best_segments(topn=1, distances=[1000])
 
         assert result.empty
-        assert list(result.columns) == ["startDate", "distance", "duration_s"]
+        assert list(result.columns) == [
+            "startDate",
+            "distance",
+            "duration_s",
+            "segment_start",
+            "segment_end",
+        ]
 
     def test_get_best_segments_handles_nan_distance_by_using_route_trace(self) -> None:
         """NaN run distance should not block segment computation when route data exists."""
@@ -457,9 +475,7 @@ class TestGetBestSegmentsDateFiltering:
             )
         )
 
-        result = manager.get_best_segments(
-            topn=5, distances=[1000], end_date=datetime(2024, 3, 31)
-        )
+        result = manager.get_best_segments(topn=5, distances=[1000], end_date=datetime(2024, 3, 31))
 
         # Only the January workout should be included; June workout excluded
         assert not result.empty
@@ -513,7 +529,13 @@ class TestGetBestSegmentsDateFiltering:
         )
 
         assert result.empty
-        assert list(result.columns) == ["startDate", "distance", "duration_s"]
+        assert list(result.columns) == [
+            "startDate",
+            "distance",
+            "duration_s",
+            "segment_start",
+            "segment_end",
+        ]
 
     def test_get_best_segments_end_date_is_inclusive(self) -> None:
         """A workout exactly on end_date should be included."""
@@ -528,8 +550,6 @@ class TestGetBestSegmentsDateFiltering:
             )
         )
 
-        result = manager.get_best_segments(
-            topn=5, distances=[1000], end_date=datetime(2024, 3, 31)
-        )
+        result = manager.get_best_segments(topn=5, distances=[1000], end_date=datetime(2024, 3, 31))
 
         assert not result.empty

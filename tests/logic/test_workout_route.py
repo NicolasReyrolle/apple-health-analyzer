@@ -1,9 +1,9 @@
 """Unit tests for workout route domain models and calculations."""
 
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 from zipfile import ZipFile
-import xml.etree.ElementTree as ET
 
 import pytest
 
@@ -189,6 +189,42 @@ class TestWorkoutRoute:
 
         # Distance is approx 8km so we should not find a result
         result = route.find_fastest_segment(10000.0)
+
+        assert result is None
+
+    def test_find_fastest_segment_window_returns_duration_and_timestamps(self) -> None:
+        """find_fastest_segment_window should match find_fastest_segment duration
+        and give timestamps."""
+        route_path = (
+            Path(__file__).resolve().parents[1]
+            / "fixtures"
+            / "exports"
+            / "workout-routes"
+            / "route_2025-09-16_6.15pm.gpx"
+        )
+        route = _load_gpx_route(route_path)
+
+        window = route.find_fastest_segment_window(1000.0)
+
+        assert window is not None
+        duration_s, seg_start, seg_end = window
+        assert duration_s == pytest.approx(375.0)  # type: ignore[misc]
+        # The window should span exactly the returned duration
+        elapsed = (seg_end - seg_start).total_seconds()
+        assert elapsed == pytest.approx(duration_s)  # type: ignore[misc]
+
+    def test_find_fastest_segment_window_returns_none_when_no_segment(self) -> None:
+        """find_fastest_segment_window should return None when no segment meets the length."""
+        route_path = (
+            Path(__file__).resolve().parents[1]
+            / "fixtures"
+            / "exports"
+            / "workout-routes"
+            / "route_2025-09-16_6.15pm.gpx"
+        )
+        route = _load_gpx_route(route_path)
+
+        result = route.find_fastest_segment_window(10000.0)
 
         assert result is None
 

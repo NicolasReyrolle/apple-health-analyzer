@@ -14,7 +14,7 @@ from defusedxml.ElementTree import iterparse
 
 from logic.models import WorkoutRecord
 from logic.parsed_health_data import ParsedHealthData
-from logic.workout_route import WorkoutRoute, RoutePoint
+from logic.workout_route import RoutePoint, WorkoutRoute
 
 _logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ _logger = logging.getLogger(__name__)
 WORKOUT_PROGRESS_INTERVAL = 100  # Report progress every N workouts
 
 # Only parse record types that the application currently supports to limit memory usage.
-SUPPORTED_RECORD_TYPES = frozenset({"HeartRate", "BodyMass", "VO2Max"})
+SUPPORTED_RECORD_TYPES = frozenset({"HeartRate", "BodyMass", "VO2Max", "RunningPower"})
 
 
 class ExportParser:
@@ -240,6 +240,7 @@ class ExportParser:
         record_data = {
             "type": record_type,
             "startDate": elem.get("startDate"),
+            "endDate": elem.get("endDate"),
             "value": self.to_number(elem.get("value")),
         }
         # Include metadata entries as additional fields

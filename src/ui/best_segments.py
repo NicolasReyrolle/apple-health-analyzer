@@ -4,6 +4,7 @@ import asyncio
 import logging
 from typing import Any
 
+import pandas as pd
 from nicegui import ui
 
 from app_state import state
@@ -37,10 +38,51 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
         end_date=state.end_date,
     )
     _logger.debug("Best segments data:\n%s", best_segments)
-    language_code = get_language()
 
-    def _format_entry(distance_m: float, duration_s: float, start_date: Any) -> dict[str, str]:
+    # Annotate with per-segment average power from individual RunningPower records,
+    # falling back to workout-level statistics when segment power cannot be derived
+    # from those records.
+    running_power_df = state.records_by_type.get("RunningPower")
+    annotated = state.workouts.annotate_segments_with_power(best_segments, running_power_df)
+
+    language_code = get_language()
+    confidence_meta = {
+        "measured": {
+            "icon": "sensors",
+            "tooltip": t("Measured from segment samples"),
+        },
+        "overlap_estimated": {
+            "icon": "insights",
+            "tooltip": t("Estimated from overlapping power intervals"),
+        },
+        "workout_fallback": {
+            "icon": "directions_run",
+            "tooltip": t("Using workout average power fallback"),
+        },
+        "missing": {
+            "icon": "help_outline",
+            "tooltip": t("No matching power data"),
+        },
+    }
+
+    def _format_entry(
+        distance_m: float,
+        duration_s: float,
+        start_date: Any,
+        power_w: Any,
+        power_confidence: Any,
+    ) -> dict[str, str]:
         average_speed = (distance_m / 1000) / (duration_s / 3600) if duration_s > 0 else 0.0
+        avg_power_str = (
+            f"{float(power_w):.0f} W" if power_w is not None and not pd.isna(power_w) else "–"
+        )
+        if power_confidence in confidence_meta:
+            confidence_key = str(power_confidence)
+        elif power_w is not None and not pd.isna(power_w):
+            confidence_key = "measured"
+        else:
+            confidence_key = "missing"
+        confidence_cfg = confidence_meta[confidence_key]
         return {
             "distance": format_distance_label(
                 distance_m,
@@ -50,11 +92,14 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
             ),
             "duration": format_duration_label(duration_s),
             "average_speed": f"{average_speed:.2f} km/h",
+            "avg_power": avg_power_str,
+            "avg_power_confidence_icon": str(confidence_cfg["icon"]),
+            "avg_power_confidence_tooltip": str(confidence_cfg["tooltip"]),
             "start_date": format_date_label(start_date, language_code),
         }
 
     rows: list[dict[str, Any]] = []
-    for _, group_df in best_segments.groupby("distance", sort=True):
+    for _, group_df in annotated.groupby("distance", sort=True):
         records = list(group_df.sort_values("duration_s").itertuples(index=False))
         if not records:
             continue
@@ -64,14 +109,24 @@ def _build_best_segments_rows() -> list[dict[str, Any]]:
         if start_date is None:
             continue
 
+        power_w = getattr(records[0], "segment_avg_power", None)
+        power_confidence = getattr(records[0], "segment_power_confidence", None)
         parent: dict[str, Any] = {
-            **_format_entry(distance_m, float(getattr(records[0], "duration_s", 0.0)), start_date),
+            **_format_entry(
+                distance_m,
+                float(getattr(records[0], "duration_s", 0.0)),
+                start_date,
+                power_w,
+                power_confidence,
+            ),
             "id": str(int(distance_m)),
             "children": [
                 _format_entry(
                     distance_m,
                     float(getattr(record, "duration_s", 0.0)),
                     getattr(record, "startDate"),
+                    getattr(record, "segment_avg_power", None),
+                    getattr(record, "segment_power_confidence", None),
                 )
                 for record in records[1:]
                 if getattr(record, "startDate", None) is not None
@@ -118,6 +173,7 @@ def render_best_segments_tab() -> None:
                 "label": t("Average Speed"),
                 "field": "average_speed",
             },
+            {"name": "avg_power", "label": t("Avg Power"), "field": "avg_power"},
             {"name": "start_date", "label": t("Date"), "field": "start_date"},
         ]
 
@@ -161,7 +217,20 @@ def render_best_segments_tab() -> None:
                     <span v-else class="expand-placeholder" />
                 </q-td>
                 <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                    {{ col.value }}
+                    <template v-if="col.name === 'avg_power'">
+                        {{ col.value }}
+                        <q-icon
+                            v-if="props.row.avg_power_confidence_icon"
+                            :name="props.row.avg_power_confidence_icon"
+                            size="14px"
+                            class="q-ml-xs"
+                        >
+                            <q-tooltip>{{ props.row.avg_power_confidence_tooltip }}</q-tooltip>
+                        </q-icon>
+                    </template>
+                    <template v-else>
+                        {{ col.value }}
+                    </template>
                 </q-td>
             </q-tr>
             <q-tr v-show="props.expand" :props="props">
@@ -173,6 +242,17 @@ def render_best_segments_tab() -> None:
                                     #{{ i + 2 }}&nbsp;&nbsp;
                                     {{ child.duration }}&nbsp;&nbsp;
                                     {{ child.average_speed }}&nbsp;&nbsp;
+                                    {{ child.avg_power }}&nbsp;&nbsp;
+                                    <q-icon
+                                        v-if="child.avg_power_confidence_icon"
+                                        :name="child.avg_power_confidence_icon"
+                                        size="12px"
+                                    >
+                                            <q-tooltip>
+                                                {{ child.avg_power_confidence_tooltip }}
+                                            </q-tooltip>
+                                    </q-icon>
+                                    &nbsp;&nbsp;
                                     {{ child.start_date }}
                                 </span>
                             </q-item-section>

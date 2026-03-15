@@ -3,9 +3,11 @@ allowing for calculations of distance, elevation gain/loss, and duration."""
 
 # src/logic/workout_route.py
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from math import atan2, cos, radians, sin, sqrt
+
 import pandas as pd
 
 
@@ -210,3 +212,41 @@ class WorkoutRoute:
                 best_duration_s = duration_s
 
         return best_duration_s
+
+    def find_fastest_segment_window(
+        self, segment_length_m: float, distance_scale_factor: float = 1.0
+    ) -> tuple[float, datetime, datetime] | None:
+        """Find the fastest segment and return (duration_s, start_time, end_time).
+
+        Identical sliding-window search to :meth:`find_fastest_segment` but also
+        returns the GPS timestamps that bound the best window so callers can look
+        up health records (e.g. running power) that fall within it.
+
+        Args:
+            segment_length_m: Requested segment length in meters.
+            distance_scale_factor: Same scaling applied in :meth:`find_fastest_segment`.
+
+        Returns:
+            ``(duration_s, start_time, end_time)`` for the fastest window, or
+            ``None`` if no valid segment exists.
+        """
+        if self.is_empty or segment_length_m <= 0 or len(self.points) < 2:
+            return None
+
+        cumulative_distances = self._cumulative_distances()
+        best: tuple[float, datetime, datetime] | None = None
+        end_idx = 1
+
+        for start_idx in range(len(self.points) - 1):
+            end_idx = self._find_segment_end_index(
+                start_idx, end_idx, segment_length_m, cumulative_distances, distance_scale_factor
+            )
+
+            if end_idx == len(self.points):
+                break
+
+            duration_s = (self.points[end_idx].time - self.points[start_idx].time).total_seconds()
+            if duration_s > 0 and (best is None or duration_s < best[0]):
+                best = (duration_s, self.points[start_idx].time, self.points[end_idx].time)
+
+        return best
