@@ -155,7 +155,7 @@ class TestToNumber:
 
     def test_to_number_with_float_string(self) -> None:
         """Test that float string returns float."""
-        assert ExportParser.to_number("3.14") == pytest.approx(3.14, abs=1e-9)  # type: ignore[arg-type]
+        assert ExportParser.to_number("3.14") == pytest.approx(3.14)  # type: ignore[arg-type]
         assert isinstance(ExportParser.to_number("3.14"), float)
 
     def test_to_number_with_float_that_is_integer(self) -> None:
@@ -170,7 +170,7 @@ class TestToNumber:
 
     def test_to_number_with_negative_float(self) -> None:
         """Test that negative float string returns float."""
-        assert ExportParser.to_number("-2.5") == pytest.approx(-2.5, abs=1e-9)  # type: ignore[arg-type]
+        assert ExportParser.to_number("-2.5") == pytest.approx(-2.5)  # type: ignore[arg-type]
         assert isinstance(ExportParser.to_number("-2.5"), float)
 
     def test_to_number_with_zero(self) -> None:
@@ -201,7 +201,7 @@ class TestToNumber:
     def test_to_number_with_leading_trailing_whitespace(self) -> None:
         """Test that numeric string with whitespace is parsed correctly."""
         assert ExportParser.to_number("  42  ") == 42
-        assert ExportParser.to_number("  3.14  ") == pytest.approx(3.14, abs=1e-9)  # type: ignore[arg-type]
+        assert ExportParser.to_number("  3.14  ") == pytest.approx(3.14)  # type: ignore[arg-type]
 
     def test_to_number_with_very_large_number(self) -> None:
         """Test that very large numbers are handled correctly."""
