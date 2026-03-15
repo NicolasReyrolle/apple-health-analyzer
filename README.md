@@ -14,13 +14,13 @@ If you are contributing or maintaining the project, see [MAINTAINERS.md](MAINTAI
 - **ZIP Parsing**: Directly select and parse your `export.zip` file from Apple Health.
 - **Workout Extraction**: Focused on running workouts with detailed metrics (distance, duration, METs, heart rate, power, etc.).
 - **Visual Statistics**: Real-time summary of total activities, distance, duration, elevation, and calories with interactive charts (pie/rose charts for activity breakdown, bar charts with trend lines for time-based analysis).
-- **Health Data Insights**: Dedicated Health Data tab with period-based trends for resting heart rate, body mass, and VO2 max.
-- **Best Segments Tab**: Computes and displays best running segments from 100m to 100km with expandable runner-up rows, formatted durations, and localized labels.
+- **Health Data Insights**: Dedicated Health Data tab with period-based trends for resting heart rate, body mass, VO2 max, **Critical Power (CP)**, and **W'**.
+- **Best Segments Tab**: Computes and displays best running segments from 100m to 100km with expandable runner-up rows, formatted durations, localized labels, and segment power confidence.
 - **Robust Segment Distance Model**: Segment search uses GPX speed integration with safeguards for export edge cases (window clipping, final unpaired pause trimming, strict reversal-only trace splits, and realistic workout-level distance normalization).
 - **Activity Filtering**: Filter your workout data by activity type (Running, Cycling, Walking, etc.).
 - **Date Range Filtering**: Analyze specific time periods using the date range picker to focus on your desired date ranges.
 - **Trends Period Aggregation**: Switch the Trends tab aggregation between week, month, quarter, or year.
-- **Gap-Aware Time Series**: Missing periods are preserved in health-data charts, so the x-axis remains continuous and missing measurements are explicit (not coerced to zero).
+- **Gap-Aware Time Series**: Missing periods are preserved in health-data charts, so the x-axis remains continuous and missing measurements are explicit (not coerced to zero). For line charts, inferred bridge segments are visually distinct from measured segments.
 - **Route Parts Handling**: Workouts with multiple GPX route files are preserved as independent route parts for segment analysis and also exposed as a merged compatibility route.
 - **Multilingual UI (EN/FR)**: gettext-based translations for labels, tabs, date picker locale labels, notifications, and loading/progress status messages.
 - **Data Export**: Convert your data into clean **CSV** or **JSON** formats for further analysis in Excel, Python, or other tools.
@@ -73,7 +73,7 @@ python -m nicegui src.apple_health_analyzer
 1. Click **Browse** to select your Apple Health `export.zip`.
 1. Click **Load** to parse the data.
 1. View the statistics in the **Overview** tab.
-1. Explore your data in the **Activities** tab (pie/rose charts grouped by activity type), **Trends** tab (weekly/monthly/quarterly/yearly bar charts with moving average trend lines), **Health Data** tab (line charts for resting heart rate, body mass, and VO2 max), and **Best Segments** tab (standard race distances with expandable runner-ups).
+1. Explore your data in the **Activities** tab (pie/rose charts grouped by activity type), **Trends** tab (weekly/monthly/quarterly/yearly bar charts with moving average trend lines), **Health Data** tab (line charts for resting heart rate, body mass, VO2 max, CP, and W'), and **Best Segments** tab (standard race distances with expandable runner-ups).
 1. Use the **Activity filter** in the left drawer to focus on specific workout types.
 1. Use the **Date range picker** to analyze specific time periods.
 1. Use the **Aggregate by** selector in the **Trends** tab to change the period.
@@ -110,6 +110,22 @@ Best segments are computed with a route-aware sliding-window search on running w
 - A single workout-level distance normalization factor can be applied when route distance and workout summary distance differ only by a realistic margin; the same factor is reused for all queried segment distances.
 - Segment distances longer than the workout's reported distance are skipped.
 
+### Critical Power and W' (summary)
+
+- The app computes CP and W' from best running segments (default distances: 800m and 5000m).
+- Segment power is estimated from `RunningPower` records in priority order: direct window match, overlap-based estimate, then workout-level fallback.
+- Evolution charts keep interior missing periods as gaps while trimming leading/trailing empty periods.
+
+## 🗂️ Roadmap Tracking
+
+Roadmap planning is tracked in GitHub Issues and milestones (instead of a local `roadmap.md` file). See:
+
+- [P1 - Health Data](https://github.com/NicolasReyrolle/apple-health-analyzer/issues/110)
+- [P2 - Visualizations](https://github.com/NicolasReyrolle/apple-health-analyzer/issues/111)
+- [P3 - Routes](https://github.com/NicolasReyrolle/apple-health-analyzer/issues/112)
+- [P4 - Analytics](https://github.com/NicolasReyrolle/apple-health-analyzer/issues/113)
+- [Quick Wins](https://github.com/NicolasReyrolle/apple-health-analyzer/issues/114)
+
 ### Workout manager package layout
 
 Workout management internals are organized in a dedicated package under `src/logic/workout_manager/`:
@@ -117,7 +133,7 @@ Workout management internals are organized in a dedicated package under `src/log
 - `manager.py`: core `WorkoutManager` class and public distance constants.
 - `aggregations.py`: filtering, totals, and by-activity/by-period aggregations.
 - `export.py`: statistics and CSV/JSON export helpers.
-- `segments.py`: best-segment computation logic.
+- `segments.py`: best-segment computation, segment power annotation, and CP/W' calculations.
 - `__init__.py`: public compatibility exports.
 
 The import path remains unchanged for consumers:
