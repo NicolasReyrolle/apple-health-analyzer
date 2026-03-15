@@ -193,7 +193,8 @@ class TestWorkoutRoute:
         assert result is None
 
     def test_find_fastest_segment_window_returns_duration_and_timestamps(self) -> None:
-        """find_fastest_segment_window should match find_fastest_segment duration and give timestamps."""
+        """find_fastest_segment_window should match find_fastest_segment duration
+        and give timestamps."""
         route_path = (
             Path(__file__).resolve().parents[1]
             / "fixtures"
