@@ -94,9 +94,9 @@ def test_dev_file_invalid_path() -> None:
     assert result.returncode != 0, "Invalid --dev-file path should cause non-zero exit"
     # Verify the actual validation logic detected the missing file
     combined_output = (result.stdout or "") + (result.stderr or "")
-    assert (
-        "File not found" in combined_output or "not found" in combined_output.lower()
-    ), "Error message should indicate file was not found"
+    assert "File not found" in combined_output or "not found" in combined_output.lower(), (
+        "Error message should indicate file was not found"
+    )
 
 
 def test_dev_file_valid_path() -> None:
@@ -181,9 +181,9 @@ def test_dev_file_directory_instead_of_file() -> None:
     # Should fail because a directory is not a file
     assert result.returncode != 0, "Directory path should cause non-zero exit"
     combined_output = (result.stdout or "") + (result.stderr or "")
-    assert (
-        "File not found" in combined_output or "not found" in combined_output.lower()
-    ), "Error message should indicate file was not found"
+    assert "File not found" in combined_output or "not found" in combined_output.lower(), (
+        "Error message should indicate file was not found"
+    )
 
 
 def test_dev_file_combined_with_log_level() -> None:

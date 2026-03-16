@@ -1,16 +1,16 @@
 """Tests for complex workout parsing and route handling."""
 
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
 from xml.etree.ElementTree import Element
 from zipfile import ZipFile
 
 import pandas as pd
 import pytest
 
-from logic.export_parser import ExportParser, WorkoutRecord
-from logic.workout_route import RoutePoint, WorkoutRoute
+from src.logic.export_parser import ExportParser, WorkoutRecord
+from src.logic.workout_route import RoutePoint, WorkoutRoute
 from tests.conftest import build_health_export_xml, load_export_fragment
 
 
@@ -158,7 +158,9 @@ class TestComplexRealWorldWorkout:
         """Ensure data inside WorkoutActivity is not loaded into the workout record."""
 
         workout_fragment = """
-<Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01 10:00:00 +0000" endDate="2024-01-01 10:10:00 +0000" duration="10" durationUnit="min">
+<Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+         startDate="2024-01-01 10:00:00 +0000"
+         endDate="2024-01-01 10:10:00 +0000" duration="10" durationUnit="min">
   <WorkoutActivity>
     <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" sum="123" unit="kcal"/>
     <MetadataEntry key="HKWeatherHumidity" value="5000 %"/>
@@ -371,7 +373,8 @@ class TestProcessWorkoutRoute:
 """
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30">
+    <Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+             startDate="2024-01-01" endDate="2024-01-01" duration="30">
         <WorkoutRoute sourceName="Apple Watch">
             <FileReference path="/workout-routes/test_route.gpx"/>
         </WorkoutRoute>

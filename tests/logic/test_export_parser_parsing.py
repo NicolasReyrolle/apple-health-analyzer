@@ -4,7 +4,7 @@ from xml.etree.ElementTree import Element
 
 import pytest
 
-import logic.export_parser as ep
+import src.logic.export_parser as ep
 
 
 class TestParseValue:
@@ -226,7 +226,7 @@ class TestExtractHealthDataRecord:
         record_type, record_data = parser._extract_health_data_record(elem)  # type: ignore[misc]
 
         assert record_type == "BodyMass"
-        assert record_data["BodyMassUnit"] == 75.0
+        assert record_data["BodyMassUnit"] == pytest.approx(75.0)  # type: ignore[misc]
         assert record_data["BodyMassUnitUnit"] == "kg"
 
     def test_extract_health_data_record_type_removal(self) -> None:

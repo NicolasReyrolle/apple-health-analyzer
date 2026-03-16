@@ -9,23 +9,17 @@ import os
 import shutil
 import tempfile
 import zipfile
+from collections.abc import Callable, Generator, Iterator
+from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    ContextManager,
-    Generator,
-    Iterator,
-    List,
-    Optional,
-)
+from typing import Any
 from unittest.mock import patch
 
 import nicegui.storage
 import pytest
 from nicegui.testing import UserInteraction
 
-from app_state import state as app_state
+from src.app_state import state as app_state
 from tests.types_helper import StateAssertion
 
 EXPORT_FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "exports"
@@ -38,7 +32,7 @@ def load_export_fragment(file_name: str) -> str:
     return fixture_path.read_text(encoding="utf-8")
 
 
-def build_health_export_xml(workout_fragments: List[str]) -> str:
+def build_health_export_xml(workout_fragments: list[str]) -> str:
     """Wrap workout fragments in a minimal HealthData document."""
     workouts_xml = "\n".join(workout_fragments)
     return f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -57,7 +51,7 @@ def create_health_zip() -> Generator[Callable[..., str], None, None]:
     """
     temp_dirs: list[str] = []
 
-    def _generate(xml_content: Optional[str] = None, fixture_name: Optional[str] = None) -> str:
+    def _generate(xml_content: str | None = None, fixture_name: str | None = None) -> str:
         if xml_content is None:
             if fixture_name is None:
                 fixture_name = DEFAULT_EXPORT_FIXTURE
@@ -83,22 +77,22 @@ def create_health_zip() -> Generator[Callable[..., str], None, None]:
 
 
 @pytest.fixture
-def mock_file_picker_context() -> Callable[[Optional[str]], ContextManager[None]]:
+def mock_file_picker_context() -> Callable[[str | None], AbstractContextManager[None]]:
     """
     Fixture providing a Context Manager to mock-up LocalFilePicker.
     """
 
     @contextlib.contextmanager
-    def _mocker(return_path: Optional[str] = None) -> Iterator[None]:
+    def _mocker(return_path: str | None = None) -> Iterator[None]:
         target = "ui.layout.LocalFilePicker"
-        result_value: List[str] = [return_path] if return_path else []
+        result_value: list[str] = [return_path] if return_path else []
 
         # Create an awaitable object that returns the result
         class AwaitableMock:
             """Mock class to simulate an awaitable LocalFilePicker."""
 
             def __await__(self):
-                future: asyncio.Future[List[str]] = asyncio.Future()
+                future: asyncio.Future[list[str]] = asyncio.Future()
                 future.set_result(result_value)
                 return future.__await__()
 
@@ -130,8 +124,8 @@ def assert_ui_state() -> StateAssertion:
 
     def _assert(
         interaction: UserInteraction[Any],
-        enabled: Optional[bool] = None,
-        visible: Optional[bool] = None,
+        enabled: bool | None = None,
+        visible: bool | None = None,
     ) -> None:
         # Check if any elements were found
         assert interaction.elements, f"No elements found for: {interaction}"
@@ -178,7 +172,7 @@ def _clear_storage_directory(path: Path) -> None:
         _remove_storage_file(filepath)
 
 
-def _resolve_storage_path(obj: Any) -> Optional[Path]:
+def _resolve_storage_path(obj: Any) -> Path | None:
     """Resolve the storage path from an object's attributes."""
     path = getattr(obj, "path", getattr(obj, "_path", None))
     return path
@@ -274,7 +268,7 @@ def clean_logger() -> Generator[logging.Logger, None, None]:
     logger = logging.getLogger()
 
     # Pre-cleanup: close and remove any existing handlers from previous tests
-    for handler in list(logger.handlers):
+    for handler in logger.handlers:
         try:
             handler.close()
         except (OSError, ValueError):
@@ -292,7 +286,7 @@ def clean_logger() -> Generator[logging.Logger, None, None]:
     yield logger
 
     # Post-cleanup: close and remove all handlers added during the test
-    for handler in list(logger.handlers):
+    for handler in logger.handlers:
         try:
             handler.close()
         except (OSError, ValueError):

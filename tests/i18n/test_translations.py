@@ -9,8 +9,11 @@ from unittest.mock import patch
 import pytest
 from babel.messages.pofile import read_po
 
-import i18n as i18n_module
-from i18n import DEFAULT_LANGUAGE, LANGUAGES, t
+from src import i18n as i18n_module
+
+DEFAULT_LANGUAGE = i18n_module.DEFAULT_LANGUAGE
+LANGUAGES = i18n_module.LANGUAGES
+t = i18n_module.t
 
 _LOCALE_DIR = Path(__file__).resolve().parents[2] / "src" / "i18n" / "locales"
 _POT_FILE = _LOCALE_DIR / "messages.pot"

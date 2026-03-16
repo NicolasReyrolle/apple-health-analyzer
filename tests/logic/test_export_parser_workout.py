@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 import pytest
 
-import logic.export_parser as ep
+import src.logic.export_parser as ep
 
 
 class TestCreateWorkoutRecord:

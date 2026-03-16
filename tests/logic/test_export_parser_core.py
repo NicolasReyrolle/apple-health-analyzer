@@ -1,14 +1,14 @@
 """Core tests for the ExportParser module."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 from zipfile import ZipFile
 
 import pandas as pd
 import pytest
 
-import logic.export_parser as ep
-import logic.workout_manager as wm
+import src.logic.export_parser as ep
+import src.logic.workout_manager as wm
 
 
 class TestExportParser:
@@ -34,9 +34,12 @@ class TestLoadWorkouts:
         zip_path = tmp_path / "mock_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
-    <Workout workoutActivityType="HKWorkoutActivityTypeCycling" startDate="2024-01-02" endDate="2024-01-02" duration="45"/>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-03" endDate="2024-01-03" duration="25"/>
+    <Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+        startDate="2024-01-01" endDate="2024-01-01" duration="30"/>
+    <Workout workoutActivityType="HKWorkoutActivityTypeCycling"
+        startDate="2024-01-02" endDate="2024-01-02" duration="45"/>
+    <Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+        startDate="2024-01-03" endDate="2024-01-03" duration="25"/>
 </HealthData>
 """
         with ZipFile(zip_path, "w") as zf:
@@ -74,8 +77,10 @@ class TestLoadWorkouts:
         zip_path = tmp_path / "multi_export.zip"
         xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
 <HealthData>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-01" endDate="2024-01-01" duration="30" durationUnit="min"/>
-    <Workout workoutActivityType="HKWorkoutActivityTypeRunning" startDate="2024-01-02" endDate="2024-01-02" duration="25" durationUnit="min"/>
+    <Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+        startDate="2024-01-01" endDate="2024-01-01" duration="30" durationUnit="min"/>
+    <Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+        startDate="2024-01-02" endDate="2024-01-02" duration="25" durationUnit="min"/>
 </HealthData>
 """
         with ZipFile(zip_path, "w") as zf:

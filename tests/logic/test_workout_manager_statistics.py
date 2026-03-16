@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-import logic.workout_manager as wm
+import src.logic.workout_manager as wm
 
 
 class TestGetStatistics:

@@ -2,8 +2,7 @@
 
 from datetime import datetime
 
-
-from app_state import AppState
+from src.app_state import AppState
 
 
 class TestAppStateDateProperties:

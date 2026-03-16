@@ -16,7 +16,7 @@ from typing import cast
 
 from babel.messages import mofile, pofile
 
-DEFAULT_LANGUAGE = "en"
+DEFAULT_LANGUAGE: str = "en"
 
 LANGUAGES: dict[str, str] = {
     "en": "English",
@@ -31,6 +31,7 @@ __all__ = [
     "DEFAULT_LANGUAGE",
     "LANGUAGES",
     "compile_message_catalogs",
+    "get_language",
     "t",
     "translate",
 ]

@@ -4,7 +4,7 @@
 
 import pandas as pd
 
-import logic.workout_manager as wm
+from src.logic import workout_manager as wm
 
 
 class TestGetElevationByPeriod:

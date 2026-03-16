@@ -1,12 +1,12 @@
 """Test parsing of complex real-world records from Apple Health export."""
 
-from typing import Callable
+from collections.abc import Callable
 
 import pandas as pd
 import pytest
 
-from logic.export_parser import ExportParser, ParsedHealthData
-from logic.records_by_type import RecordsByType
+from src.logic.export_parser import ExportParser, ParsedHealthData
+from src.logic.records_by_type import RecordsByType
 from tests.conftest import build_health_export_xml, load_export_fragment
 
 
