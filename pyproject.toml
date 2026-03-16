@@ -36,10 +36,6 @@ Issues = "https://github.com/NicolasReyrolle/apple-health-analyzer/issues"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.isort]
-profile = "black"
-line_length = 100
-
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
