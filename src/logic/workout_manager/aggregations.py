@@ -151,8 +151,8 @@ class WorkoutManagerAggregationsMixin:
             return {}
 
         grouped = aggregation(
-            workouts.groupby(  # type: ignore[reportUnknownMemberType]
-                workouts["startDate"].dt.to_period(period)  # type: ignore[reportUnknownMemberType]
+            workouts.groupby(
+                workouts["startDate"].dt.to_period(period)
             )[column]
         )
 
@@ -165,10 +165,10 @@ class WorkoutManagerAggregationsMixin:
                 end=grouped.index.max(),
                 freq=period,
             )
-            grouped = grouped.reindex(full_range, fill_value=0)  # type: ignore[reportUnknownMemberType]
+            grouped = grouped.reindex(full_range, fill_value=0)
 
         transformed = transformation(grouped)
-        result_float: dict[str, float] = transformed.astype(float).to_dict()  # type: ignore[reportUnknownMemberType]
+        result_float: dict[str, float] = transformed.astype(float).to_dict()
 
         result: dict[str, int] = {str(k): int(round(v)) for k, v in result_float.items()}
 
