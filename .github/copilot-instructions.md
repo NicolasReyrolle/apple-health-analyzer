@@ -70,7 +70,7 @@ If two rules at the same level conflict, choose the simpler option and state the
 - Fix root cause; avoid cosmetic unrelated edits.
 - Keep public APIs stable unless the task explicitly requests API changes. Do not use compatibility layers unless absolutely necessary.
 - Use `# noqa: ...` or `# type: ignore` only when necessary and scoped to the smallest
-	expression/line.
+  expression/line.
 - Keep cognitive complexity low; break down complex functions into smaller helpers. Maximum complexity of 15 per function.
 - Keep functions under 50 lines where practical. If a function exceeds this, consider refactoring into smaller functions.
 - Each module must contain less than 1000 lines of code. If a module exceeds this, consider splitting it into smaller modules.
@@ -78,8 +78,8 @@ If two rules at the same level conflict, choose the simpler option and state the
 ### Validation scope (default)
 - Validate changed files and directly affected tests first.
 - Run wider suites (`tests/`, full lint, full type-check) only when:
-	- requested by the user, or
-	- risk is high (cross-cutting parser/model/UI changes).
+  - requested by the user, or
+  - risk is high (cross-cutting parser/model/UI changes).
 
 ### TDD policy
 - Use TDD for bug fixes and new logic where practical.
