@@ -168,7 +168,8 @@ class WorkoutManagerAggregationsMixin:
             grouped = grouped.reindex(full_range, fill_value=0)
 
         transformed = transformation(grouped)
-        result_float: dict[str, float] = transformed.astype(float).to_dict()
+        transformed_float = transformed.astype(float)
+        result_float: dict[str, float] = cast(dict[str, float], transformed_float.to_dict())
 
         result: dict[str, int] = {str(k): int(round(v)) for k, v in result_float.items()}
 
