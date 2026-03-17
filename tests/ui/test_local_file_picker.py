@@ -230,7 +230,7 @@ class TestHandleOk:
         picker.submit = MagicMock()
 
         # Call the actual method
-        await local_file_picker._handle_ok(picker)  # type: ignore[misc]  # pylint: disable=protected-access
+        await local_file_picker._handle_ok(picker)  # type: ignore[misc]
 
         picker.submit.assert_called_once_with([str(file_path)])
 
@@ -254,7 +254,7 @@ class TestHandleOk:
         picker.submit = MagicMock()
 
         # Call the actual method
-        await local_file_picker._handle_ok(picker)  # type: ignore[misc]  # pylint: disable=protected-access
+        await local_file_picker._handle_ok(picker)  # type: ignore[misc]
 
         picker.submit.assert_called_once_with([str(file1), str(file2)])
 

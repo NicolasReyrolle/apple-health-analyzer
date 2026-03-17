@@ -1,7 +1,5 @@
 """Tests for WorkoutManager count/duration by period methods."""
 
-# pylint: disable=missing-function-docstring,duplicate-code
-
 import pandas as pd
 
 from logic import workout_manager as wm

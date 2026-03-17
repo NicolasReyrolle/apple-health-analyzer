@@ -165,7 +165,7 @@ class ExportParser:
         if self.progress_callback:
             try:
                 self.progress_callback(message)
-            except Exception:  # pylint: disable=broad-except
+            except Exception:
                 _logger.debug(message)
 
     def _process_workout_event(

@@ -1,7 +1,5 @@
 """Fixtures for testing Apple Health Analyzer."""
 
-# pylint: disable=line-too-long
-
 import asyncio
 import contextlib
 import logging
@@ -144,9 +142,7 @@ def assert_ui_state() -> StateAssertion:
         if enabled is not None:
             # Cast to Any to access protected member _props
             element_any: Any = element
-            is_disabled = element_any._props.get(  # pylint: disable=protected-access
-                "disable", False
-            )
+            is_disabled = element_any._props.get("disable", False)
             actual_enabled = not is_disabled
             state_str = "enabled" if enabled else "disabled"
             assert actual_enabled == enabled, f"Element should be {state_str}."

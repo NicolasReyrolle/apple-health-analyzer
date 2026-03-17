@@ -274,7 +274,6 @@ class TestComplexRealWorldWorkout:
 class TestLoadRoute:
     """Test the _load_route method."""
 
-    # pylint: disable=protected-access
     def test_load_route_with_valid_gpx(self, tmp_path: Path) -> None:
         """Test loading a valid GPX route file."""
         zip_path = tmp_path / "route_export.zip"
@@ -355,7 +354,6 @@ class TestLoadRoute:
 class TestProcessWorkoutRoute:
     """Test the _process_workout_route method."""
 
-    # pylint: disable=protected-access
     def test_process_workout_route_with_file_reference(self, tmp_path: Path) -> None:
         """Test processing a workout route with FileReference."""
         zip_path = tmp_path / "route_export.zip"

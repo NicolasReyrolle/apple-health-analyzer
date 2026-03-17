@@ -401,7 +401,7 @@ class TestCLIArgumentParsing:
         mock_setup_logging.assert_called_once()
         mock_ui_run.assert_not_called()
 
-    def test_cli_main_stores_dev_file_and_disables_file_logging(  # pylint: disable=unused-argument
+    def test_cli_main_stores_dev_file_and_disables_file_logging(
         self, clean_logger: logging.Logger, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test that a valid dev file sets storage and disables file logging."""
@@ -448,7 +448,7 @@ class TestCLIArgumentParsing:
             finally:
                 apple_health_analyzer.app.storage.general.pop("_dev_file_path", None)
 
-    def test_cli_main_dev_file_not_found_exits(  # pylint: disable=unused-argument
+    def test_cli_main_dev_file_not_found_exits(
         self, clean_logger: logging.Logger, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test that a non-existent dev file causes an early exit with an error."""

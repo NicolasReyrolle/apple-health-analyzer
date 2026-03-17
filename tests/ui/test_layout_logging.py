@@ -57,11 +57,11 @@ def test_module_logger_exists() -> None:
         logging.Logger,  # type: ignore[attr-defined]
     ), "_logger should be a Logger instance"
     assert (
-        layout._logger.name == "ui.layout"  # type: ignore[attr-defined]  # pylint: disable=protected-access
-    ), f"Logger name should be 'ui.layout', got {layout._logger.name}"  # type: ignore[attr-defined]  # pylint: disable=protected-access
+        layout._logger.name == "ui.layout"  # type: ignore[attr-defined]
+    ), f"Logger name should be 'ui.layout', got {layout._logger.name}"  # type: ignore[attr-defined]
     # Logger should propagate by default
     assert (
-        layout._logger.propagate  # type: ignore[attr-defined]  # pylint: disable=protected-access
+        layout._logger.propagate  # type: ignore[attr-defined]
     ), "Logger should propagate to parent loggers"
 
 

@@ -12,7 +12,7 @@ from babel.numbers import format_decimal
 from i18n import translate
 
 
-class _SupportsStrftime(Protocol):  # pylint: disable=too-few-public-methods
+class _SupportsStrftime(Protocol):
     """Protocol for date-like objects exposing ``strftime``."""
 
     def strftime(self, fmt: str, /) -> str:

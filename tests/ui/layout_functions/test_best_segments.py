@@ -336,7 +336,7 @@ class TestBestSegmentsTabData:
         original_workouts: Any = state.workouts
         original_range = state.date_range_text
 
-        class _GroupFrame:  # pylint: disable=too-few-public-methods
+        class _GroupFrame:
             """Minimal frame-like object exposing only methods used by builder."""
 
             def __init__(self, records: list[Any]) -> None:
@@ -352,7 +352,7 @@ class TestBestSegmentsTabData:
                 _ = index
                 return self._records
 
-        class _BestSegmentsFrame:  # pylint: disable=too-few-public-methods
+        class _BestSegmentsFrame:
             """Minimal frame-like object exposing only groupby used by builder."""
 
             def __init__(self, groups: list[tuple[str, _GroupFrame]]) -> None:

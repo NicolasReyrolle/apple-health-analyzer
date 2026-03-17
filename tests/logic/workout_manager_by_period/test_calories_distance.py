@@ -1,7 +1,5 @@
 """Tests for WorkoutManager calories/distance by period methods."""
 
-# pylint: disable=missing-function-docstring,duplicate-code,line-too-long
-
 import pandas as pd
 
 from logic import workout_manager as wm

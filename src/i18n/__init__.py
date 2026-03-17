@@ -108,7 +108,7 @@ def compile_message_catalogs() -> int:
             _logger.debug(
                 "Cannot write compiled catalog for '%s': directory is not writable.", po_path
             )
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             _logger.warning("Failed to compile translation catalog '%s': %s", po_path, exc)
 
     # Ensure subsequent translation lookups reload catalogs after recompilation.
@@ -139,11 +139,11 @@ def get_language() -> str:
     (e.g., during unit tests that do not set up a NiceGUI session).
     """
     try:
-        from nicegui import app  # pylint: disable=import-outside-toplevel
+        from nicegui import app
 
         user_storage = cast(dict[str, object], app.storage.user)
         return str(user_storage.get("language", DEFAULT_LANGUAGE))
-    except Exception:  # pylint: disable=broad-except
+    except Exception:
         return DEFAULT_LANGUAGE
 
 

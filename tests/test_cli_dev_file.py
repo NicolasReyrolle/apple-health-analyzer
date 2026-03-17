@@ -115,7 +115,7 @@ def test_dev_file_valid_path() -> None:
     # Start the real application with a valid dev file. We don't wait indefinitely;
     # instead, allow a short startup window, then terminate if still running.
     # Use --no-browser to prevent opening a browser window in CI/headless environments.
-    process = subprocess.Popen(  # pylint: disable=consider-using-with
+    process = subprocess.Popen(
         [
             sys.executable,
             "src/apple_health_analyzer.py",
@@ -203,7 +203,7 @@ def test_dev_file_combined_with_log_level() -> None:
     env.pop("NICEGUI_SCREEN_TEST_PORT", None)
     env["BROWSER"] = "none"
 
-    process = subprocess.Popen(  # pylint: disable=consider-using-with
+    process = subprocess.Popen(
         [
             sys.executable,
             "src/apple_health_analyzer.py",

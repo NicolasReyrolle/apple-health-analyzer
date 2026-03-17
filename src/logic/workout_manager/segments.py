@@ -356,7 +356,7 @@ class WorkoutManagerSegmentsMixin:
         )
         return power, confidence
 
-    def _compute_power_from_records(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+    def _compute_power_from_records(
         self,
         row: Any,
         workout_start: Any,
@@ -418,7 +418,7 @@ class WorkoutManagerSegmentsMixin:
         )
         return overlap_power, "overlap_estimated"
 
-    def annotate_segments_with_power(  # pylint: disable=too-many-locals
+    def annotate_segments_with_power(
         self,
         segments: pd.DataFrame,
         running_power_df: pd.DataFrame | None,
@@ -469,7 +469,7 @@ class WorkoutManagerSegmentsMixin:
         result["segment_power_confidence"] = confidences
         return result
 
-    def get_critical_power(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-return-statements
+    def get_critical_power(
         self,
         running_power_df: pd.DataFrame | None = None,
         topn: int = 5,
@@ -559,7 +559,7 @@ class WorkoutManagerSegmentsMixin:
             count_long=len(long_rows),
         )
 
-    def get_critical_power_evolution(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+    def get_critical_power_evolution(
         self,
         running_power_df: pd.DataFrame | None = None,
         period: str = "M",

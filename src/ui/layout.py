@@ -161,7 +161,7 @@ async def load_health_data(force: bool = False) -> None:
     try:
         state.health_data_graphs = await asyncio.to_thread(_build_health_data_graphs)
         state.health_data_loaded = True
-    except Exception:  # pylint: disable=broad-except
+    except Exception:
         _logger.exception("Failed to load health data tab")
     finally:
         state.health_data_loading = False
@@ -569,7 +569,7 @@ async def load_file() -> None:
         render_date_range_selector.refresh()
         refresh_data()
         ui.notify(t("File parsed successfully."))
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e:
         ui.notify(t("Error parsing file: {error}", error=str(e)))
     finally:
         state.loading_status = ""

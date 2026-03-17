@@ -50,7 +50,6 @@ class TestCreateWorkoutRecord:
 class TestProcessWorkoutStatistics:
     """Test the _process_workout_statistics method."""
 
-    # pylint: disable=protected-access
     def test_process_workout_statistics_with_sum(self) -> None:
         """Test processing workout statistics with sum value."""
         elem = Element(
@@ -167,7 +166,6 @@ class TestProcessWorkoutStatistics:
 class TestProcessMetadataEntry:
     """Test the _process_metadata_entry method."""
 
-    # pylint: disable=protected-access
     def test_process_metadata_entry_with_simple_value(self) -> None:
         """Test processing a simple metadata entry."""
         elem = Element(
@@ -229,7 +227,6 @@ class TestProcessMetadataEntry:
 class TestProcessWorkoutChildren:
     """Test the _process_workout_children method."""
 
-    # pylint: disable=protected-access
     def test_process_workout_children_with_statistics(self, tmp_path: Path) -> None:
         """Test processing workout with child statistics."""
         zip_path = tmp_path / "test_export.zip"

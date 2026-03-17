@@ -10,7 +10,6 @@ import logic.export_parser as ep
 class TestParseValue:
     """Test cases for the _parse_value static method."""
 
-    # pylint: disable=protected-access
     @pytest.mark.parametrize(
         "input_str, expected_val, expected_unit",
         [
@@ -75,7 +74,6 @@ class TestParseValue:
 class TestParseValueEdgeCases:
     """Additional edge case tests for _parse_value."""
 
-    # pylint: disable=protected-access
     def test_parse_value_with_negative_fahrenheit(self) -> None:
         """Test Fahrenheit conversion with negative temperature."""
         val, unit = ep.ExportParser._parse_value("-40 degF")  # type: ignore[misc]
@@ -106,7 +104,6 @@ class TestParseValueEdgeCases:
         assert val is not None
 
 
-# pylint: disable=protected-access
 class TestExtractActivityType:
     """Test the _extract_activity_type method."""
 
@@ -135,7 +132,6 @@ class TestExtractActivityType:
 class TestExtractHealthDataRecord:
     """Test the _extract_health_data_record method."""
 
-    # pylint: disable=protected-access
     def test_extract_heart_rate_record_basic(self) -> None:
         """Test extracting a basic heart rate record."""
         elem = Element(
