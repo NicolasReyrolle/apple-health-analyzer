@@ -27,7 +27,6 @@ def main() -> None:
     project_root = Path(__file__).parent.parent
     sys.path.insert(0, str(project_root / "src"))
 
-    # pylint: disable=import-outside-toplevel
     from logic.export_parser import ExportParser
     from logic.workout_manager import WorkoutManager
 
