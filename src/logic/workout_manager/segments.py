@@ -317,7 +317,7 @@ class WorkoutManagerSegmentsMixin:
             )
         return fallback
 
-    def _compute_segment_power_and_confidence(  # pylint: disable=too-many-locals
+    def _compute_segment_power_and_confidence(
         self,
         row: Any,
         power_series: tuple[pd.Series | None, pd.Series | None, pd.Series | None],

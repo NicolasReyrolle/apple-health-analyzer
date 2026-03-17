@@ -386,7 +386,7 @@ class TestBestSegmentsTabData:
             state.date_range_text = ""
             build_rows = cast(
                 Callable[[], list[dict[str, Any]]],
-                getattr(best_segments_module, "_build_best_segments_rows"),  # pyright: ignore[reportPrivateUsage]
+                getattr(best_segments_module, "_build_best_segments_rows"),
             )
             with patch("ui.best_segments.get_language", return_value="en"):
                 rows = build_rows()

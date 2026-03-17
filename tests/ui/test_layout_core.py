@@ -340,14 +340,14 @@ def test_render_header_dark_mode_callbacks_update_state_and_refresh_graphs() -> 
             """Exit method that does nothing."""
             pass
 
-    class _DummyImage:  # pylint: disable=too-few-public-methods
+    class _DummyImage:
         """Minimal image stub supporting classes() chaining."""
 
         def classes(self, *_args: Any, **_kwargs: Any) -> _DummyImage:
             """Support NiceGUI-style chaining."""
             return self
 
-    class _DummyLabel:  # pylint: disable=too-few-public-methods
+    class _DummyLabel:
         """Minimal label stub supporting classes() chaining."""
 
         def classes(self, *_args: Any, **_kwargs: Any) -> _DummyLabel:
