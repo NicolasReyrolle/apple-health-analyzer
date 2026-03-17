@@ -119,7 +119,7 @@ class RecordsByType:
                 result.set_index("period").reindex(full_range).rename_axis("period").reset_index()
             )
             cols = ["avg", "min", "max"]
-            result.loc[:, cols] = result.loc[:, cols].astype("Float64")
+            result = result.astype(dict.fromkeys(cols, "Float64"))
 
             result["count"] = result["count"].fillna(0)
             result["count"] = result["count"].astype(int)
