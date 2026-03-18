@@ -259,7 +259,7 @@ class TestAutoLoadFunctionality:
         app.storage.general["_dev_file_path"] = ""
 
         try:
-            with patch("apple_health_analyzer.ui.timer") as mock_timer:
+            with patch("nicegui.ui.timer") as mock_timer:
                 await user.open("/")
                 await asyncio.sleep(0.5)
 
