@@ -49,7 +49,7 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 main_file = "src/apple_health_analyzer.py"
-addopts = "-p nicegui.testing.user_plugin"
+addopts = "-p nicegui.testing.user_plugin --testmon"
 
 [tool.ruff]
 line-length = 100

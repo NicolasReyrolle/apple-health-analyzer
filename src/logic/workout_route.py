@@ -35,7 +35,9 @@ class WorkoutRoute:
     MAX_REALISTIC_DISTANCE_SCALE_DEVIATION = 0.10
 
     points: list[RoutePoint]
-    _cumulative_distance_cache: list[float] | None = field(default=None, init=False, repr=False)
+    _cumulative_distance_cache: list[tuple[float, float]] | None = field(
+        default=None, init=False, repr=False
+    )
     _sorted_times_cache: list[datetime] | None = field(default=None, init=False, repr=False)
 
     @property
@@ -53,7 +55,9 @@ class WorkoutRoute:
     @property
     def distance_meters(self) -> float:
         """Calculate the total distance of the workout route in meters."""
-        cumulative_distances = self._cumulative_distances()
+        data = self._cumulative_distances()
+        cumulative_distances: list[float] = [row[0] for row in data]
+
         return cumulative_distances[-1] if cumulative_distances else 0.0
 
     @property
@@ -99,7 +103,7 @@ class WorkoutRoute:
         a = sin(dp / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
         return 2 * r * atan2(sqrt(a), sqrt(1 - a))
 
-    def _cumulative_distances(self) -> list[float]:
+    def _cumulative_distances(self) -> list[tuple[float, float]]:
         """Return cumulative route distances for each point.
 
         The value at index ``i`` is the total traveled distance from the
@@ -109,13 +113,14 @@ class WorkoutRoute:
             return self._cumulative_distance_cache
 
         if len(self.points) < 2:
-            self._cumulative_distance_cache = [0.0] * len(self.points)
+            self._cumulative_distance_cache = [(0.0, 0.0)] * len(self.points)
             return self._cumulative_distance_cache
 
-        distances = [0.0]
+        distances = [(0.0, 0.0)]
         for previous, current in zip(self.points, self.points[1:]):
             avg_speed = (previous.speed + current.speed) / 2.0
             delta_t = (current.time - previous.time).total_seconds()
+            delta_elev = current.altitude - previous.altitude
             if avg_speed > 0.0 and delta_t > 0.0:
                 segment_distance = avg_speed * delta_t
             else:
@@ -125,7 +130,7 @@ class WorkoutRoute:
                     current.latitude,
                     current.longitude,
                 )
-            distances.append(distances[-1] + segment_distance)
+            distances.append((distances[-1][0] + segment_distance, distances[-1][1] + delta_elev))
 
         self._cumulative_distance_cache = distances
         return self._cumulative_distance_cache
@@ -195,7 +200,8 @@ class WorkoutRoute:
         if self.is_empty or segment_length_m <= 0 or len(self.points) < 2:
             return None
 
-        cumulative_distances = self._cumulative_distances()
+        data = self._cumulative_distances()
+        cumulative_distances: list[float] = [row[0] for row in data]
         best_duration_s: float | None = None
         end_idx = 1
 
@@ -215,8 +221,11 @@ class WorkoutRoute:
 
     def find_fastest_segment_window(
         self, segment_length_m: float, distance_scale_factor: float = 1.0
-    ) -> tuple[float, datetime, datetime] | None:
-        """Find the fastest segment and return (duration_s, start_time, end_time).
+    ) -> tuple[float, datetime, datetime, float] | None:
+        """Find the fastest segment
+
+        The elevation change is computed as the net gain (positive) or loss (negative) in altitude
+        from the start to the end of the segment
 
         Identical sliding-window search to :meth:`find_fastest_segment` but also
         returns the GPS timestamps that bound the best window so callers can look
@@ -227,14 +236,16 @@ class WorkoutRoute:
             distance_scale_factor: Same scaling applied in :meth:`find_fastest_segment`.
 
         Returns:
-            ``(duration_s, start_time, end_time)`` for the fastest window, or
+            ``(duration_s, start_time, end_time, elevation_change_m)`` for the fastest window, or
             ``None`` if no valid segment exists.
         """
         if self.is_empty or segment_length_m <= 0 or len(self.points) < 2:
             return None
 
-        cumulative_distances = self._cumulative_distances()
-        best: tuple[float, datetime, datetime] | None = None
+        data = self._cumulative_distances()
+        cumulative_distances: list[float] = [row[0] for row in data]
+        cumulative_elevations: list[float] = [row[1] for row in data]
+        best: tuple[float, datetime, datetime, float] | None = None
         end_idx = 1
 
         for start_idx in range(len(self.points) - 1):
@@ -247,6 +258,14 @@ class WorkoutRoute:
 
             duration_s = (self.points[end_idx].time - self.points[start_idx].time).total_seconds()
             if duration_s > 0 and (best is None or duration_s < best[0]):
-                best = (duration_s, self.points[start_idx].time, self.points[end_idx].time)
+                elevation_change_m = (
+                    cumulative_elevations[end_idx] - cumulative_elevations[start_idx]
+                )
+                best = (
+                    duration_s,
+                    self.points[start_idx].time,
+                    self.points[end_idx].time,
+                    elevation_change_m,
+                )
 
         return best
