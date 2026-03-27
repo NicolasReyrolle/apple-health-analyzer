@@ -67,7 +67,7 @@ class TestBuildWorkoutRows:
         assert "duration" in row
         assert row["duration_sort"] == pytest.approx(3660.0)
         assert "date" in row
-        assert row["date_sort"] != 0.0  # valid timestamp
+        assert row["date_sort"] != pytest.approx(0.0)  # valid timestamp
 
     def test_missing_optional_columns_use_sentinel(self) -> None:
         """Rows missing optional numeric columns should use _MISSING_SORT sentinel."""
