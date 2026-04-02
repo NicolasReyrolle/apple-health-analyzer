@@ -360,10 +360,27 @@ def refresh_data() -> None:
     _reset_best_segments_state()
     _reset_health_data_state()
 
+    # Reset range filter bounds to match the current activity/date filtered dataset so
+    # sliders always show a meaningful range and start fully open after a filter change.
+    dist_min, dist_max = state.workouts.get_distance_bounds(
+        activity_type=state.selected_activity_type,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
+    state.distance_range_km = {"min": math.floor(dist_min), "max": math.ceil(dist_max)}
+    dur_min, dur_max = state.workouts.get_duration_bounds(
+        activity_type=state.selected_activity_type,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
+    state.duration_range_min = {"min": math.floor(dur_min), "max": math.ceil(dur_max)}
+
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()
     render_health_data_tab.refresh()
     render_best_segments_tab.refresh()
+    render_distance_range_selector.refresh()
+    render_duration_range_selector.refresh()
     render_workout_table.refresh()
 
     # If user is already on the tab, load asynchronously after invalidation.
@@ -422,14 +439,6 @@ def render_left_drawer() -> None:
 
         ui.separator()
 
-        render_distance_range_selector()
-
-        ui.separator()
-
-        render_duration_range_selector()
-
-        ui.separator()
-
         render_period_selector()
 
         ui.separator()
@@ -479,7 +488,11 @@ def render_date_range_selector() -> None:
 @ui.refreshable
 def render_distance_range_selector() -> None:
     """Render the distance range slider for the workout table filter."""
-    min_km, max_km = state.workouts.get_distance_bounds()
+    min_km, max_km = state.workouts.get_distance_bounds(
+        activity_type=state.selected_activity_type,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
     slider_min = math.floor(min_km)
     slider_max = math.ceil(max_km)
 
@@ -514,7 +527,11 @@ def render_distance_range_selector() -> None:
 @ui.refreshable
 def render_duration_range_selector() -> None:
     """Render the duration range slider for the workout table filter."""
-    min_min, max_min = state.workouts.get_duration_bounds()
+    min_min, max_min = state.workouts.get_duration_bounds(
+        activity_type=state.selected_activity_type,
+        start_date=state.start_date,
+        end_date=state.end_date,
+    )
     slider_min = math.floor(min_min)
     slider_max = math.ceil(max_min)
 
@@ -699,15 +716,8 @@ async def load_file() -> None:
         state.records_by_type = records_by_type
         state.file_loaded = True
         state.activity_options = activity_options
-        # Reset range filters to the full bounds of the newly loaded dataset.
-        dist_min, dist_max = workouts.get_distance_bounds()
-        state.distance_range_km = {"min": math.floor(dist_min), "max": math.ceil(dist_max)}
-        dur_min, dur_max = workouts.get_duration_bounds()
-        state.duration_range_min = {"min": math.floor(dur_min), "max": math.ceil(dur_max)}
         render_activity_select.refresh()
         render_date_range_selector.refresh()
-        render_distance_range_selector.refresh()
-        render_duration_range_selector.refresh()
         refresh_data()
         ui.notify(t("File parsed successfully."))
     except Exception as e:
@@ -802,6 +812,9 @@ def render_body() -> None:
             render_trends_tab()
 
         with ui.tab_panel("workouts"):
+            with ui.row().classes("w-full gap-4 q-pb-sm"):
+                render_distance_range_selector()
+                render_duration_range_selector()
             render_workout_table()
 
         with ui.tab_panel("health_data"):

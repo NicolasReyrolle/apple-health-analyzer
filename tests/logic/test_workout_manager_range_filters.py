@@ -51,6 +51,21 @@ class TestGetDistanceBounds:
         assert lo == pytest.approx(3.0)
         assert hi == pytest.approx(30.0)
 
+    def test_bounds_filtered_by_activity_type(self) -> None:
+        """Filtering by activity_type should restrict bounds to that type."""
+        manager = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Cycling"],
+                    "distance": [3000.0, 10000.0, 30000.0],
+                    "startDate": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+                }
+            )
+        )
+        lo, hi = manager.get_distance_bounds(activity_type="Running")
+        assert lo == pytest.approx(3.0)
+        assert hi == pytest.approx(10.0)
+
     def test_bounds_in_metres(self) -> None:
         """Requesting bounds in 'm' returns values in metres."""
         manager = wm.WorkoutManager(
@@ -112,6 +127,21 @@ class TestGetDurationBounds:
         lo, hi = manager.get_duration_bounds()
         assert lo == pytest.approx(30.0)
         assert hi == pytest.approx(120.0)
+
+    def test_bounds_filtered_by_activity_type(self) -> None:
+        """Filtering by activity_type should restrict bounds to that type."""
+        manager = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Walking", "Cycling"],
+                    "duration": [1800.0, 3600.0, 7200.0],
+                    "startDate": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+                }
+            )
+        )
+        lo, hi = manager.get_duration_bounds(activity_type="Running")
+        assert lo == pytest.approx(30.0)
+        assert hi == pytest.approx(30.0)
 
     def test_bounds_in_hours(self) -> None:
         """Requesting bounds in 'h' returns values in hours."""
