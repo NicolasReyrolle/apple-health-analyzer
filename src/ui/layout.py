@@ -483,6 +483,7 @@ def render_distance_range_selector() -> None:
     slider_min = math.floor(min_km)
     slider_max = math.ceil(max_km)
 
+    # No meaningful range to filter (no data or all workouts have the same distance).
     if slider_min >= slider_max:
         return
 
@@ -517,6 +518,7 @@ def render_duration_range_selector() -> None:
     slider_min = math.floor(min_min)
     slider_max = math.ceil(max_min)
 
+    # No meaningful range to filter (no data or all workouts have the same duration).
     if slider_min >= slider_max:
         return
 
