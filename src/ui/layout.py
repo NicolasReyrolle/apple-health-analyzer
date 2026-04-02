@@ -502,17 +502,19 @@ def render_distance_range_selector() -> None:
 
     with ui.column().classes(RANGE_ROW_CLASSES + " flex-1"):
         dist_range = state.distance_range_km
+        # Pre-compute translated format string once at render time so the
+        # bind_text_from backward never calls t() in a deferred binding context
+        # where app.storage.user may not yet be available (causing English reversion).
+        dist_label_fmt = t("Distance: {lo} – {hi} km")
         ui.label(
-            t(
-                "Distance: {lo} – {hi} km",
+            dist_label_fmt.format(
                 lo=str(int(dist_range.get("min", slider_min))),
                 hi=str(int(dist_range.get("max", slider_max))),
             )
         ).classes(RANGE_LABEL_CLASSES).bind_text_from(
             state,
             "distance_range_km",
-            backward=lambda r: t(
-                "Distance: {lo} – {hi} km",
+            backward=lambda r: dist_label_fmt.format(
                 lo=str(int(r.get("min", slider_min))),
                 hi=str(int(r.get("max", slider_max))),
             ),
@@ -541,17 +543,18 @@ def render_duration_range_selector() -> None:
 
     with ui.column().classes(RANGE_ROW_CLASSES + " flex-1"):
         dur_range = state.duration_range_min
+        # Pre-compute translated format string once at render time (same reasoning
+        # as render_distance_range_selector).
+        dur_label_fmt = t("Duration: {lo} – {hi} min")
         ui.label(
-            t(
-                "Duration: {lo} – {hi} min",
+            dur_label_fmt.format(
                 lo=str(int(dur_range.get("min", slider_min))),
                 hi=str(int(dur_range.get("max", slider_max))),
             )
         ).classes(RANGE_LABEL_CLASSES).bind_text_from(
             state,
             "duration_range_min",
-            backward=lambda r: t(
-                "Duration: {lo} – {hi} min",
+            backward=lambda r: dur_label_fmt.format(
                 lo=str(int(r.get("min", slider_min))),
                 hi=str(int(r.get("max", slider_max))),
             ),
