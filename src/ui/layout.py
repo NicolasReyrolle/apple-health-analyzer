@@ -34,8 +34,6 @@ from ui.css import (
     INPUT_SMALL_CLASSES,
     LABEL_MUTED_CLASSES,
     LABEL_SECTION_CLASSES,
-    RANGE_LABEL_CLASSES,
-    RANGE_ROW_CLASSES,
     ROW_CENTERED_CLASSES,
     ROW_FULL_ITEMS_CLASSES,
     TABS_FULL_CLASSES,
@@ -50,7 +48,11 @@ from ui.helpers import (
     translate_parser_progress_message,
 )
 from ui.local_file_picker import LocalFilePicker
-from ui.workout_table import render_workout_table
+from ui.workout_table import (
+    render_distance_range_selector,
+    render_duration_range_selector,
+    render_workout_table,
+)
 
 # Get logger for this module
 _logger = logging.getLogger(__name__)
@@ -483,87 +485,6 @@ def render_date_range_selector() -> None:
                 else None
             ),
         ).bind_enabled_from(state, "file_loaded")
-
-
-@ui.refreshable
-def render_distance_range_selector() -> None:
-    """Render the distance range slider for the workout table filter."""
-    min_km, max_km = state.workouts.get_distance_bounds(
-        activity_type=state.selected_activity_type,
-        start_date=state.start_date,
-        end_date=state.end_date,
-    )
-    slider_min = math.floor(min_km)
-    slider_max = math.ceil(max_km)
-
-    # No meaningful range to filter (no data or all workouts have the same distance).
-    if slider_min >= slider_max:
-        return
-
-    with ui.column().classes(RANGE_ROW_CLASSES + " flex-1"):
-        dist_range = state.distance_range_km
-        # Pre-compute translated format string once at render time so the
-        # bind_text_from backward never calls t() in a deferred binding context
-        # where app.storage.user may not yet be available (causing English reversion).
-        dist_label_fmt = t("Distance: {lo} – {hi} km")
-        ui.label(
-            dist_label_fmt.format(
-                lo=str(int(dist_range.get("min", slider_min))),
-                hi=str(int(dist_range.get("max", slider_max))),
-            )
-        ).classes(RANGE_LABEL_CLASSES).bind_text_from(
-            state,
-            "distance_range_km",
-            backward=lambda r: dist_label_fmt.format(
-                lo=str(int(r.get("min", slider_min))),
-                hi=str(int(r.get("max", slider_max))),
-            ),
-        )
-        ui.range(
-            min=slider_min, max=slider_max, step=1, on_change=render_workout_table.refresh
-        ).bind_value(state, "distance_range_km").bind_enabled_from(state, "file_loaded").classes(
-            "w-full"
-        )
-
-
-@ui.refreshable
-def render_duration_range_selector() -> None:
-    """Render the duration range slider for the workout table filter."""
-    min_min, max_min = state.workouts.get_duration_bounds(
-        activity_type=state.selected_activity_type,
-        start_date=state.start_date,
-        end_date=state.end_date,
-    )
-    slider_min = math.floor(min_min)
-    slider_max = math.ceil(max_min)
-
-    # No meaningful range to filter (no data or all workouts have the same duration).
-    if slider_min >= slider_max:
-        return
-
-    with ui.column().classes(RANGE_ROW_CLASSES + " flex-1"):
-        dur_range = state.duration_range_min
-        # Pre-compute translated format string once at render time (same reasoning
-        # as render_distance_range_selector).
-        dur_label_fmt = t("Duration: {lo} – {hi} min")
-        ui.label(
-            dur_label_fmt.format(
-                lo=str(int(dur_range.get("min", slider_min))),
-                hi=str(int(dur_range.get("max", slider_max))),
-            )
-        ).classes(RANGE_LABEL_CLASSES).bind_text_from(
-            state,
-            "duration_range_min",
-            backward=lambda r: dur_label_fmt.format(
-                lo=str(int(r.get("min", slider_min))),
-                hi=str(int(r.get("max", slider_max))),
-            ),
-        )
-        ui.range(
-            min=slider_min, max=slider_max, step=1, on_change=render_workout_table.refresh
-        ).bind_value(state, "duration_range_min").bind_enabled_from(state, "file_loaded").classes(
-            "w-full"
-        )
 
 
 def _change_language(language_code: str) -> None:
