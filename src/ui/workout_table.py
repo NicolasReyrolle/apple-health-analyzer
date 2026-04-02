@@ -13,7 +13,7 @@ from i18n.activity_types import activity_display_label
 from ui.css import (
     LABEL_EMPTY_STATE_CLASSES,
     RANGE_LABEL_CLASSES,
-    RANGE_ROW_CLASSES,
+    RANGE_SELECTOR_COLUMN_CLASSES,
     TABLE_FULL_CLASSES,
 )
 from ui.helpers import format_date_label, format_duration_label
@@ -77,18 +77,16 @@ def _build_workout_rows() -> list[dict[str, Any]]:
     dist_min_m = dist_range.get("min", 0.0) * 1000.0
     dist_max_m = dist_range.get("max", 0.0) * 1000.0
     if "distance" in df.columns and dist_min_m < dist_max_m:
-        df = df[
-            (df["distance"].fillna(0.0) >= dist_min_m) & (df["distance"].fillna(0.0) <= dist_max_m)
-        ]
+        dist = df["distance"].fillna(0.0)
+        df = df[(dist >= dist_min_m) & (dist <= dist_max_m)]
 
     # Apply duration range filter (convert minutes to seconds, the canonical storage unit).
     dur_range = state.duration_range_min
     dur_min_s = dur_range.get("min", 0.0) * 60.0
     dur_max_s = dur_range.get("max", 0.0) * 60.0
     if "duration" in df.columns and dur_min_s < dur_max_s:
-        df = df[
-            (df["duration"].fillna(0.0) >= dur_min_s) & (df["duration"].fillna(0.0) <= dur_max_s)
-        ]
+        dur = df["duration"].fillna(0.0)
+        df = df[(dur >= dur_min_s) & (dur <= dur_max_s)]
 
     if df.empty:
         return []
@@ -289,7 +287,7 @@ def render_distance_range_selector() -> None:
     if slider_min >= slider_max:
         return
 
-    with ui.column().classes(RANGE_ROW_CLASSES + " flex-1"):
+    with ui.column().classes(RANGE_SELECTOR_COLUMN_CLASSES):
         dist_range = state.distance_range_km
         # Pre-compute translated format string once at render time so the
         # bind_text_from backward never calls t() in a deferred binding context
@@ -311,7 +309,7 @@ def render_distance_range_selector() -> None:
         ui.range(
             min=slider_min, max=slider_max, step=1, on_change=render_workout_table.refresh
         ).bind_value(state, "distance_range_km").bind_enabled_from(state, "file_loaded").classes(
-            "w-full"
+            TABLE_FULL_CLASSES
         )
 
 
@@ -330,7 +328,7 @@ def render_duration_range_selector() -> None:
     if slider_min >= slider_max:
         return
 
-    with ui.column().classes(RANGE_ROW_CLASSES + " flex-1"):
+    with ui.column().classes(RANGE_SELECTOR_COLUMN_CLASSES):
         dur_range = state.duration_range_min
         # Pre-compute translated format string once at render time (same reasoning
         # as render_distance_range_selector).
@@ -351,5 +349,5 @@ def render_duration_range_selector() -> None:
         ui.range(
             min=slider_min, max=slider_max, step=1, on_change=render_workout_table.refresh
         ).bind_value(state, "duration_range_min").bind_enabled_from(state, "file_loaded").classes(
-            "w-full"
+            TABLE_FULL_CLASSES
         )

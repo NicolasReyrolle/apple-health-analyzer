@@ -34,6 +34,7 @@ from ui.css import (
     INPUT_SMALL_CLASSES,
     LABEL_MUTED_CLASSES,
     LABEL_SECTION_CLASSES,
+    RANGE_SELECTORS_ROW_CLASSES,
     ROW_CENTERED_CLASSES,
     ROW_FULL_ITEMS_CLASSES,
     TABS_FULL_CLASSES,
@@ -736,7 +737,7 @@ def render_body() -> None:
             render_trends_tab()
 
         with ui.tab_panel("workouts"):
-            with ui.row().classes("w-full gap-8 q-pb-sm"):
+            with ui.row().classes(RANGE_SELECTORS_ROW_CLASSES):
                 render_distance_range_selector()
                 render_duration_range_selector()
             render_workout_table()
