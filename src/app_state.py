@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from nicegui import app, ui
 
-from i18n import DEFAULT_LANGUAGE as DEFAULT_LANGUAGE  # noqa: PLC0414
+from i18n import DEFAULT_LANGUAGE as DEFAULT_LANGUAGE  # re-export alongside unit-system defaults
 from logic.records_by_type import RecordsByType
 from logic.workout_manager import WorkoutManager
 

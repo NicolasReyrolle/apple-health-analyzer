@@ -28,7 +28,10 @@ _logger = logging.getLogger(__name__)
 
 #: Power confidence metadata used to choose an icon and tooltip for each row.
 _CONFIDENCE_META: dict[str, dict[str, str]] = {
-    "measured": {"icon": "sensors", "tooltip_key": "Measured from segment samples"},
+    "measured": {
+        "icon": "sensors",
+        "tooltip_key": "Measured from segment samples",
+    },
     "overlap_estimated": {
         "icon": "insights",
         "tooltip_key": "Estimated from overlapping power intervals",
@@ -37,7 +40,10 @@ _CONFIDENCE_META: dict[str, dict[str, str]] = {
         "icon": "directions_run",
         "tooltip_key": "Using workout average power fallback",
     },
-    "missing": {"icon": "help_outline", "tooltip_key": "No matching power data"},
+    "missing": {
+        "icon": "help_outline",
+        "tooltip_key": "No matching power data",
+    },
 }
 
 
