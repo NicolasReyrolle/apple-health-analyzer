@@ -110,7 +110,11 @@ def _build_workout_rows() -> list[dict[str, Any]]:
 
 
 def _extract_row_data(
-    row: Any, idx: int, language_code: str, distance_unit: str = "km", elevation_unit: str = "m"
+    row: Any,
+    idx: int,
+    language_code: str,
+    distance_unit: str = "km",
+    elevation_unit: str = "m",
 ) -> dict[str, Any]:
     """Extract and format a single workout row.
 
