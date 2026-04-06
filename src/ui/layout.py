@@ -530,6 +530,8 @@ def _refresh_loaded_data_for_unit_change() -> None:
         return
 
     refresh_data()
+
+
 def _change_unit_system(system: str) -> None:
     """Store the selected unit system and reload the page."""
     app.storage.user["unit_system"] = system
