@@ -529,16 +529,7 @@ def _refresh_loaded_data_for_unit_change() -> None:
     if not state.file_loaded:
         return
 
-    refresh_callback = cast(Callable[[], None] | None, globals().get("refresh_data"))
-    if refresh_callback is None:
-        _logger.warning(
-            "Unable to refresh derived state after unit-system change: refresh_data() not found."
-        )
-        return
-
-    refresh_callback()
-
-
+    refresh_data()
 def _change_unit_system(system: str) -> None:
     """Store the selected unit system and reload the page."""
     app.storage.user["unit_system"] = system
