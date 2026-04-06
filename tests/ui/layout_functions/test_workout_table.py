@@ -508,3 +508,145 @@ class TestBuildWorkoutRowsRangeFiltering:
         assert len(rows) == 1
         assert rows[0]["distance_sort"] == pytest.approx(8000.0)
         assert rows[0]["duration_sort"] == pytest.approx(3600.0)
+
+
+class TestSafeFloat:
+    """Unit tests for _safe_float() helper."""
+
+    def test_returns_none_for_none(self) -> None:
+        """None input should return None."""
+        assert wt._safe_float(None) is None
+
+    def test_returns_none_for_non_numeric_string(self) -> None:
+        """Non-numeric string should return None (TypeError/ValueError branch)."""
+        assert wt._safe_float("not-a-number") is None
+
+    def test_returns_float_for_numeric_string(self) -> None:
+        """A numeric string should be converted to float."""
+        result = wt._safe_float("3.14")
+        assert result == pytest.approx(3.14)
+
+    def test_returns_none_for_nan(self) -> None:
+        """float('nan') should return None."""
+        assert wt._safe_float(float("nan")) is None
+
+
+class TestExtractDistanceField:
+    """Unit tests for _extract_distance_field() helper."""
+
+    def test_zero_distance_returns_dash(self) -> None:
+        """Zero-metre distance should produce '–' as the display string."""
+        row = {"distance": 0.0}
+        sort_val, display = wt._extract_distance_field(row)
+        assert sort_val == pytest.approx(0.0)
+        assert display == "–"
+
+    def test_negative_distance_returns_dash(self) -> None:
+        """Negative distance should also produce '–'."""
+        row = {"distance": -100.0}
+        sort_val, display = wt._extract_distance_field(row)
+        assert display == "–"
+
+    def test_imperial_distance_uses_miles(self) -> None:
+        """distance_unit='mi' should format in miles."""
+        from units import METERS_TO_MILES
+
+        row = {"distance": 1609.344}  # 1 mile
+        sort_val, display = wt._extract_distance_field(row, distance_unit="mi")
+        expected = f"{1609.344 * METERS_TO_MILES:.1f} mi"
+        assert display == expected
+
+
+class TestBuildWorkoutRowsImperial:
+    """Tests for imperial unit rendering in _build_workout_rows()."""
+
+    def _make_workouts_mock(self, rows: list[dict[str, Any]]) -> MagicMock:
+        mock = MagicMock()
+        mock._filter_workouts.return_value = pd.DataFrame(rows)
+        return mock
+
+    def test_elevation_displayed_in_feet_for_imperial(self) -> None:
+        """Elevation column should show 'ft' when unit system is imperial."""
+        from unittest.mock import patch
+
+        from units import METERS_TO_FEET
+
+        original_workouts: Any = state.workouts
+        workouts_mock = self._make_workouts_mock(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-01-01"),
+                    "duration": 3600.0,
+                    "distance": 10000.0,
+                    "ElevationAscended": 100.0,  # metres
+                }
+            ]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            with patch("ui.workout_table.get_elevation_unit", return_value="ft"):
+                rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+
+        assert len(rows) == 1
+        expected_ft = int(round(100.0 * METERS_TO_FEET))
+        assert rows[0]["elevation"] == f"{expected_ft} ft"
+
+    def test_distance_displayed_in_miles_for_imperial(self) -> None:
+        """Distance column should show 'mi' when unit system is imperial."""
+        from unittest.mock import patch
+
+        from units import METERS_TO_MILES
+
+        original_workouts: Any = state.workouts
+        workouts_mock = self._make_workouts_mock(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-01-01"),
+                    "duration": 3600.0,
+                    "distance": 1609.344,  # 1 mile
+                }
+            ]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            with patch("ui.workout_table.get_distance_unit", return_value="mi"):
+                rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+
+        assert len(rows) == 1
+        expected_mi = f"{1609.344 * METERS_TO_MILES:.1f} mi"
+        assert rows[0]["distance"] == expected_mi
+
+    def test_all_rows_filtered_out_returns_empty(self) -> None:
+        """Applying a range filter that excludes all rows should return []."""
+        original_workouts: Any = state.workouts
+        original_dist = dict(state.distance_range)
+
+        workouts_mock = self._make_workouts_mock(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-01-01"),
+                    "duration": 3600.0,
+                    "distance": 1000.0,
+                },
+            ]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            # Range 20–50 km excludes the 1 km workout
+            state.distance_range = {"min": 20.0, "max": 50.0}
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+            state.distance_range = original_dist
+
+        assert rows == []
