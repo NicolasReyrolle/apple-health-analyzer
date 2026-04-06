@@ -426,7 +426,7 @@ class TestStatCards:
         await user.should_see("Duration")
         await user.should_see("h")
         await user.should_see("Elevation")
-        await user.should_see("km")
+        await user.should_see("m")
         await user.should_see("Calories")
         await user.should_see("kcal")
 
