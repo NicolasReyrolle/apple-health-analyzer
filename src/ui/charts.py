@@ -1,5 +1,6 @@
 """Shared UI chart and card components for Apple Health Analyzer."""
 
+import copy
 from collections.abc import Mapping
 
 from nicegui import ui
@@ -219,11 +220,11 @@ def render_generic_graph(
     }
 
     # Card chart: scroll/pinch zoom only (compact card has no space for a slider)
-    card_config = dict(base_config)
+    card_config = copy.deepcopy(base_config)
     card_config["dataZoom"] = [{"type": "inside"}]
 
     # Fullscreen chart: both inside zoom and a visible range slider
-    fullscreen_config = dict(base_config)
+    fullscreen_config = copy.deepcopy(base_config)
     fullscreen_config["dataZoom"] = [{"type": "inside"}, {"type": "slider"}]
 
     with ui.dialog().props("maximized") as dialog:
