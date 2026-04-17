@@ -327,8 +327,9 @@ class TestChartsModuleComponents:
 
         # First echart call is fullscreen (inside dialog), second is the card
         assert len(echart_calls) == 2
-        fullscreen_data = echart_calls[0]["series"][0]["data"]
+        fullscreen_config = echart_calls[0]
         card_data = echart_calls[1]["series"][0]["data"]
+        fullscreen_data = fullscreen_config["series"][0]["data"]
         assert fullscreen_data == [
             {"value": 3, "name": "Running"},
             {"value": 1, "name": "Cycling"},
@@ -338,3 +339,6 @@ class TestChartsModuleComponents:
             {"value": 3, "name": "Running"},
             {"value": 1, "name": "Others"},
         ]
+        # Fullscreen should have a dataZoom slider; card should not
+        assert "dataZoom" in fullscreen_config
+        assert "dataZoom" not in echart_calls[1]

@@ -1,7 +1,7 @@
 """Shared UI chart and card components for Apple Health Analyzer."""
 
 import copy
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 
 from nicegui import ui
 
@@ -85,7 +85,6 @@ def render_pie_rose_graph(
     label: str,
     values: Mapping[str, float | int],
     unit: str = "",
-    fullscreen_header_fn: Callable[[], None] | None = None,
     fullscreen_values: Mapping[str, float | int] | None = None,
 ) -> None:
     """Render a pie/rose graph for the given values.
@@ -94,8 +93,6 @@ def render_pie_rose_graph(
         label: Chart title.
         values: Mapping of category name to numeric value (used in the card view).
         unit: Optional unit suffix appended to tooltip values and chart title.
-        fullscreen_header_fn: Optional callable rendered between the title bar and the chart
-            inside the fullscreen dialog (e.g. a date-range selector).
         fullscreen_values: Alternative data mapping used exclusively in the fullscreen chart.
             When provided (e.g. ungrouped data), overrides ``values`` for the fullscreen view.
     """
@@ -143,7 +140,8 @@ def render_pie_rose_graph(
         ],
     }
 
-    # Fullscreen chart: larger radius fills the viewport, all slices shown (minAngle: 0)
+    # Fullscreen chart: larger radius fills the viewport, all slices shown (minAngle: 0),
+    # dataZoom slider mirrors the slider shown in bar/line fullscreen charts.
     fullscreen_chart_config: dict[str, object] = {
         **copy.deepcopy(_shared),
         "toolbox": {
@@ -152,6 +150,7 @@ def render_pie_rose_graph(
                 "saveAsImage": {"title": t("Save as Image")},
             }
         },
+        "dataZoom": [{"type": "inside"}, {"type": "slider"}],
         "series": [
             {
                 "type": "pie",
@@ -170,8 +169,6 @@ def render_pie_rose_graph(
             with ui.row().classes(CHART_HEADER_ROW_CLASSES):
                 ui.label(title_text).classes(LABEL_UPPERCASE_CLASSES)
                 ui.button(icon="close", on_click=dialog.close).props(BUTTON_DENSE_PROPS)
-            if fullscreen_header_fn is not None:
-                fullscreen_header_fn()
             ui.echart(fullscreen_chart_config).classes(ECHART_FULLSCREEN_CLASSES)
 
     with ui.card().classes(CHART_CARD_CLASSES):
