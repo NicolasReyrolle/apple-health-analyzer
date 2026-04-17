@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from nicegui import ui
 
 from app_state import state
+from i18n import t
 from ui.css import (
     BUTTON_DENSE_PROPS,
     BUTTON_FLAT_ROUND_PROPS,
@@ -91,22 +92,53 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
     title_text = f"{label} ({unit})" if unit else label
     value_suffix = f" {unit}" if unit else ""
 
-    chart_config: dict[str, object] = {
+    _shared: dict[str, object] = {
         "backgroundColor": "transparent",
         "darkMode": state.dark_mode_enabled,
         "tooltip": {
             "trigger": "item",
             "formatter": f"<b>{{b}}</b><br/>{{c}}{value_suffix}<br/>({{d}}%)",
         },
-        "toolbox": {"feature": {"saveAsImage": {}}},
+        "toolbox": {
+            "feature": {
+                "saveAsImage": {"title": t("Save as Image")},
+            }
+        },
+    }
+
+    # Card chart: compact fixed-pixel radius (fits the w-100 h-80 card)
+    card_chart_config: dict[str, object] = {
+        **_shared,
         "series": [
             {
                 "type": "pie",
                 "name": label,
                 "data": chart_data,
                 "roseType": "rose",
-                "radius": ["10", "60"],
+                "radius": ["10%", "60%"],
                 "center": ["50%", "50%"],
+            },
+        ],
+    }
+
+    # Fullscreen chart: larger radius fills the viewport, all slices shown (minAngle: 0)
+    fullscreen_chart_config: dict[str, object] = {
+        **copy.deepcopy(_shared),
+        "toolbox": {
+            "feature": {
+                "restore": {"title": t("Restore")},
+                "saveAsImage": {"title": t("Save as Image")},
+            }
+        },
+        "series": [
+            {
+                "type": "pie",
+                "name": label,
+                "data": chart_data,
+                "roseType": "rose",
+                "radius": ["15%", "75%"],
+                "center": ["50%", "50%"],
+                "minAngle": 0,
             },
         ],
     }
@@ -116,13 +148,13 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
             with ui.row().classes(CHART_HEADER_ROW_CLASSES):
                 ui.label(title_text).classes(LABEL_UPPERCASE_CLASSES)
                 ui.button(icon="close", on_click=dialog.close).props(BUTTON_DENSE_PROPS)
-            ui.echart(chart_config).classes(ECHART_FULLSCREEN_CLASSES)
+            ui.echart(fullscreen_chart_config).classes(ECHART_FULLSCREEN_CLASSES)
 
     with ui.card().classes(CHART_CARD_CLASSES):
         with ui.row().classes(CHART_HEADER_ROW_CLASSES):
             ui.label(title_text).classes(LABEL_UPPERCASE_CLASSES)
             ui.button(icon="fullscreen", on_click=dialog.open).props(BUTTON_DENSE_PROPS)
-        ui.echart(chart_config)
+        ui.echart(card_chart_config)
 
 
 def render_generic_graph(
@@ -210,22 +242,23 @@ def render_generic_graph(
             "name": unit,
             "nameLocation": "end",
         },
-        "toolbox": {
-            "feature": {
-                "restore": {},
-                "saveAsImage": {},
-            }
-        },
         "series": series,
     }
 
-    # Card chart: scroll/pinch zoom only (compact card has no space for a slider)
+    # Card chart: scroll/pinch zoom only (no slider, no restore button)
     card_config = copy.deepcopy(base_config)
     card_config["dataZoom"] = [{"type": "inside"}]
+    card_config["toolbox"] = {"feature": {"saveAsImage": {"title": t("Save as Image")}}}
 
-    # Fullscreen chart: both inside zoom and a visible range slider
+    # Fullscreen chart: inside zoom + visible slider + restore button
     fullscreen_config = copy.deepcopy(base_config)
     fullscreen_config["dataZoom"] = [{"type": "inside"}, {"type": "slider"}]
+    fullscreen_config["toolbox"] = {
+        "feature": {
+            "restore": {"title": t("Restore")},
+            "saveAsImage": {"title": t("Save as Image")},
+        }
+    }
 
     with ui.dialog().props("maximized") as dialog:
         with ui.card().classes(CHART_FULLSCREEN_CARD_CLASSES):
