@@ -1,7 +1,7 @@
 """Shared UI chart and card components for Apple Health Analyzer."""
 
 import copy
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 from nicegui import ui
 
@@ -81,8 +81,21 @@ def stat_card(
             )
 
 
-def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: str = "") -> None:
-    """Render a pie/rose graph for the given values."""
+def render_pie_rose_graph(
+    label: str,
+    values: Mapping[str, float | int],
+    unit: str = "",
+    fullscreen_header_fn: Callable[[], None] | None = None,
+) -> None:
+    """Render a pie/rose graph for the given values.
+
+    Args:
+        label: Chart title.
+        values: Mapping of category name to numeric value.
+        unit: Optional unit suffix appended to tooltip values and chart title.
+        fullscreen_header_fn: Optional callable rendered between the title bar and the chart
+            inside the fullscreen dialog (e.g. a date-range selector).
+    """
 
     chart_data: list[dict[str, float | int | str]] = [
         {"value": v, "name": k} for k, v in values.items()
@@ -148,6 +161,8 @@ def render_pie_rose_graph(label: str, values: Mapping[str, float | int], unit: s
             with ui.row().classes(CHART_HEADER_ROW_CLASSES):
                 ui.label(title_text).classes(LABEL_UPPERCASE_CLASSES)
                 ui.button(icon="close", on_click=dialog.close).props(BUTTON_DENSE_PROPS)
+            if fullscreen_header_fn is not None:
+                fullscreen_header_fn()
             ui.echart(fullscreen_chart_config).classes(ECHART_FULLSCREEN_CLASSES)
 
     with ui.card().classes(CHART_CARD_CLASSES):

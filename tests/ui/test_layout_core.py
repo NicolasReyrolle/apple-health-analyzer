@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace, TracebackType
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from app_state import state
 from ui import layout
@@ -103,11 +103,21 @@ def test_render_activity_graphs_renders_all_charts() -> None:
                 layout.render_activity_graphs.func()
 
         assert render_graph_mock.call_count == 5
-        render_graph_mock.assert_any_call("Count by activity", {"Running": 1})
-        render_graph_mock.assert_any_call("Distance by activity", {"Running": 5}, "km")
-        render_graph_mock.assert_any_call("Calories by activity", {"Running": 200}, "kcal")
-        render_graph_mock.assert_any_call("Duration by activity", {"Running": 1}, "h")
-        render_graph_mock.assert_any_call("Elevation by activity", {"Running": 1}, "m")
+        render_graph_mock.assert_any_call(
+            "Count by activity", {"Running": 1}, fullscreen_header_fn=ANY
+        )
+        render_graph_mock.assert_any_call(
+            "Distance by activity", {"Running": 5}, "km", fullscreen_header_fn=ANY
+        )
+        render_graph_mock.assert_any_call(
+            "Calories by activity", {"Running": 200}, "kcal", fullscreen_header_fn=ANY
+        )
+        render_graph_mock.assert_any_call(
+            "Duration by activity", {"Running": 1}, "h", fullscreen_header_fn=ANY
+        )
+        render_graph_mock.assert_any_call(
+            "Elevation by activity", {"Running": 1}, "m", fullscreen_header_fn=ANY
+        )
     finally:
         state.workouts = original_workouts
 
