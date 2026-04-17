@@ -301,3 +301,40 @@ class TestChartsModuleComponents:
             {"value": 3, "name": "Running"},
             {"value": 1, "name": "Cycling"},
         ]
+
+    def test_render_pie_rose_graph_uses_fullscreen_values_in_dialog(self) -> None:
+        """When fullscreen_values is given, the fullscreen echart should use that data."""
+        card_values = {"Running": 3, "Others": 1}
+        fullscreen_values = {"Running": 3, "Cycling": 1, "Walking": 0}
+
+        echart_calls: list[dict] = []
+
+        def capture_echart(config: dict, *_a, **_kw):
+            echart_calls.append(config)
+            return DummyComponent()
+
+        with (
+            patch("ui.charts.ui.dialog", return_value=MagicMock()),
+            patch("ui.charts.ui.card", return_value=DummyRow()),
+            patch("ui.charts.ui.row", return_value=DummyRow()),
+            patch("ui.charts.ui.label"),
+            patch("ui.charts.ui.button", return_value=DummyComponent()),
+            patch("ui.charts.ui.echart", side_effect=capture_echart),
+        ):
+            charts.render_pie_rose_graph(
+                "Activities", card_values, fullscreen_values=fullscreen_values
+            )
+
+        # First echart call is fullscreen (inside dialog), second is the card
+        assert len(echart_calls) == 2
+        fullscreen_data = echart_calls[0]["series"][0]["data"]
+        card_data = echart_calls[1]["series"][0]["data"]
+        assert fullscreen_data == [
+            {"value": 3, "name": "Running"},
+            {"value": 1, "name": "Cycling"},
+            {"value": 0, "name": "Walking"},
+        ]
+        assert card_data == [
+            {"value": 3, "name": "Running"},
+            {"value": 1, "name": "Others"},
+        ]

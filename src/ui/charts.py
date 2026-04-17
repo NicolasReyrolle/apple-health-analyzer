@@ -86,20 +86,29 @@ def render_pie_rose_graph(
     values: Mapping[str, float | int],
     unit: str = "",
     fullscreen_header_fn: Callable[[], None] | None = None,
+    fullscreen_values: Mapping[str, float | int] | None = None,
 ) -> None:
     """Render a pie/rose graph for the given values.
 
     Args:
         label: Chart title.
-        values: Mapping of category name to numeric value.
+        values: Mapping of category name to numeric value (used in the card view).
         unit: Optional unit suffix appended to tooltip values and chart title.
         fullscreen_header_fn: Optional callable rendered between the title bar and the chart
             inside the fullscreen dialog (e.g. a date-range selector).
+        fullscreen_values: Alternative data mapping used exclusively in the fullscreen chart.
+            When provided (e.g. ungrouped data), overrides ``values`` for the fullscreen view.
     """
 
     chart_data: list[dict[str, float | int | str]] = [
         {"value": v, "name": k} for k, v in values.items()
     ]
+
+    fullscreen_chart_data: list[dict[str, float | int | str]] = (
+        [{"value": v, "name": k} for k, v in fullscreen_values.items()]
+        if fullscreen_values is not None
+        else chart_data
+    )
 
     # Include unit in chart title when one is provided
     title_text = f"{label} ({unit})" if unit else label
@@ -147,7 +156,7 @@ def render_pie_rose_graph(
             {
                 "type": "pie",
                 "name": label,
-                "data": chart_data,
+                "data": fullscreen_chart_data,
                 "roseType": "rose",
                 "radius": ["15%", "75%"],
                 "center": ["50%", "50%"],

@@ -820,6 +820,13 @@ def render_activity_graphs() -> None:
                 )
             ),
             fullscreen_header_fn=render_date_range_selector,
+            fullscreen_values=translate_activity_value_map(
+                state.workouts.get_count_by_activity(
+                    combination_threshold=0.0,
+                    start_date=state.start_date,
+                    end_date=state.end_date,
+                )
+            ),
         )
         render_pie_rose_graph(
             t("Distance by activity"),
@@ -832,6 +839,14 @@ def render_activity_graphs() -> None:
             ),
             dist_unit,
             fullscreen_header_fn=render_date_range_selector,
+            fullscreen_values=translate_activity_value_map(
+                state.workouts.get_distance_by_activity(
+                    unit=dist_unit,
+                    combination_threshold=0.0,
+                    start_date=state.start_date,
+                    end_date=state.end_date,
+                )
+            ),
         )
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_pie_rose_graph(
@@ -843,6 +858,13 @@ def render_activity_graphs() -> None:
             ),
             "kcal",
             fullscreen_header_fn=render_date_range_selector,
+            fullscreen_values=translate_activity_value_map(
+                state.workouts.get_calories_by_activity(
+                    combination_threshold=0.0,
+                    start_date=state.start_date,
+                    end_date=state.end_date,
+                )
+            ),
         )
         render_pie_rose_graph(
             t("Duration by activity"),
@@ -853,6 +875,13 @@ def render_activity_graphs() -> None:
             ),
             "h",
             fullscreen_header_fn=render_date_range_selector,
+            fullscreen_values=translate_activity_value_map(
+                state.workouts.get_duration_by_activity(
+                    combination_threshold=0.0,
+                    start_date=state.start_date,
+                    end_date=state.end_date,
+                )
+            ),
         )
     with ui.row().classes(ROW_CENTERED_CLASSES):
         render_pie_rose_graph(
@@ -866,6 +895,14 @@ def render_activity_graphs() -> None:
             ),
             elev_unit,
             fullscreen_header_fn=render_date_range_selector,
+            fullscreen_values=translate_activity_value_map(
+                state.workouts.get_elevation_by_activity(
+                    unit=elev_unit,
+                    combination_threshold=0.0,
+                    start_date=state.start_date,
+                    end_date=state.end_date,
+                )
+            ),
         )
 
 
