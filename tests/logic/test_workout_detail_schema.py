@@ -158,6 +158,15 @@ class TestGenericFields:
         """ElevationAscended (workout table 'Elevation' column) must be present."""
         assert _find_field(GENERIC_FIELDS, "ElevationAscended") is not None
 
+    def test_avg_power_covered_by_running_schema(self) -> None:
+        """averageRunningPower (workout table 'Avg Power' column) must be in the Running schema.
+
+        This field is Running-specific (requires Apple Watch Series 8+ or Ultra) and
+        therefore lives in PER_TYPE_FIELDS rather than GENERIC_FIELDS, but the combined
+        schema for Running workouts must include it to mirror the workout table.
+        """
+        assert _find_field(PER_TYPE_FIELDS["Running"], "averageRunningPower") is not None
+
     # --- Optional generic fields ------------------------------------------------
 
     def test_optional_fields_have_optional_presence(self) -> None:
