@@ -312,16 +312,16 @@ def render_workout_table() -> None:
             f'<q-td :props="props">{{{{ props.row.{display_field} }}}}</q-td>',
         )
 
-    # Details button: emits a custom "open_detail" event with the row id so that
-    # the Python handler can locate the correct index and open the modal.
-    # Note: $parent.$emit is required so the event reaches NiceGUI's Python listener,
-    # which is registered on the q-table's parent component (NiceGUI's wrapper).
-    details_label = t("Details")
+    # Details button: icon-only button with a tooltip. Uses $parent.$emit so the
+    # event reaches NiceGUI's Python listener (registered on the q-table's wrapper).
+    details_tooltip = t("Details")
     table.add_slot(
         "body-cell-actions",
         '<q-td :props="props">'
-        f'<q-btn flat dense size="sm" label="{details_label}"'
-        " @click=\"$parent.$emit('open_detail', props.row.id)\" /></q-td>",
+        '<q-btn flat round dense icon="info"'
+        " @click=\"$parent.$emit('open_detail', props.row.id)\">"
+        f"<q-tooltip>{details_tooltip}</q-tooltip>"
+        "</q-btn></q-td>",
     )
 
     def _handle_open_detail(e: Any) -> None:

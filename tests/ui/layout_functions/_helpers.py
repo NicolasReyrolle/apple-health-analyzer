@@ -61,7 +61,7 @@ class DummyComponent:
     def update(self, *_args: Any, **_kwargs: Any) -> None:
         """No-op stub for NiceGUI element.update()."""
 
-    def on(self, *_args: Any, **_kwargs: Any) -> "DummyComponent":
+    def on(self, *_args: Any, **_kwargs: Any) -> DummyComponent:
         """Return self for on() chaining."""
         return self
 

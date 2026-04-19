@@ -162,8 +162,8 @@ MODAL_HEADER_ROW_CLASSES = "w-full justify-between items-center"
 #: Each field row inside the modal (label + value side by side, baseline-aligned).
 MODAL_FIELD_ROW_CLASSES = "w-full items-baseline gap-4"
 
-#: Muted label for a field inside the modal.
-MODAL_FIELD_LABEL_CLASSES = "text-sm text-gray-500 w-36"
+#: Muted label for a field inside the modal (reuses LABEL_MUTED_CLASSES for the base style).
+MODAL_FIELD_LABEL_CLASSES = f"{LABEL_MUTED_CLASSES} w-36"
 
 #: Value text for a field inside the modal.
 MODAL_FIELD_VALUE_CLASSES = "text-sm font-medium flex-1"
@@ -171,5 +171,5 @@ MODAL_FIELD_VALUE_CLASSES = "text-sm font-medium flex-1"
 #: Footer row inside the modal: prev button, counter, next button.
 MODAL_NAV_ROW_CLASSES = "w-full justify-between items-center q-mt-sm"
 
-#: Navigation counter label ("1 / 42") in the modal footer.
-MODAL_NAV_COUNTER_CLASSES = "text-sm text-gray-500"
+#: Navigation counter label ("1 / 42") in the modal footer – same style as LABEL_MUTED_CLASSES.
+MODAL_NAV_COUNTER_CLASSES = LABEL_MUTED_CLASSES

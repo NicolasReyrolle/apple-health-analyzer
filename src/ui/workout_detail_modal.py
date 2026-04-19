@@ -32,6 +32,22 @@ _FIELD_DISPLAY: list[tuple[str, str]] = [
 ]
 
 
+def _update_fields(
+    field_rows: dict[str, tuple[Any, Any]],
+    row: dict[str, Any],
+) -> None:
+    """Update field row visibility and values to match *row*.
+
+    Rows whose value is the missing-data sentinel ``"–"`` are hidden.
+    """
+    for field_key, (frow, value_el) in field_rows.items():
+        value = str(row.get(field_key, "–"))
+        has_value = bool(value) and value != "–"
+        frow.set_visibility(has_value)
+        if has_value:
+            value_el.set_text(value)
+
+
 def create_workout_detail_modal(
     rows: list[dict[str, Any]],
 ) -> Callable[[int], None]:
@@ -103,12 +119,7 @@ def create_workout_detail_modal(
         else:
             next_btn.props(remove="disabled")
 
-        for field_key, (frow, value_el) in field_rows.items():
-            value = str(row.get(field_key, "–"))
-            has_value = bool(value) and value != "–"
-            frow.set_visibility(has_value)
-            if has_value:
-                value_el.set_text(value)
+        _update_fields(field_rows, row)
 
     def _navigate(delta: int) -> None:
         """Move to the next or previous workout by *delta* steps."""

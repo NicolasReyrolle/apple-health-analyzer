@@ -51,10 +51,10 @@ class _DummyElement:
         self._props_added: list[str] = []
         self._props_removed: list[str] = []
 
-    def classes(self, *_a: Any, **_kw: Any) -> "_DummyElement":
+    def classes(self, *_a: Any, **_kw: Any) -> _DummyElement:
         return self
 
-    def props(self, *args: Any, remove: str = "", **_kw: Any) -> "_DummyElement":
+    def props(self, *args: Any, remove: str = "", **_kw: Any) -> _DummyElement:
         if args:
             self._props_added.append(str(args[0]))
         if remove:
@@ -67,7 +67,7 @@ class _DummyElement:
     def set_visibility(self, visible: bool) -> None:
         self._visible = visible
 
-    def on(self, *_a: Any, **_kw: Any) -> "_DummyElement":
+    def on(self, *_a: Any, **_kw: Any) -> _DummyElement:
         return self
 
     def open(self) -> None:
@@ -76,11 +76,11 @@ class _DummyElement:
     def close(self) -> None:
         """Stub for dialog.close()."""
 
-    def __enter__(self) -> "_DummyElement":
+    def __enter__(self) -> _DummyElement:
         return self
 
     def __exit__(self, *_: Any) -> None:
-        pass
+        """Exit the context manager; does nothing in the stub."""
 
 
 class TestFieldDisplay:
