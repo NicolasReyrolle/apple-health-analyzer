@@ -332,6 +332,14 @@ GENERIC_FIELDS: list[FieldDefinition] = [
 
 
 # ---------------------------------------------------------------------------
+# Shared display-name constants reused across multiple activity types
+# ---------------------------------------------------------------------------
+
+_DN_AVG_SPEED = "Avg Speed"
+_DN_AVG_CADENCE = "Avg Cadence"
+_DN_AVG_POWER = "Avg Power"
+
+# ---------------------------------------------------------------------------
 # Shared field definitions reused across multiple activity types
 # ---------------------------------------------------------------------------
 
@@ -359,7 +367,7 @@ _STEP_COUNT_FIELD: FieldDefinition = FieldDefinition(
 _RUNNING_FIELDS: list[FieldDefinition] = [
     FieldDefinition(
         field_name="averageRunningSpeed",
-        display_name="Avg Speed",
+        display_name=_DN_AVG_SPEED,
         unit="km/h",
         field_type=FieldType.NUMBER,
         presence=FieldPresence.OPTIONAL,
@@ -370,7 +378,7 @@ _RUNNING_FIELDS: list[FieldDefinition] = [
     ),
     FieldDefinition(
         field_name="averageRunningCadence",
-        display_name="Avg Cadence",
+        display_name=_DN_AVG_CADENCE,
         unit="steps/min",
         field_type=FieldType.NUMBER,
         presence=FieldPresence.OPTIONAL,
@@ -392,7 +400,7 @@ _RUNNING_FIELDS: list[FieldDefinition] = [
     ),
     FieldDefinition(
         field_name="averageRunningPower",
-        display_name="Avg Power",
+        display_name=_DN_AVG_POWER,
         unit="W",
         field_type=FieldType.NUMBER,
         presence=FieldPresence.OPTIONAL,
@@ -430,7 +438,7 @@ _RUNNING_FIELDS: list[FieldDefinition] = [
 _CYCLING_FIELDS: list[FieldDefinition] = [
     FieldDefinition(
         field_name="averageCyclingSpeed",
-        display_name="Avg Speed",
+        display_name=_DN_AVG_SPEED,
         unit="km/h",
         field_type=FieldType.NUMBER,
         presence=FieldPresence.OPTIONAL,
@@ -442,7 +450,7 @@ _CYCLING_FIELDS: list[FieldDefinition] = [
     ),
     FieldDefinition(
         field_name="averageCyclingCadence",
-        display_name="Avg Cadence",
+        display_name=_DN_AVG_CADENCE,
         unit="rpm",
         field_type=FieldType.NUMBER,
         presence=FieldPresence.OPTIONAL,
@@ -453,7 +461,7 @@ _CYCLING_FIELDS: list[FieldDefinition] = [
     ),
     FieldDefinition(
         field_name="averageCyclingPower",
-        display_name="Avg Power",
+        display_name=_DN_AVG_POWER,
         unit="W",
         field_type=FieldType.NUMBER,
         presence=FieldPresence.OPTIONAL,
@@ -528,7 +536,7 @@ _WALKING_FIELDS: list[FieldDefinition] = [
     _STEP_COUNT_FIELD,
     FieldDefinition(
         field_name="averageWalkingCadence",
-        display_name="Avg Cadence",
+        display_name=_DN_AVG_CADENCE,
         unit="steps/min",
         field_type=FieldType.NUMBER,
         presence=FieldPresence.OPTIONAL,
@@ -547,7 +555,7 @@ _WALKING_FIELDS: list[FieldDefinition] = [
     ),
     FieldDefinition(
         field_name="averageWalkingSpeed",
-        display_name="Avg Speed",
+        display_name=_DN_AVG_SPEED,
         unit="km/h",
         field_type=FieldType.NUMBER,
         presence=FieldPresence.OPTIONAL,
