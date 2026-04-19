@@ -124,8 +124,8 @@ class TestCreateWorkoutDetailModal:
 
         assert callable(fn)
 
-    def test_open_at_clamps_negative_index(self) -> None:
-        """open_at() should not raise for negative indices."""
+    def test_open_at_handles_negative_index_without_error(self) -> None:
+        """open_at() should not raise for negative indices (clamped to 0)."""
         rows = [_make_row(idx=0), _make_row(idx=1)]
         stub = _DummyElement()
 
@@ -140,8 +140,8 @@ class TestCreateWorkoutDetailModal:
 
         fn(-5)  # Should not raise
 
-    def test_open_at_clamps_index_above_length(self) -> None:
-        """open_at() should not raise for indices beyond the row list length."""
+    def test_open_at_handles_out_of_bounds_index_without_error(self) -> None:
+        """open_at() should not raise for indices beyond the row list length (clamped to last)."""
         rows = [_make_row(idx=0)]
         stub = _DummyElement()
 

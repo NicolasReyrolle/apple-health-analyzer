@@ -93,12 +93,12 @@ def create_workout_detail_modal(
         modal_title.set_text(f"{row['activity_type']} – {row['date']}")
         nav_counter.set_text(f"{idx + 1} / {n}")
 
-        if idx <= 0:
+        if idx == 0:
             prev_btn.props("disabled")
         else:
             prev_btn.props(remove="disabled")
 
-        if idx >= n - 1:
+        if idx == n - 1:
             next_btn.props("disabled")
         else:
             next_btn.props(remove="disabled")
