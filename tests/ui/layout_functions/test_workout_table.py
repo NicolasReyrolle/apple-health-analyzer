@@ -577,7 +577,7 @@ class TestExtractDistanceField:
     def test_negative_distance_returns_dash(self) -> None:
         """Negative distance should also produce '–'."""
         row = {"distance": -100.0}
-        sort_val, display = wt._extract_distance_field(row)
+        _, display = wt._extract_distance_field(row)
         assert display == "–"
 
     def test_imperial_distance_uses_miles(self) -> None:
@@ -585,7 +585,7 @@ class TestExtractDistanceField:
         from units import METERS_TO_MILES
 
         row = {"distance": 1609.344}  # 1 mile
-        sort_val, display = wt._extract_distance_field(row, distance_unit="mi")
+        _, display = wt._extract_distance_field(row, distance_unit="mi")
         expected = f"{1609.344 * METERS_TO_MILES:.1f} mi"
         assert display == expected
 
