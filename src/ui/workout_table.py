@@ -327,7 +327,9 @@ def render_workout_table() -> None:
 
     def _handle_open_detail(e: Any) -> None:
         row_id = str(e.args)
-        open_detail(_find_row_index(row_id, rows))
+        row_index = _find_row_index(row_id, rows)
+        if row_index is not None:
+            open_detail(row_index)
 
     table.on("open_detail", _handle_open_detail)
 
