@@ -11,7 +11,7 @@ in :class:`~logic.models.WorkoutRecord`, which become the DataFrame columns in
 **Field naming convention (from ExportParser):**
 
 - Workout element attributes: ``activityType``, ``duration``, ``startDate``,
-  ``endDate``, ``source``
+  ``endDate``
 - ``WorkoutStatistics``: ``f"{stat_attr}{stat_type}"`` where *stat_attr* is one of
   ``sum``, ``average``, ``minimum``, ``maximum``, and *stat_type* is the
   ``HKQuantityTypeIdentifier`` value with the ``HKQuantityTypeIdentifier`` prefix
@@ -192,14 +192,6 @@ GENERIC_FIELDS: list[FieldDefinition] = [
             "Total elapsed time in seconds, converted from the 'duration'/'durationUnit' "
             "XML attributes by ExportParser.duration_to_seconds()."
         ),
-    ),
-    FieldDefinition(
-        field_name="source",
-        display_name="Source",
-        unit=None,
-        field_type=FieldType.STRING,
-        presence=FieldPresence.OPTIONAL,
-        description="Name of the recording device or app from the 'sourceName' XML attribute.",
     ),
     # ---- Distance ----
     FieldDefinition(
