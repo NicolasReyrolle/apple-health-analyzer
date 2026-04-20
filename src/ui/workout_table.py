@@ -162,6 +162,7 @@ def _extract_row_data(
         "id": f"{date_sort}_{idx}",
         "date_sort": date_sort,
         "date": date_display,
+        "raw_activity_type": raw_activity,
         "activity_type": activity_type,
         "duration_sort": duration_sort,
         "duration": duration_display,

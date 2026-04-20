@@ -694,3 +694,42 @@ msgstr "Yoga"
 
 msgid "Elevation Change"
 msgstr "Dénivelé"
+
+# Workout detail modal – running-specific fields
+msgid "Avg Pace"
+msgstr "Allure moyenne"
+
+msgid "Avg Cadence"
+msgstr "Cadence moyenne"
+
+msgid "Avg Stride Length"
+msgstr "Longueur de foulée moyenne"
+
+msgid "Avg Vertical Oscillation"
+msgstr "Oscillation verticale moyenne"
+
+msgid "Avg Ground Contact Time"
+msgstr "Temps de contact au sol moyen"
+
+msgid "Step Count"
+msgstr "Nombre de pas"
+
+msgid "VO₂ Max"
+msgstr "VO₂ Max"
+
+# Workout detail modal – tab labels and empty-state messages
+msgid "Splits"
+msgstr "Fractionnés"
+
+msgid "No activity-specific data available."
+msgstr "Aucune donnée spécifique à cette activité."
+
+msgid "No GPS route available."
+msgstr "Aucun tracé GPS disponible."
+
+# Workout detail modal – splits table column headers
+msgid "Pace"
+msgstr "Allure"
+
+msgid "Elev"
+msgstr "Dénivelé"

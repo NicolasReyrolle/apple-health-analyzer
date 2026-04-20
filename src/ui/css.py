@@ -188,3 +188,6 @@ MODAL_SPLITS_CELL_CLASSES = "text-xs font-medium w-12 text-right"
 
 #: Splits table row inside the modal: evenly-spaced columns.
 MODAL_SPLITS_ROW_CLASSES = "w-full items-center gap-2"
+
+#: Compact ``ui.table`` used for the GPS splits in the modal Splits tab.
+MODAL_SPLITS_TABLE_CLASSES = "w-full"

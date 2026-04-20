@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import ExitStack
 from typing import Any
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from ui import workout_detail_modal as wdm
 def _make_row(
     *,
     activity_type: str = "Running",
+    raw_activity_type: str | None = None,
     date: str = "Sep 16, 2025",
     duration: str = "1h 00min",
     distance: str = "10.0 km",
@@ -22,11 +24,17 @@ def _make_row(
     date_sort: float = 1742000000.0,
     idx: int = 0,
 ) -> dict[str, Any]:
-    """Build a minimal workout row dict matching _build_workout_rows() output."""
+    """Build a minimal workout row dict matching _build_workout_rows() output.
+
+    ``raw_activity_type`` defaults to ``activity_type`` when not specified.  Set
+    them to different values to simulate a language switch (e.g.
+    ``activity_type="Course à pied", raw_activity_type="Running"``).
+    """
     return {
         "id": f"{date_sort}_{idx}",
         "date_sort": date_sort,
         "date": date,
+        "raw_activity_type": raw_activity_type if raw_activity_type is not None else activity_type,
         "activity_type": activity_type,
         "duration_sort": 3600.0,
         "duration": duration,
@@ -51,6 +59,7 @@ class _DummyElement:
         self._text = ""
         self._props_added: list[str] = []
         self._props_removed: list[str] = []
+        self.rows: list[Any] = []
 
     def classes(self, *_a: Any, **_kw: Any) -> _DummyElement:
         return self
@@ -70,6 +79,9 @@ class _DummyElement:
 
     def on(self, *_a: Any, **_kw: Any) -> _DummyElement:
         return self
+
+    def update(self) -> None:
+        """Stub for the NiceGUI ``update()`` method (e.g. used by ui.table)."""
 
     def clear(self) -> None:
         """Test stub for the NiceGUI container ``clear()`` method.
@@ -105,6 +117,45 @@ class _ButtonStub(_DummyElement):
             self._on_click()
 
 
+def _all_patches(
+    *,
+    button_side_effect: Any = None,
+    label_side_effect: Any = None,
+    column_side_effect: Any = None,
+    table_side_effect: Any = None,
+) -> list[Any]:
+    """Return a list of context-manager patches for all NiceGUI elements used in the modal.
+
+    Callers may override individual element factories via keyword arguments.
+    """
+    stub = _DummyElement()
+    return [
+        patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
+        patch("ui.workout_detail_modal.ui.card", return_value=stub),
+        patch("ui.workout_detail_modal.ui.row", return_value=stub),
+        patch("ui.workout_detail_modal.ui.tabs", return_value=stub),
+        patch("ui.workout_detail_modal.ui.tab", return_value=stub),
+        patch("ui.workout_detail_modal.ui.tab_panels", return_value=stub),
+        patch("ui.workout_detail_modal.ui.tab_panel", return_value=stub),
+        patch(
+            "ui.workout_detail_modal.ui.label",
+            side_effect=label_side_effect or (lambda *a, **kw: _DummyElement()),
+        ),
+        patch(
+            "ui.workout_detail_modal.ui.button",
+            side_effect=button_side_effect or (lambda *a, **kw: _ButtonStub(*a, **kw)),
+        ),
+        patch(
+            "ui.workout_detail_modal.ui.column",
+            side_effect=column_side_effect or (lambda *a, **kw: _DummyElement()),
+        ),
+        patch(
+            "ui.workout_detail_modal.ui.table",
+            side_effect=table_side_effect or (lambda *a, **kw: _DummyElement()),
+        ),
+    ]
+
+
 class TestFieldDisplay:
     """Tests for the _FIELD_DISPLAY constant."""
 
@@ -134,17 +185,9 @@ class TestCreateWorkoutDetailModal:
     def test_returns_callable_for_non_empty_rows(self) -> None:
         """create_workout_detail_modal(rows) should return a callable."""
         rows = [_make_row(idx=0)]
-        stub = _DummyElement()
-
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", return_value=stub),
-            patch("ui.workout_detail_modal.ui.button", return_value=stub),
-            patch("ui.workout_detail_modal.ui.column", return_value=stub),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches():
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         assert callable(fn)
@@ -152,17 +195,9 @@ class TestCreateWorkoutDetailModal:
     def test_open_at_handles_negative_index_without_error(self) -> None:
         """open_at() should not raise for negative indices (clamped to 0)."""
         rows = [_make_row(idx=0), _make_row(idx=1)]
-        stub = _DummyElement()
-
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", return_value=stub),
-            patch("ui.workout_detail_modal.ui.button", return_value=stub),
-            patch("ui.workout_detail_modal.ui.column", return_value=stub),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches():
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(-5)  # Should not raise
@@ -170,17 +205,9 @@ class TestCreateWorkoutDetailModal:
     def test_open_at_handles_out_of_bounds_index_without_error(self) -> None:
         """open_at() should not raise for indices beyond the row list length (clamped to last)."""
         rows = [_make_row(idx=0)]
-        stub = _DummyElement()
-
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", return_value=stub),
-            patch("ui.workout_detail_modal.ui.button", return_value=stub),
-            patch("ui.workout_detail_modal.ui.column", return_value=stub),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches():
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(100)  # Should not raise
@@ -188,7 +215,6 @@ class TestCreateWorkoutDetailModal:
     def test_open_at_non_first_row_enables_prev_button(self) -> None:
         """Opening a non-first row should call props(remove='disabled') on the prev button."""
         rows = [_make_row(idx=0), _make_row(idx=1)]
-        stub = _DummyElement()
         created_buttons: list[_ButtonStub] = []
 
         def make_button(*args: Any, **kwargs: Any) -> _ButtonStub:
@@ -196,15 +222,9 @@ class TestCreateWorkoutDetailModal:
             created_buttons.append(btn)
             return btn
 
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", return_value=stub),
-            patch("ui.workout_detail_modal.ui.button", side_effect=make_button),
-            patch("ui.workout_detail_modal.ui.column", return_value=stub),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches(button_side_effect=make_button):
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         prev_btn = created_buttons[1]  # Button order: [0] close, [1] prev, [2] next
@@ -215,9 +235,8 @@ class TestCreateWorkoutDetailModal:
         """Clicking the next button should advance to the second row."""
         rows = [
             _make_row(idx=0, activity_type="Running"),
-            _make_row(idx=1, activity_type="Cycling"),
+            _make_row(idx=1, activity_type="Cycling", raw_activity_type="Cycling"),
         ]
-        stub = _DummyElement()
         label_stubs: list[_DummyElement] = []
         created_buttons: list[_ButtonStub] = []
 
@@ -231,19 +250,12 @@ class TestCreateWorkoutDetailModal:
             created_buttons.append(btn)
             return btn
 
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", side_effect=make_label),
-            patch("ui.workout_detail_modal.ui.button", side_effect=make_button),
-            patch("ui.workout_detail_modal.ui.column", return_value=stub),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches(label_side_effect=make_label, button_side_effect=make_button):
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
-        # nav_counter is the last label created (title + field labels + running field labels
-        # + splits-section heading/headers + nav counter)
+        # nav_counter is always the last label created in create_workout_detail_modal.
         nav_counter = label_stubs[-1]
         next_btn = created_buttons[2]  # Button order: [0] close, [1] prev, [2] next
         fn(0)  # Start at row 0 → counter shows "1 / 2"
@@ -253,7 +265,6 @@ class TestCreateWorkoutDetailModal:
     def test_navigate_backward_does_nothing_at_first_row(self) -> None:
         """Clicking prev at the first row should be a no-op (out-of-bounds guard)."""
         rows = [_make_row(idx=0), _make_row(idx=1)]
-        stub = _DummyElement()
         label_stubs: list[_DummyElement] = []
         created_buttons: list[_ButtonStub] = []
 
@@ -267,15 +278,9 @@ class TestCreateWorkoutDetailModal:
             created_buttons.append(btn)
             return btn
 
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", side_effect=make_label),
-            patch("ui.workout_detail_modal.ui.button", side_effect=make_button),
-            patch("ui.workout_detail_modal.ui.column", return_value=stub),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches(label_side_effect=make_label, button_side_effect=make_button):
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         nav_counter = label_stubs[-1]
@@ -337,15 +342,12 @@ class TestFormatElevationChange:
         assert wdm._format_elevation_change(0.0) == "+0 m"
 
 
-class TestRunningModalSection:
-    """Tests for the running-specific section rendering in the modal."""
+class TestActivityTabSection:
+    """Tests for the Activity tab rendering in the modal."""
 
-    def test_running_section_hidden_for_non_running_activity(self) -> None:
-        """Running section should be hidden when activity_type is not 'Running'."""
-        rows = [
-            _make_row(idx=0, activity_type="Cycling"),
-        ]
-        stub = _DummyElement()
+    def test_running_container_hidden_for_non_running_activity(self) -> None:
+        """Running container should be hidden when raw_activity_type is not 'Running'."""
+        rows = [_make_row(idx=0, activity_type="Cycling", raw_activity_type="Cycling")]
         column_stubs: list[_DummyElement] = []
 
         def make_column(*_a: Any, **_kw: Any) -> _DummyElement:
@@ -353,28 +355,25 @@ class TestRunningModalSection:
             column_stubs.append(col)
             return col
 
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", return_value=stub),
-            patch("ui.workout_detail_modal.ui.button", return_value=stub),
-            patch("ui.workout_detail_modal.ui.column", side_effect=make_column),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches(column_side_effect=make_column):
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
-        # The running_section (first column stub) should be invisible for Cycling
-        running_section = column_stubs[0]
-        assert not running_section._visible
+        # column_stubs[0] = running_container (the only ui.column() in the modal)
+        running_container = column_stubs[0]
+        assert not running_container._visible
 
-    def test_running_section_visible_for_running_activity(self) -> None:
-        """Running section should be visible when activity_type is 'Running'."""
+    def test_running_container_visible_for_running_activity(self) -> None:
+        """Running container should be visible when raw_activity_type is 'Running'."""
         rows = [
-            {**_make_row(idx=0, activity_type="Running"), "pace": "6:00 /km", "splits": []},
+            {
+                **_make_row(idx=0, activity_type="Running", raw_activity_type="Running"),
+                "pace": "6:00 /km",
+                "splits": [],
+            },
         ]
-        stub = _DummyElement()
         column_stubs: list[_DummyElement] = []
 
         def make_column(*_a: Any, **_kw: Any) -> _DummyElement:
@@ -382,28 +381,32 @@ class TestRunningModalSection:
             column_stubs.append(col)
             return col
 
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", return_value=stub),
-            patch("ui.workout_detail_modal.ui.button", return_value=stub),
-            patch("ui.workout_detail_modal.ui.column", side_effect=make_column),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches(column_side_effect=make_column):
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
-        # The running_section (first column stub) should be visible for Running
-        running_section = column_stubs[0]
-        assert running_section._visible
+        running_container = column_stubs[0]
+        assert running_container._visible
 
-    def test_splits_section_hidden_when_no_splits(self) -> None:
-        """Splits sub-section should be hidden when splits list is empty."""
+    def test_running_container_visible_when_activity_type_is_translated(self) -> None:
+        """Running container must use raw_activity_type, not the translated display label.
+
+        Simulates the French locale where activity_type='Course à pied' but
+        raw_activity_type='Running'.  The running container must still be shown.
+        """
         rows = [
-            {**_make_row(idx=0, activity_type="Running"), "pace": "6:00 /km", "splits": []},
+            {
+                **_make_row(
+                    idx=0,
+                    activity_type="Course à pied",  # French display label
+                    raw_activity_type="Running",  # raw Apple Health type (always English)
+                ),
+                "pace": "6:00 /km",
+                "splits": [],
+            },
         ]
-        stub = _DummyElement()
         column_stubs: list[_DummyElement] = []
 
         def make_column(*_a: Any, **_kw: Any) -> _DummyElement:
@@ -411,21 +414,91 @@ class TestRunningModalSection:
             column_stubs.append(col)
             return col
 
-        with (
-            patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
-            patch("ui.workout_detail_modal.ui.card", return_value=stub),
-            patch("ui.workout_detail_modal.ui.row", return_value=stub),
-            patch("ui.workout_detail_modal.ui.label", return_value=stub),
-            patch("ui.workout_detail_modal.ui.button", return_value=stub),
-            patch("ui.workout_detail_modal.ui.column", side_effect=make_column),
-            patch("ui.workout_detail_modal.ui.element", return_value=stub),
-        ):
+        with ExitStack() as stack:
+            for p in _all_patches(column_side_effect=make_column):
+                stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
-        # Column stub creation order within create_workout_detail_modal:
-        #   column_stubs[0] = running_section (outer running container)
-        #   column_stubs[1] = splits_section  (inner splits visibility wrapper)
-        #   column_stubs[2] = splits_body     (dynamically rebuilt splits rows)
-        splits_section = column_stubs[1]
-        assert not splits_section._visible
+        running_container = column_stubs[0]
+        assert running_container._visible  # must be shown despite translated label
+
+
+class TestSplitsTabSection:
+    """Tests for the Splits tab rendering in the modal."""
+
+    def test_splits_table_hidden_when_no_splits(self) -> None:
+        """Splits table should be hidden when splits list is empty."""
+        rows = [
+            {
+                **_make_row(idx=0, activity_type="Running", raw_activity_type="Running"),
+                "pace": "6:00 /km",
+                "splits": [],
+            },
+        ]
+        table_stubs: list[_DummyElement] = []
+
+        def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
+            tbl = _DummyElement()
+            table_stubs.append(tbl)
+            return tbl
+
+        with ExitStack() as stack:
+            for p in _all_patches(table_side_effect=make_table):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        splits_table = table_stubs[0]
+        assert not splits_table._visible
+
+    def test_splits_table_visible_and_populated_when_splits_present(self) -> None:
+        """Splits table should be visible and contain one row per split."""
+        splits_data = [
+            {"split": 1, "pace_min_per_km": 5.5, "elevation_change_m": 3.0},
+            {"split": 2, "pace_min_per_km": 5.75, "elevation_change_m": -1.0},
+        ]
+        rows = [
+            {
+                **_make_row(idx=0, activity_type="Running", raw_activity_type="Running"),
+                "pace": "5:39 /km",
+                "splits": splits_data,
+            },
+        ]
+        table_stubs: list[_DummyElement] = []
+
+        def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
+            tbl = _DummyElement()
+            table_stubs.append(tbl)
+            return tbl
+
+        with ExitStack() as stack:
+            for p in _all_patches(table_side_effect=make_table):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        splits_table = table_stubs[0]
+        assert splits_table._visible
+        assert len(splits_table.rows) == 2
+        assert splits_table.rows[0]["split"] == 1
+        assert splits_table.rows[1]["split"] == 2
+
+    def test_splits_table_hidden_for_non_running_activity(self) -> None:
+        """Splits table should be hidden when the workout has no splits (non-running)."""
+        rows = [_make_row(idx=0, activity_type="Cycling", raw_activity_type="Cycling")]
+        table_stubs: list[_DummyElement] = []
+
+        def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
+            tbl = _DummyElement()
+            table_stubs.append(tbl)
+            return tbl
+
+        with ExitStack() as stack:
+            for p in _all_patches(table_side_effect=make_table):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        splits_table = table_stubs[0]
+        assert not splits_table._visible
