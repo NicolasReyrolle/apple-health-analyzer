@@ -232,11 +232,11 @@ def render_generic_graph(
         # When the value is null (interpolated gap), show "n/a" with no unit suffix.
         tooltip_formatter_key = ":formatter"
         tooltip_formatter: str = (
-            "function(params){"
-            "var name=params[0].name;"
-            "var val=params[0].value;"
-            "if(val===null||val===undefined){return name+'\\nn/a';}"
-            f"return name+'\\n'+val+'{value_suffix}';"
+            "function(params) {"
+            "var name = params[0].name;"
+            "var val = params[0].value;"
+            "if (val === null || val === undefined) { return name + '\\nn/a'; }"
+            f"return name + '\\n' + val + '{value_suffix}';"
             "}"
         )
     else:
