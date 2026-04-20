@@ -128,7 +128,7 @@ class TestWorkoutRoute:
     def test_find_fastest_segment_from_real_gpx_fixture(self) -> None:
         """find_fastest_segment should return the known best traveled 1000m segment."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -179,7 +179,7 @@ class TestWorkoutRoute:
     def test_find_fastest_segment_from_real_gpx_fixture_not_found(self) -> None:
         """find_fastest_segment should return None if no segment meets the required length."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -196,7 +196,7 @@ class TestWorkoutRoute:
         """find_fastest_segment_window should match find_fastest_segment duration
         and give timestamps."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -217,7 +217,7 @@ class TestWorkoutRoute:
     def test_find_fastest_segment_window_returns_none_when_no_segment(self) -> None:
         """find_fastest_segment_window should return None when no segment meets the length."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -248,7 +248,7 @@ class TestWorkoutRouteEndToEnd:
 
         workout_xml = load_export_fragment("workout_running.xml")
         route_file = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -492,7 +492,7 @@ class TestComputeSplits:
     def test_real_gpx_fixture_produces_splits(self) -> None:
         """compute_splits should return at least one split for the real 8.9km GPX fixture."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
