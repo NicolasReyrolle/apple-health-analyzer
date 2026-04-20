@@ -72,7 +72,12 @@ class _DummyElement:
         return self
 
     def clear(self) -> None:
-        """Stub for NiceGUI container clear(); does nothing."""
+        """Test stub for the NiceGUI container ``clear()`` method.
+
+        The real NiceGUI implementation removes all child elements from the
+        container.  This stub does nothing to avoid runtime errors in unit tests
+        where no actual NiceGUI context is active.
+        """
 
     def open(self) -> None:
         """Stub for dialog.open()."""

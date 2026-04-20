@@ -353,6 +353,7 @@ def _extract_running_fields(
 
 
 def _find_row_index(row_id: str, rows: list[dict[str, Any]]) -> int | None:
+    """Return the index of the row with matching *row_id*, or ``None`` if missing."""
     for i, row in enumerate(rows):
         if row.get("id") == row_id:
             return i
