@@ -218,38 +218,23 @@ def create_workout_detail_modal(
                     on_click=lambda: _navigate(1),
                 ).props(BUTTON_DENSE_PROPS)
 
-    def _refresh() -> None:
-        """Update all modal elements to reflect the current workout."""
-        idx = modal_state["index"]
-        row = rows[idx]
-        n = len(rows)
-
+    def _refresh_header(idx: int, n: int, row: dict[str, Any]) -> None:
+        """Update modal title and navigation state."""
         modal_title.set_text(f"{row['activity_type']} – {row['date']}")
         nav_counter.set_text(f"{idx + 1} / {n}")
+        prev_btn.set_enabled(idx != 0)
+        next_btn.set_enabled(idx != n - 1)
 
-        if idx == 0:
-            prev_btn.props("disabled")
-        else:
-            prev_btn.props(remove="disabled")
-
-        if idx == n - 1:
-            next_btn.props("disabled")
-        else:
-            next_btn.props(remove="disabled")
-
-        # Overview tab
-        _update_fields(field_rows, row)
-
-        # Activity tab: show running metrics only for Running workouts.
-        # Compare against the raw (untranslated) activity type so the check
-        # remains correct regardless of the active UI language.
+    def _refresh_activity_tab(row: dict[str, Any]) -> None:
+        """Update activity tab: show running metrics only for Running workouts."""
         is_running = row.get("raw_activity_type") == "Running"
         no_activity_label.set_visibility(not is_running)
         running_container.set_visibility(is_running)
         if is_running:
             _update_fields(running_field_rows, row)
 
-        # Splits tab
+    def _refresh_splits_tab(row: dict[str, Any]) -> None:
+        """Update splits tab with GPS-based per-km splits."""
         splits = row.get("splits") or []
         has_splits = bool(splits)
         no_splits_label.set_visibility(not has_splits)
@@ -264,6 +249,17 @@ def create_workout_detail_modal(
                 for s in splits
             ]
             splits_table.update()
+
+    def _refresh() -> None:
+        """Update all modal elements to reflect the current workout."""
+        idx = modal_state["index"]
+        row = rows[idx]
+        n = len(rows)
+
+        _refresh_header(idx, n, row)
+        _update_fields(field_rows, row)
+        _refresh_activity_tab(row)
+        _refresh_splits_tab(row)
 
     def _navigate(delta: int) -> None:
         """Move to the next or previous workout by *delta* steps."""
