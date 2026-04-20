@@ -261,7 +261,9 @@ class TestRenderGenericGraph:
         chart_options = echart_mock.call_args.args[0]
         formatter = chart_options["tooltip"]["formatter"]
         assert "{c0}" in formatter, "Line tooltip formatter must reference {c0} for the data value"
-        assert "{c1}" not in formatter, "Line tooltip formatter must not use {c1} (bridge is excluded)"
+        assert "{c1}" not in formatter, (
+            "Line tooltip formatter must not use {c1} (bridge is excluded)"
+        )
 
     def test_render_generic_graph_has_datazoom_and_toolbox(self) -> None:
         """Bar charts should include inside dataZoom and a toolbox for restore/save."""
