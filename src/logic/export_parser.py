@@ -16,6 +16,7 @@ from defusedxml.ElementTree import iterparse
 from logic.models import WorkoutRecord
 from logic.parsed_health_data import ParsedHealthData
 from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+from units import METERS_TO_MILES
 
 _logger = logging.getLogger(__name__)
 
@@ -370,7 +371,7 @@ class ExportParser:
         if unit == "m":
             return int(float(value))
         if unit == "mi":
-            return int(float(value) * 1609.34)
+            return int(float(value) / METERS_TO_MILES)
         raise ValueError(f"Unknown distance unit: {unit}")
 
     @staticmethod

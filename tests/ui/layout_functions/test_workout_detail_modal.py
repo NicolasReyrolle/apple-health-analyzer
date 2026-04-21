@@ -509,7 +509,7 @@ class TestSplitsTabSection:
 
     def test_pace_converted_to_min_per_mi_for_imperial_splits(self) -> None:
         """Pace values should be scaled from min/km to min/mi when distance_unit is 'mi'."""
-        # pace_min_per_km=6.0 (6:00/km). Converting to /mi: 6.0 * 1.60934 ≈ 9:39/mi.
+        # 6:00/km → ~9:39/mi via 6.0 / (1000 * METERS_TO_MILES).
         splits_data = [{"split": 1, "pace_min_per_km": 6.0, "elevation_change_m": 0.0}]
         rows = [
             {
@@ -535,7 +535,7 @@ class TestSplitsTabSection:
         splits_table = table_stubs[0]
         assert splits_table._visible
         assert len(splits_table.rows) == 1
-        # 6 min/km × 1.60934 ≈ 9.656 min/mi → "9:39"
+        # 6 min/km / (1000 * METERS_TO_MILES) ≈ 9.656 min/mi → "9:39"
         pace_str = splits_table.rows[0]["pace_str"]
         minutes = int(pace_str.split(":")[0])
         assert minutes == 9

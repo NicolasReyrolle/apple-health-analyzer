@@ -304,7 +304,7 @@ def _compute_splits_from_row(
     Returns:
         A list of split dicts, or an empty list when no route data is available.
     """
-    split_dist = 1000.0 if distance_unit == "km" else 1609.34
+    split_dist = 1000.0 if distance_unit == "km" else 1.0 / METERS_TO_MILES
     distance_m = _safe_float(row.get("distance"))
 
     route_obj = row.get("route")

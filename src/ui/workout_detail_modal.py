@@ -21,6 +21,7 @@ from ui.css import (
     TABLE_DENSE_FLAT_PROPS,
     TABS_FULL_CLASSES,
 )
+from units import METERS_TO_MILES
 
 #: Callable returning a translated label string; alias for readability.
 _LabelFn: TypeAlias = Callable[[], str]
@@ -245,7 +246,7 @@ def create_workout_detail_modal(
             # Update column header to reflect the active distance unit (km / mi).
             splits_columns[0]["label"] = du
             # pace_min_per_km is always stored as min/km; convert to min/mi for imperial.
-            pace_scale = 1.60934 if du == "mi" else 1.0
+            pace_scale = 1.0 / (1000.0 * METERS_TO_MILES) if du == "mi" else 1.0
             splits_table.rows = [
                 {
                     "split": int(s["split"]),
