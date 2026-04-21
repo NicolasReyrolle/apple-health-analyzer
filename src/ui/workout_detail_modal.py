@@ -1,7 +1,7 @@
 """Workout detail modal dialog for Apple Health Analyzer."""
 
 from collections.abc import Callable
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, cast
 
 from nicegui import ui
 
@@ -131,7 +131,7 @@ def _compute_splits_lazy(row: dict[str, Any]) -> list[dict[str, Any]]:
         Subsequent calls with the same row return the cached result immediately.
     """
     if "splits" in row:
-        return row["splits"]
+        return cast(list[dict[str, Any]], row["splits"])
     du = row.get("distance_unit", "km")
     split_dist = 1000.0 if du == "km" else 1.0 / METERS_TO_MILES
     route_obj = row.get("route")
