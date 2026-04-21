@@ -232,6 +232,7 @@ class TestBuildWorkoutRows:
         assert len(rows) == 1
         # vo2_max should have been populated via the pre-computed dates path.
         assert rows[0]["vo2_max"] == "48.5 mL/min·kg"
+
     """Tests for _find_row_index()."""
 
     def test_returns_correct_index_for_matching_id(self) -> None:
