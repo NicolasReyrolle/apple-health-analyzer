@@ -10,7 +10,7 @@ import pytest
 
 from logic.export_parser import ExportParser
 from logic.workout_manager import WorkoutManager
-from logic.workout_route import RoutePoint, WorkoutRoute
+from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
 
 def _two_point_route(
@@ -119,7 +119,7 @@ class TestGetBestSegments:
         """Existing real fixture should produce a known best traveled 1000m segment."""
         workout_xml = load_export_fragment("workout_running.xml")
         route_file = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -272,7 +272,7 @@ class TestGetBestSegments:
     ) -> None:
         """Window clipping and per-part analysis prevent impossible 100m=1s artifacts."""
         workout_xml = load_export_fragment("workout_running_too_fast.xml")
-        route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
+        route_dir = Path(__file__).resolve().parents[2] / "fixtures" / "exports" / "workout-routes"
         route_files = sorted(route_dir.glob("route_2024-12-26_*.gpx"))
 
         zip_path = tmp_path / "running_too_fast.zip"
@@ -304,7 +304,7 @@ class TestGetBestSegments:
         """Long-distance fixture should produce best segments beyond 5 km."""
         workout_xml = load_export_fragment("workout_running_long_distance.xml")
         route_file = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"

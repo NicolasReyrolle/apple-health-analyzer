@@ -11,7 +11,7 @@ import pytest
 
 from logic.export_parser import ExportParser
 from logic.workout_manager import WorkoutManager
-from logic.workout_route import RoutePoint, WorkoutRoute
+from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
 
 class TestAnnotateSegmentsWithPower:
@@ -155,7 +155,7 @@ class TestAnnotateSegmentsWithPower:
         """Real 2024-12-26 run should compute segment power from overlapping intervals."""
         workout_xml = load_export_fragment("workout_running_too_fast.xml")
         power_xml = load_export_fragment("record_running_power.xml")
-        route_dir = Path(__file__).resolve().parents[1] / "fixtures" / "exports" / "workout-routes"
+        route_dir = Path(__file__).resolve().parents[2] / "fixtures" / "exports" / "workout-routes"
         route_files = sorted(route_dir.glob("route_2024-12-26_*.gpx"))
 
         zip_path = tmp_path / "running_too_fast_with_power.zip"

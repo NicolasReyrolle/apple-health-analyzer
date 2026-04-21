@@ -10,7 +10,7 @@ import pytest
 
 from logic.export_parser import ExportParser
 from logic.workout_manager import WorkoutManager
-from logic.workout_route import RoutePoint, WorkoutRoute
+from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
 
 def _point(
@@ -128,7 +128,7 @@ class TestWorkoutRoute:
     def test_find_fastest_segment_from_real_gpx_fixture(self) -> None:
         """find_fastest_segment should return the known best traveled 1000m segment."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -140,6 +140,15 @@ class TestWorkoutRoute:
 
         assert result is not None
         assert result == pytest.approx(375.0)  # type: ignore[misc]
+
+    def test_find_fastest_segment_returns_none_for_empty_route(self) -> None:
+        """find_fastest_segment should return None immediately for an empty route."""
+        assert WorkoutRoute(points=[]).find_fastest_segment(1000.0) is None
+
+    def test_find_fastest_segment_returns_none_for_single_point_route(self) -> None:
+        """find_fastest_segment should return None when the route has only one point."""
+        route = WorkoutRoute(points=[_point("2024-01-01T10:00:00Z", 0.0, 0.0)])
+        assert route.find_fastest_segment(1000.0) is None
 
     def test_find_fastest_segment_applies_realistic_distance_scaling(self) -> None:
         """A modest route/workout distance mismatch should be normalized."""
@@ -179,7 +188,7 @@ class TestWorkoutRoute:
     def test_find_fastest_segment_from_real_gpx_fixture_not_found(self) -> None:
         """find_fastest_segment should return None if no segment meets the required length."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -196,7 +205,7 @@ class TestWorkoutRoute:
         """find_fastest_segment_window should match find_fastest_segment duration
         and give timestamps."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -217,7 +226,7 @@ class TestWorkoutRoute:
     def test_find_fastest_segment_window_returns_none_when_no_segment(self) -> None:
         """find_fastest_segment_window should return None when no segment meets the length."""
         route_path = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -228,6 +237,15 @@ class TestWorkoutRoute:
         result = route.find_fastest_segment_window(10000.0)
 
         assert result is None
+
+    def test_find_fastest_segment_window_returns_none_for_empty_route(self) -> None:
+        """find_fastest_segment_window should return None immediately for an empty route."""
+        assert WorkoutRoute(points=[]).find_fastest_segment_window(1000.0) is None
+
+    def test_find_fastest_segment_window_returns_none_for_single_point_route(self) -> None:
+        """find_fastest_segment_window should return None when the route has only one point."""
+        route = WorkoutRoute(points=[_point("2024-01-01T10:00:00Z", 0.0, 0.0)])
+        assert route.find_fastest_segment_window(1000.0) is None
 
 
 class TestWorkoutRouteEndToEnd:
@@ -248,7 +266,7 @@ class TestWorkoutRouteEndToEnd:
 
         workout_xml = load_export_fragment("workout_running.xml")
         route_file = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "fixtures"
             / "exports"
             / "workout-routes"
@@ -375,3 +393,173 @@ class TestSortedTimes:
         route = WorkoutRoute(points=[])
 
         assert route.sorted_times() == []
+
+
+class TestComputeSplits:
+    """Tests for WorkoutRoute.compute_splits()."""
+
+    @staticmethod
+    def _speed_route(
+        num_points: int,
+        seconds_per_point: float,
+        speed_m_s: float,
+        start_iso: str = "2024-01-01T10:00:00Z",
+        altitude: float = 100.0,
+    ) -> WorkoutRoute:
+        """Build a route where each point has a constant GPS speed (m/s).
+
+        Distance is computed from the average of consecutive point speeds so
+        using a constant value gives a clean, predictable cumulative distance.
+        """
+        start = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+        points = [
+            RoutePoint(
+                time=start + timedelta(seconds=i * seconds_per_point),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=altitude,
+                speed=speed_m_s,
+            )
+            for i in range(num_points)
+        ]
+        return WorkoutRoute(points=points)
+
+    def test_empty_route_returns_empty(self) -> None:
+        """compute_splits on an empty route should return an empty list."""
+        assert WorkoutRoute(points=[]).compute_splits() == []
+
+    def test_single_point_route_returns_empty(self) -> None:
+        """compute_splits on a one-point route should return an empty list."""
+        route = WorkoutRoute(points=[_point("2024-01-01T10:00:00Z", 0.0, 0.0)])
+        assert route.compute_splits() == []
+
+    def test_route_shorter_than_split_returns_empty(self) -> None:
+        """A route covering less than split_distance_m returns no splits."""
+        # 3 m/s * 100 s = 300 m total → less than 1 km
+        route = self._speed_route(num_points=101, seconds_per_point=1.0, speed_m_s=3.0)
+        assert route.compute_splits(split_distance_m=1000.0) == []
+
+    def test_returns_correct_number_of_complete_splits(self) -> None:
+        """Only complete splits should be returned; the partial last km is dropped."""
+        # 3 m/s * 1 s/point = 3 m/point.
+        # 3001 points gives 3000 s and 3 * 3000 = 9000 m with avg-speed calc.
+        # But avg of (speed[i]+speed[i+1])/2 * dt for constant speed gives same result.
+        # 9 000 m → 9 full splits of 1000 m; no partial split.
+        route = self._speed_route(num_points=3001, seconds_per_point=1.0, speed_m_s=3.0)
+        splits = route.compute_splits(split_distance_m=1000.0)
+        assert len(splits) == 9
+
+    def test_split_keys_present(self) -> None:
+        """Each split dict must contain the expected keys."""
+        route = self._speed_route(num_points=1001, seconds_per_point=1.0, speed_m_s=3.0)
+        splits = route.compute_splits(split_distance_m=1000.0)
+        assert len(splits) >= 1
+        for split in splits:
+            assert "split" in split
+            assert "duration_s" in split
+            assert "pace_min_per_km" in split
+            assert "elevation_change_m" in split
+
+    def test_split_numbers_are_sequential(self) -> None:
+        """Split numbers should be 1-indexed and contiguous."""
+        route = self._speed_route(num_points=3001, seconds_per_point=1.0, speed_m_s=3.0)
+        splits = route.compute_splits(split_distance_m=1000.0)
+        for i, split in enumerate(splits, start=1):
+            assert split["split"] == i
+
+    def test_pace_is_consistent_with_duration_and_distance(self) -> None:
+        """pace_min_per_km should equal (duration_s / 60) * (1000 / split_distance_m)."""
+        route = self._speed_route(num_points=1001, seconds_per_point=1.0, speed_m_s=3.0)
+        splits = route.compute_splits(split_distance_m=1000.0)
+        assert len(splits) >= 1
+        for split in splits:
+            expected_pace = float(split["duration_s"]) / 60.0
+            assert float(split["pace_min_per_km"]) == pytest.approx(expected_pace)  # type: ignore[misc]
+
+    def test_elevation_change_reflects_altitude_difference(self) -> None:
+        """elevation_change_m should equal end altitude minus start altitude for each split."""
+        start = datetime.fromisoformat("2024-01-01T10:00:00Z".replace("Z", "+00:00"))
+        # Create a route that ascends 1 m every second while moving at 3 m/s.
+        points = [
+            RoutePoint(
+                time=start + timedelta(seconds=i),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=float(i),  # linearly increasing altitude
+                speed=3.0,
+            )
+            for i in range(1001)
+        ]
+        route = WorkoutRoute(points=points)
+        splits = route.compute_splits(split_distance_m=1000.0)
+        assert len(splits) >= 1
+        # Each 1000 m / 3 m/s = 333.3 s → altitude change ≈ 333 m
+        for split in splits:
+            assert float(split["elevation_change_m"]) == pytest.approx(  # type: ignore[misc]
+                float(split["duration_s"]), rel=0.01
+            )
+
+    def test_scale_factor_changes_split_count(self) -> None:
+        """A distance_scale_factor > 1 should reduce the number of splits (shorter route)."""
+        route = self._speed_route(num_points=3001, seconds_per_point=1.0, speed_m_s=3.0)
+        splits_no_scale = route.compute_splits(split_distance_m=1000.0, distance_scale_factor=1.0)
+        # With a scale of 0.8, effective distance = 9000 * 0.8 = 7200 m → 7 splits.
+        splits_scaled = route.compute_splits(split_distance_m=1000.0, distance_scale_factor=0.8)
+        assert len(splits_scaled) < len(splits_no_scale)
+
+    def test_real_gpx_fixture_produces_splits(self) -> None:
+        """compute_splits should return at least one split for the real 8.9km GPX fixture."""
+        route_path = (
+            Path(__file__).resolve().parents[2]
+            / "fixtures"
+            / "exports"
+            / "workout-routes"
+            / "route_2025-09-16_6.15pm.gpx"
+        )
+        route = _load_gpx_route(route_path)
+        splits = route.compute_splits(split_distance_m=1000.0)
+        assert len(splits) >= 8
+        for split in splits:
+            assert float(split["pace_min_per_km"]) > 0
+
+    def test_custom_split_distance(self) -> None:
+        """compute_splits should honour arbitrary split_distance_m values."""
+        route = self._speed_route(num_points=1001, seconds_per_point=1.0, speed_m_s=3.0)
+        splits_500 = route.compute_splits(split_distance_m=500.0)
+        splits_1000 = route.compute_splits(split_distance_m=1000.0)
+        # Half the distance → roughly twice as many splits.
+        assert len(splits_500) >= 2 * len(splits_1000) - 1
+
+    def test_compute_splits_stops_when_route_boundary_reached(self) -> None:
+        """compute_splits stops gracefully when split_end_idx reaches the route boundary.
+
+        Three points with speed-derived cumulative distances [0, 500, 1000].
+        With distance_scale_factor=2.0 total_scaled=2000m, so splits 1 and 2 both
+        fit (500m each).  When split 3 is attempted, split_start_idx is already at
+        the last point, so the inner search immediately sets split_end_idx to
+        len(points), triggering the safety guard on line 312 of workout_route.py.
+        """
+        base = datetime(2024, 1, 1, 10, 0, 0)
+        # Point 0→1: avg_speed=(0+2)/2=1 m/s × 500s = 500m
+        # Point 1→2: avg_speed=(2+2)/2=2 m/s × 250s = 500m  → cum=[0, 500, 1000]
+        points = [
+            RoutePoint(time=base, latitude=0.0, longitude=0.0, altitude=0.0, speed=0.0),
+            RoutePoint(
+                time=base + timedelta(seconds=500),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=0.0,
+                speed=2.0,
+            ),
+            RoutePoint(
+                time=base + timedelta(seconds=750),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=0.0,
+                speed=2.0,
+            ),
+        ]
+        route = WorkoutRoute(points=points)
+        splits = route.compute_splits(split_distance_m=500.0, distance_scale_factor=2.0)
+        # Two complete splits are found; the third iteration hits the boundary guard.
+        assert len(splits) == 2

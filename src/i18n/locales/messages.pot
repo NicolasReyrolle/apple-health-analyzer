@@ -689,3 +689,42 @@ msgstr ""
 
 msgid "Elevation Change"
 msgstr ""
+
+# Workout detail modal – running-specific fields
+msgid "Avg Pace"
+msgstr ""
+
+msgid "Avg Cadence"
+msgstr ""
+
+msgid "Avg Stride Length"
+msgstr ""
+
+msgid "Avg Vertical Oscillation"
+msgstr ""
+
+msgid "Avg Ground Contact Time"
+msgstr ""
+
+msgid "Step Count"
+msgstr ""
+
+msgid "VO₂ Max"
+msgstr ""
+
+# Workout detail modal – tab labels and empty-state messages
+msgid "Splits"
+msgstr ""
+
+msgid "No activity-specific data available."
+msgstr ""
+
+msgid "No GPS route available."
+msgstr ""
+
+# Workout detail modal – splits table column headers
+msgid "Pace"
+msgstr ""
+
+msgid "Elev"
+msgstr ""

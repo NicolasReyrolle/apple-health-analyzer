@@ -199,8 +199,40 @@ class TestBuildWorkoutRows:
         ids = [r["id"] for r in rows]
         assert len(set(ids)) == len(ids)
 
+    def test_vo2_dates_precomputed_when_vo2_max_records_present(self) -> None:
+        """VO2Max dates should be pre-parsed once and used by _nearest_vo2_max for running rows.
 
-class TestFindRowIndex:
+        When state.records_by_type contains VO2Max data, _build_workout_rows pre-computes
+        the start dates once so _nearest_vo2_max can skip re-parsing per workout.
+        """
+        from app_state import state
+        from logic.records_by_type import RecordsByType
+
+        original_workouts: Any = state.workouts
+        original_records = state.records_by_type
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-01-02"),
+                    "duration": 3600.0,
+                    "averageRunningSpeed": 10.0,
+                }
+            ]
+        )
+        vo2_df = pd.DataFrame([{"startDate": "2025-01-01", "value": 48.5}])
+        try:
+            state.workouts = workouts_mock
+            state.records_by_type = RecordsByType(data={"VO2Max": vo2_df})
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+            state.records_by_type = original_records
+        assert len(rows) == 1
+        # vo2_max should have been populated via the pre-computed dates path.
+        assert rows[0]["vo2_max"] == "48.5 mL/min·kg"
+
     """Tests for _find_row_index()."""
 
     def test_returns_correct_index_for_matching_id(self) -> None:
@@ -773,3 +805,316 @@ class TestBuildWorkoutRowsImperial:
             state.distance_range = original_dist
 
         assert rows == []
+
+
+class TestFormatPace:
+    """Unit tests for _format_pace()."""
+
+    def test_positive_speed_produces_pace_string(self) -> None:
+        """A positive speed should produce a 'mm:ss /km' string."""
+        # 10 km/h → 6:00 /km
+        result = wt._format_pace(10.0)
+        assert result == "6:00 /km"
+
+    def test_zero_speed_returns_dash(self) -> None:
+        """Zero speed should return '–'."""
+        assert wt._format_pace(0.0) == "–"
+
+    def test_negative_speed_returns_dash(self) -> None:
+        """Negative speed should return '–'."""
+        assert wt._format_pace(-5.0) == "–"
+
+    def test_fractional_seconds_rounded(self) -> None:
+        """Fractional seconds should be rounded to the nearest integer."""
+        # 9 km/h → 6.666... min/km → 6:40
+        result = wt._format_pace(9.0)
+        assert result == "6:40 /km"
+
+    def test_seconds_rollover_increments_minutes(self) -> None:
+        """When rounded seconds == 60, minutes should increment and seconds reset."""
+        # Craft a speed so that pace_min has fractional seconds that round to 60.
+        # pace_min = 60 / speed. We need (pace_min - floor(pace_min)) * 60 ≈ 59.5+
+        # speed = 60 / (n + 59.5/60) for some integer n.
+        # For n=6: speed = 60 / 6.9916... ≈ 8.582 km/h
+        # → pace ≈ 6.9916 min/km → 6 min 59.5 s → rounds to 7:00
+        result = wt._format_pace(60.0 / (6 + 59.5 / 60))
+        # seconds 59.5 rounds to 60 → should produce 7:00, not 6:60
+        assert "60" not in result
+        assert result == "7:00 /km"
+
+    def test_imperial_speed_produces_per_mile_pace_string(self) -> None:
+        """With distance_unit='mi', pace should be formatted as '… /mi'."""
+        # 10 km/h in mph ≈ 6.214 mph → pace ≈ 9:39 /mi
+        result = wt._format_pace(10.0, "mi")
+        assert result.endswith("/mi")
+        # Sanity: pace should be in the right ballpark (between 9:00 and 10:30 /mi)
+        minutes_part = int(result.split(":")[0])
+        assert 9 <= minutes_part <= 10
+
+
+class TestNearestVo2Max:
+    """Unit tests for _nearest_vo2_max()."""
+
+    def test_returns_dash_when_date_is_none(self) -> None:
+        """Should return '–' when workout_date is None."""
+        result = wt._nearest_vo2_max(None)
+        assert result == "–"
+
+    def test_returns_dash_when_no_vo2_records(self) -> None:
+        """Should return '–' when VO2Max records are absent."""
+        from app_state import state
+        from logic.records_by_type import RecordsByType
+
+        original = state.records_by_type
+        try:
+            state.records_by_type = RecordsByType(data={})
+            result = wt._nearest_vo2_max(pd.Timestamp("2025-01-01"))
+        finally:
+            state.records_by_type = original
+        assert result == "–"
+
+    def test_returns_nearest_record_by_date(self) -> None:
+        """Should return the VO2 max value from the nearest-in-time record."""
+        from app_state import state
+        from logic.records_by_type import RecordsByType
+
+        vo2_df = pd.DataFrame(
+            [
+                {"startDate": "2025-01-01 10:00:00", "value": 50.0},
+                {"startDate": "2025-06-01 10:00:00", "value": 52.0},
+            ]
+        )
+        original = state.records_by_type
+        try:
+            state.records_by_type = RecordsByType(data={"VO2Max": vo2_df})
+            # Workout on 2025-01-02 → nearest is 2025-01-01 record (value 50.0)
+            result = wt._nearest_vo2_max(pd.Timestamp("2025-01-02"))
+        finally:
+            state.records_by_type = original
+        assert result == "50.0 mL/min·kg"
+
+    def test_returns_dash_when_nearest_record_has_none_value(self) -> None:
+        """Should return '–' when the nearest VO2Max record has a null/NaN value."""
+        from app_state import state
+        from logic.records_by_type import RecordsByType
+
+        # Record exists but value is None (e.g. exported without measurement)
+        vo2_df = pd.DataFrame([{"startDate": "2025-01-01 10:00:00", "value": None}])
+        original = state.records_by_type
+        try:
+            state.records_by_type = RecordsByType(data={"VO2Max": vo2_df})
+            result = wt._nearest_vo2_max(pd.Timestamp("2025-01-01"))
+        finally:
+            state.records_by_type = original
+        assert result == "–"
+
+    def test_returns_dash_when_all_dates_are_unparsable(self) -> None:
+        """Should return '–' when all startDate values are unparsable (all-NaT)."""
+        from app_state import state
+        from logic.records_by_type import RecordsByType
+
+        # All startDate values are garbage strings → pd.to_datetime yields all NaT.
+        vo2_df = pd.DataFrame(
+            [
+                {"startDate": "not-a-date", "value": 50.0},
+                {"startDate": "also-not-a-date", "value": 52.0},
+            ]
+        )
+        original = state.records_by_type
+        try:
+            state.records_by_type = RecordsByType(data={"VO2Max": vo2_df})
+            result = wt._nearest_vo2_max(pd.Timestamp("2025-01-01"))
+        finally:
+            state.records_by_type = original
+        assert result == "–"
+
+
+class TestExtractRunningFields:
+    """Unit tests for _extract_running_fields()."""
+
+    def _make_row(self, **kwargs: Any) -> dict[str, Any]:
+        """Build a minimal row dict with running statistics."""
+        base: dict[str, Any] = {
+            "activityType": "Running",
+            "averageRunningSpeed": 10.0,  # 10 km/h → 6:00 /km
+            "averageRunningCadence": 178.0,
+            "averageRunningStrideLength": 0.91,
+            "averageRunningVerticalOscillation": 8.8,
+            "averageRunningGroundContactTime": 304.0,
+            "sumStepCount": 9787.0,
+        }
+        base.update(kwargs)
+        return base
+
+    def test_pace_derived_from_speed(self) -> None:
+        """Pace should be derived from averageRunningSpeed."""
+        row = self._make_row(averageRunningSpeed=10.0)
+        result = wt._extract_running_fields(row, None)
+        assert result["pace"] == "6:00 /km"
+
+    def test_cadence_formatted(self) -> None:
+        """Cadence should show 'spm' unit."""
+        row = self._make_row(averageRunningCadence=178.0)
+        result = wt._extract_running_fields(row, None)
+        assert result["cadence"] == "178 spm"
+
+    def test_stride_length_formatted(self) -> None:
+        """Stride length should show 'm' unit to 2 decimal places."""
+        row = self._make_row(averageRunningStrideLength=0.91)
+        result = wt._extract_running_fields(row, None)
+        assert result["stride_length"] == "0.91 m"
+
+    def test_vertical_oscillation_formatted(self) -> None:
+        """Vertical oscillation should show 'cm' unit."""
+        row = self._make_row(averageRunningVerticalOscillation=8.8)
+        result = wt._extract_running_fields(row, None)
+        assert result["vertical_oscillation"] == "8.8 cm"
+
+    def test_ground_contact_time_formatted(self) -> None:
+        """Ground contact time should show 'ms' unit."""
+        row = self._make_row(averageRunningGroundContactTime=304.0)
+        result = wt._extract_running_fields(row, None)
+        assert result["ground_contact_time"] == "304 ms"
+
+    def test_step_count_formatted(self) -> None:
+        """Step count should be an integer string."""
+        row = self._make_row(sumStepCount=9787.0)
+        result = wt._extract_running_fields(row, None)
+        assert result["step_count"] == "9787"
+
+    def test_missing_speed_produces_dash(self) -> None:
+        """Missing averageRunningSpeed should produce '–' for pace."""
+        row = self._make_row()
+        del row["averageRunningSpeed"]
+        result = wt._extract_running_fields(row, None)
+        assert result["pace"] == "–"
+
+    def test_pace_formatted_in_imperial_mode(self) -> None:
+        """Pace should be formatted as '/mi' when distance_unit is 'mi'."""
+        row = self._make_row(averageRunningSpeed=10.0)
+        result = wt._extract_running_fields(row, None, distance_unit="mi")
+        assert result["pace"].endswith("/mi")
+        assert "km" not in result["pace"]
+
+    def test_distance_unit_stored_in_result(self) -> None:
+        """The distance_unit used for splits and pace should be stored in the result dict."""
+        row = self._make_row()
+        result_km = wt._extract_running_fields(row, None, distance_unit="km")
+        result_mi = wt._extract_running_fields(row, None, distance_unit="mi")
+        assert result_km["distance_unit"] == "km"
+        assert result_mi["distance_unit"] == "mi"
+
+    def test_route_stored_for_lazy_splits_when_no_route(self) -> None:
+        """When no route is present the 'route' key should be None (lazy splits return [])."""
+        row = self._make_row()
+        result = wt._extract_running_fields(row, None)
+        assert result.get("route") is None
+        assert "splits" not in result
+
+    def test_route_stored_for_lazy_splits_from_route(self) -> None:
+        """When a WorkoutRoute is present it should be stored in 'route' for lazy computation."""
+        from datetime import timedelta
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        start = pd.Timestamp("2024-01-01 10:00:00")
+        base_time = start.to_pydatetime().replace(tzinfo=None)
+        # 3 m/s × 1001 seconds ≈ 3003 m → ≥ 3 complete 1 km splits when computed lazily
+        points = [
+            RoutePoint(
+                time=base_time + timedelta(seconds=i),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=100.0,
+                speed=3.0,
+            )
+            for i in range(1001)
+        ]
+        route = WorkoutRoute(points=points)
+        row = self._make_row(route=route, distance=3000.0)
+        result = wt._extract_running_fields(row, None)
+        # Route stored for lazy computation; no pre-computed splits key.
+        assert result["route"] is route
+        assert "splits" not in result
+
+    def test_route_stored_for_lazy_splits_from_merged_route(self) -> None:
+        """A pre-merged route (simulating ExportParser output) should be stored for lazy splits.
+
+        ExportParser always stores the fully de-duplicated merged route in ``row['route']``
+        whenever ``route_parts`` are accumulated.  This test verifies the route reference
+        is preserved so the modal can compute splits correctly.
+        """
+        from datetime import timedelta
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = pd.Timestamp("2024-01-01 10:00:00").to_pydatetime().replace(tzinfo=None)
+
+        # Simulate a merged route built from two segments of ~1500 m each.
+        merged_points = [
+            RoutePoint(
+                time=base_time + timedelta(seconds=i),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=0.0,
+                speed=3.0,
+            )
+            for i in range(1002)  # 1001 intervals × 3 m/s = 3003 m
+        ]
+        merged_route = WorkoutRoute(points=merged_points)
+        row = self._make_row(route=merged_route, distance=3000.0)
+        result = wt._extract_running_fields(row, None)
+        # Route reference stored; no eager split computation.
+        assert result["route"] is merged_route
+        assert "splits" not in result
+
+    def test_running_fields_included_for_running_workouts(self) -> None:
+        """Running-specific keys should be present in the row dict for Running workouts."""
+        original_workouts: Any = state.workouts
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "duration": 3600.0,
+                    "averageRunningSpeed": 10.0,
+                    "averageRunningCadence": 178.0,
+                }
+            ]
+        )
+        try:
+            state.workouts = workouts_mock
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+        assert len(rows) == 1
+        row = rows[0]
+        assert "pace" in row
+        assert "cadence" in row
+        # Route is stored for lazy splits; no eager 'splits' key produced at table-build time.
+        assert "route" in row
+
+    def test_running_fields_absent_for_non_running_workouts(self) -> None:
+        """Non-Running workouts should not have running-specific keys."""
+        original_workouts: Any = state.workouts
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Cycling",
+                    "startDate": pd.Timestamp("2025-01-01"),
+                    "duration": 3600.0,
+                }
+            ]
+        )
+        try:
+            state.workouts = workouts_mock
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+        assert len(rows) == 1
+        row = rows[0]
+        assert "pace" not in row
+        assert "cadence" not in row
+        assert "route" not in row
