@@ -128,7 +128,10 @@ def _compute_splits_lazy(row: dict[str, Any]) -> list[dict[str, Any]]:
 
     Returns:
         A list of split dicts, or an empty list when no GPS route is available.
+        Subsequent calls with the same row return the cached result immediately.
     """
+    if "splits" in row:
+        return row["splits"]
     du = row.get("distance_unit", "km")
     split_dist = 1000.0 if du == "km" else 1.0 / METERS_TO_MILES
     route_obj = row.get("route")
@@ -304,10 +307,7 @@ def create_workout_detail_modal(
         and then cached in ``row["splits"]`` for instant display on subsequent
         navigations to the same workout.
         """
-        # Lazy-compute splits on first open; cached result is reused on revisit.
-        if "splits" not in row:
-            _compute_splits_lazy(row)
-        splits = row.get("splits") or []
+        splits = _compute_splits_lazy(row)
         has_splits = bool(splits)
         no_splits_label.set_visibility(not has_splits)
         splits_table.set_visibility(has_splits)
