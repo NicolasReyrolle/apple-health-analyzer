@@ -89,7 +89,7 @@ def _format_elevation_change(elevation_change_m: float) -> str:
 def _compute_splits_lazy(row: dict[str, Any]) -> list[dict[str, Any]]:
     """Compute GPS splits from the route stored in *row* and cache the result.
 
-    Called once the first time the Splits tab is shown for a given workout row.
+    Called the first time the Splits tab is opened for a given workout row.
     The result is written back into ``row["splits"]`` so subsequent navigations
     to the same row skip the computation entirely.
 
@@ -309,7 +309,10 @@ def create_workout_detail_modal(
         _refresh_header(idx, n, row)
         _update_fields(field_rows, row)
         _refresh_activity_tab(row)
-        _refresh_splits_tab(row)
+        # Only refresh the Splits tab when it is currently active; switching to
+        # the Splits tab triggers _on_tab_change which handles the initial load.
+        if detail_tabs.value == "splits":
+            _refresh_splits_tab(row)
 
     def _navigate(delta: int) -> None:
         """Move to the next or previous workout by *delta* steps."""
@@ -317,6 +320,20 @@ def create_workout_detail_modal(
         if 0 <= new_idx < len(rows):
             modal_state["index"] = new_idx
             _refresh()
+
+    def _on_tab_change(e: Any) -> None:
+        """Refresh the Splits tab the first time the user switches to it.
+
+        For rows whose splits have not yet been computed, this triggers
+        :func:`_compute_splits_lazy` (via :func:`_refresh_splits_tab`) which
+        caches the result in ``row["splits"]`` so subsequent visits are instant.
+        The handler is only active when ``e.value == "splits"``; other tab
+        changes are ignored.
+        """
+        if e.value == "splits":
+            _refresh_splits_tab(rows[modal_state["index"]])
+
+    detail_tabs.on_value_change(_on_tab_change)
 
     def open_at(index: int) -> None:
         """Open the modal at the given *index*."""

@@ -51,6 +51,17 @@ def _make_row(
     }
 
 
+class _DummyEvent:
+    """Tab-change event stub that mimics the NiceGUI ``ValueChangeEventArguments`` object.
+
+    Carries a *value* attribute so that ``on_value_change`` handlers registered
+    on the tabs stub can be triggered in tests without a live NiceGUI session.
+    """
+
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+
 class _DummyElement:
     """Generic stub for NiceGUI UI elements; supports context-manager and chaining."""
 
@@ -61,6 +72,10 @@ class _DummyElement:
         self._props_added: list[str] = []
         self._props_removed: list[str] = []
         self.rows: list[Any] = []
+        #: Current value (used by the tabs stub to track the active tab).
+        self.value: str = "overview"
+        #: Registered on_value_change handlers (used for tab-change simulation).
+        self._value_change_handlers: list[Any] = []
 
     def classes(self, *_a: Any, **_kw: Any) -> _DummyElement:
         return self
@@ -83,6 +98,26 @@ class _DummyElement:
 
     def on(self, *_a: Any, **_kw: Any) -> _DummyElement:
         return self
+
+    def on_value_change(self, handler: Any) -> _DummyElement:
+        """Capture a value-change handler, mimicking NiceGUI's tabs widget API.
+
+        Stored handlers are invoked when :meth:`fire_value_change` is called,
+        allowing tests to simulate tab-switch events without a live NiceGUI session.
+        """
+        self._value_change_handlers.append(handler)
+        return self
+
+    def fire_value_change(self, value: str) -> None:
+        """Simulate a NiceGUI tab-change event (e.g., clicking the Splits tab in tests).
+
+        Updates *self.value* and dispatches a :class:`_DummyEvent` to every
+        handler registered via :meth:`on_value_change`.
+        """
+        self.value = value
+        event = _DummyEvent(value)
+        for handler in self._value_change_handlers:
+            handler(event)
 
     def update(self) -> None:
         """Stub for the NiceGUI ``update()`` method (e.g. used by ui.table)."""
@@ -127,17 +162,21 @@ def _all_patches(
     label_side_effect: Any = None,
     column_side_effect: Any = None,
     table_side_effect: Any = None,
+    tabs_stub: _DummyElement | None = None,
 ) -> list[Any]:
     """Return a list of context-manager patches for all NiceGUI elements used in the modal.
 
     Callers may override individual element factories via keyword arguments.
+    Pass *tabs_stub* to receive the ``ui.tabs`` instance back for simulating
+    tab-change events via :meth:`_DummyElement.fire_value_change`.
     """
     stub = _DummyElement()
+    effective_tabs = tabs_stub if tabs_stub is not None else stub
     return [
         patch("ui.workout_detail_modal.ui.dialog", return_value=stub),
         patch("ui.workout_detail_modal.ui.card", return_value=stub),
         patch("ui.workout_detail_modal.ui.row", return_value=stub),
-        patch("ui.workout_detail_modal.ui.tabs", return_value=stub),
+        patch("ui.workout_detail_modal.ui.tabs", return_value=effective_tabs),
         patch("ui.workout_detail_modal.ui.tab", return_value=stub),
         patch("ui.workout_detail_modal.ui.tab_panels", return_value=stub),
         patch("ui.workout_detail_modal.ui.tab_panel", return_value=stub),
@@ -441,6 +480,7 @@ class TestSplitsTabSection:
             },
         ]
         table_stubs: list[_DummyElement] = []
+        tabs_stub = _DummyElement()
 
         def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
             tbl = _DummyElement()
@@ -448,11 +488,12 @@ class TestSplitsTabSection:
             return tbl
 
         with ExitStack() as stack:
-            for p in _all_patches(table_side_effect=make_table):
+            for p in _all_patches(table_side_effect=make_table, tabs_stub=tabs_stub):
                 stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
+        tabs_stub.fire_value_change("splits")  # Simulate user clicking the Splits tab
         splits_table = table_stubs[0]
         assert not splits_table._visible
 
@@ -470,6 +511,7 @@ class TestSplitsTabSection:
             },
         ]
         table_stubs: list[_DummyElement] = []
+        tabs_stub = _DummyElement()
 
         def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
             tbl = _DummyElement()
@@ -477,11 +519,12 @@ class TestSplitsTabSection:
             return tbl
 
         with ExitStack() as stack:
-            for p in _all_patches(table_side_effect=make_table):
+            for p in _all_patches(table_side_effect=make_table, tabs_stub=tabs_stub):
                 stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
+        tabs_stub.fire_value_change("splits")  # Simulate user clicking the Splits tab
         splits_table = table_stubs[0]
         assert splits_table._visible
         assert len(splits_table.rows) == 2
@@ -492,6 +535,7 @@ class TestSplitsTabSection:
         """Splits table should be hidden when the workout has no splits (non-running)."""
         rows = [_make_row(idx=0, activity_type="Cycling", raw_activity_type="Cycling")]
         table_stubs: list[_DummyElement] = []
+        tabs_stub = _DummyElement()
 
         def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
             tbl = _DummyElement()
@@ -499,11 +543,12 @@ class TestSplitsTabSection:
             return tbl
 
         with ExitStack() as stack:
-            for p in _all_patches(table_side_effect=make_table):
+            for p in _all_patches(table_side_effect=make_table, tabs_stub=tabs_stub):
                 stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
+        tabs_stub.fire_value_change("splits")  # Simulate user clicking the Splits tab
         splits_table = table_stubs[0]
         assert not splits_table._visible
 
@@ -520,6 +565,7 @@ class TestSplitsTabSection:
             },
         ]
         table_stubs: list[_DummyElement] = []
+        tabs_stub = _DummyElement()
 
         def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
             tbl = _DummyElement()
@@ -527,11 +573,12 @@ class TestSplitsTabSection:
             return tbl
 
         with ExitStack() as stack:
-            for p in _all_patches(table_side_effect=make_table):
+            for p in _all_patches(table_side_effect=make_table, tabs_stub=tabs_stub):
                 stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
+        tabs_stub.fire_value_change("splits")  # Simulate user clicking the Splits tab
         splits_table = table_stubs[0]
         assert splits_table._visible
         assert len(splits_table.rows) == 1
@@ -539,6 +586,58 @@ class TestSplitsTabSection:
         pace_str = splits_table.rows[0]["pace_str"]
         minutes = int(pace_str.split(":")[0])
         assert minutes == 9
+
+    def test_navigate_while_on_splits_tab_refreshes_splits(self) -> None:
+        """Navigating to a different workout while the Splits tab is active should refresh splits.
+
+        Covers the ``if detail_tabs.value == "splits":`` branch inside ``_refresh()``.
+        """
+        splits_row0 = [{"split": 1, "pace_min_per_km": 5.0, "elevation_change_m": 0.0}]
+        rows = [
+            {
+                **_make_row(idx=0, activity_type="Running", raw_activity_type="Running"),
+                "pace": "5:00 /km",
+                "splits": splits_row0,
+            },
+            {
+                **_make_row(idx=1, activity_type="Running", raw_activity_type="Running"),
+                "pace": "5:00 /km",
+                "splits": [],  # second workout has no splits
+            },
+        ]
+        table_stubs: list[_DummyElement] = []
+        created_buttons: list[_ButtonStub] = []
+        tabs_stub = _DummyElement()
+
+        def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
+            tbl = _DummyElement()
+            table_stubs.append(tbl)
+            return tbl
+
+        def make_button(*args: Any, **kwargs: Any) -> _ButtonStub:
+            btn = _ButtonStub(*args, **kwargs)
+            created_buttons.append(btn)
+            return btn
+
+        with ExitStack() as stack:
+            for p in _all_patches(
+                table_side_effect=make_table,
+                button_side_effect=make_button,
+                tabs_stub=tabs_stub,
+            ):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)  # Open at row 0 (Overview tab active)
+        tabs_stub.fire_value_change("splits")  # User switches to Splits tab
+        splits_table = table_stubs[0]
+        assert splits_table._visible  # row 0 has splits
+
+        # Navigate to row 1 while the Splits tab remains active
+        next_btn = created_buttons[2]  # Button order: [0] close, [1] prev, [2] next
+        next_btn.click()
+        # Row 1 has empty splits — table should now be hidden
+        assert not splits_table._visible
 
 
 class TestComputeSplitsLazy:
@@ -608,7 +707,11 @@ class TestComputeSplitsLazy:
         assert len(splits_km) > len(splits_mi)
 
     def test_splits_computed_lazily_in_modal(self) -> None:
-        """Splits tab should trigger lazy computation for a row that has a route but no 'splits'."""
+        """Splits should not be computed on modal open; only when the Splits tab is shown.
+
+        Verifies that ``row['splits']`` is absent after ``open_at()`` and is
+        populated only after the user switches to the Splits tab.
+        """
         from datetime import timedelta
 
         import pandas as pd
@@ -633,11 +736,12 @@ class TestComputeSplitsLazy:
                 **_make_row(idx=0, activity_type="Running", raw_activity_type="Running"),
                 "pace": "5:33 /km",
                 "distance_unit": "km",
-                # No 'splits' key — triggers lazy computation on first modal open.
+                # No 'splits' key — must not be computed until Splits tab is opened.
                 "route": route,
             },
         ]
         table_stubs: list[_DummyElement] = []
+        tabs_stub = _DummyElement()
 
         def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
             tbl = _DummyElement()
@@ -645,15 +749,19 @@ class TestComputeSplitsLazy:
             return tbl
 
         with ExitStack() as stack:
-            for p in _all_patches(table_side_effect=make_table):
+            for p in _all_patches(table_side_effect=make_table, tabs_stub=tabs_stub):
                 stack.enter_context(p)
             fn = wdm.create_workout_detail_modal(rows)
 
-        fn(0)
+        fn(0)  # Open modal on the Overview tab
+        # Splits must NOT be computed yet (Overview tab is active, not Splits).
+        assert "splits" not in rows[0]
+
+        tabs_stub.fire_value_change("splits")  # User switches to the Splits tab
         splits_table = table_stubs[0]
         # Lazy computation should have produced ≥ 3 splits and shown the table.
         assert splits_table._visible
         assert len(splits_table.rows) >= 3
-        # Result cached in the row dict for subsequent navigations.
+        # Result must be cached in the row dict for subsequent navigations.
         assert "splits" in rows[0]
         assert len(rows[0]["splits"]) >= 3
