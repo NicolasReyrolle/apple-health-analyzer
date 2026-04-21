@@ -19,6 +19,7 @@ If you are contributing or maintaining the project, see [MAINTAINERS.md](MAINTAI
 - **Best Segments Tab**: Computes and displays best running segments from 100m to 100km with expandable runner-up rows, formatted durations, localized labels, and segment power confidence.
 - **Robust Segment Distance Model**: Segment search uses GPX speed integration with safeguards for export edge cases (window clipping, final unpaired pause trimming, strict reversal-only trace splits, and realistic workout-level distance normalization).
 - **Activity Filtering**: Filter your workout data by activity type (Running, Cycling, Walking, etc.).
+- **Workout Detail Modal**: Open per-workout details from the Activities table. Running workouts include activity-specific metrics (pace, cadence, stride length, vertical oscillation, ground contact time, step count, VO2 max) and a GPS-based splits table (pace + elevation change) with km/mi-aware labels.
 - **Date Range Filtering**: Analyze specific time periods using the date range picker to focus on your desired date ranges.
 - **Trends Period Aggregation**: Switch the Trends tab aggregation between week, month, quarter, or year.
 - **Gap-Aware Time Series**: Missing periods are preserved in health-data charts, so the x-axis remains continuous and missing measurements are explicit (not coerced to zero). For line charts, inferred bridge segments are visually distinct from measured segments.
@@ -76,6 +77,7 @@ python -m nicegui src.apple_health_analyzer
 1. Click **Load** to parse the data.
 1. View the statistics in the **Overview** tab.
 1. Explore your data in the **Activities** tab (pie/rose charts grouped by activity type), **Trends** tab (weekly/monthly/quarterly/yearly bar charts with moving average trend lines), **Health Data** tab (line charts for resting heart rate, body mass, VO2 max, CP, and W'), and **Best Segments** tab (standard race distances with expandable runner-ups).
+1. In the **Activities** table, click the **Details** action to open the workout modal (overview, activity-specific metrics, and GPS splits when route data is available).
 1. Use the **Activity filter** in the left drawer to focus on specific workout types.
 1. Use the **Date range picker** to analyze specific time periods.
 1. Use the **Aggregate by** selector in the left drawer to change the aggregation period.
@@ -145,6 +147,7 @@ Workout management internals are organized in a dedicated package under `src/log
 - `aggregations.py`: filtering, totals, and by-activity/by-period aggregations.
 - `export.py`: statistics and CSV/JSON export helpers.
 - `segments.py`: best-segment computation, segment power annotation, and CP/W' calculations.
+- `workout_route.py`: `RoutePoint`/`WorkoutRoute` models and route computations used by segment analysis.
 - `__init__.py`: public compatibility exports.
 
 The import path remains unchanged for consumers:
