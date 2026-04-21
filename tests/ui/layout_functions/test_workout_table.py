@@ -199,8 +199,39 @@ class TestBuildWorkoutRows:
         ids = [r["id"] for r in rows]
         assert len(set(ids)) == len(ids)
 
+    def test_vo2_dates_precomputed_when_vo2_max_records_present(self) -> None:
+        """VO2Max dates should be pre-parsed once and used by _nearest_vo2_max for running rows.
 
-class TestFindRowIndex:
+        When state.records_by_type contains VO2Max data, _build_workout_rows pre-computes
+        the start dates once (line 111) so _nearest_vo2_max can skip re-parsing per workout.
+        """
+        from app_state import state
+        from logic.records_by_type import RecordsByType
+
+        original_workouts: Any = state.workouts
+        original_records = state.records_by_type
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-01-02"),
+                    "duration": 3600.0,
+                    "averageRunningSpeed": 10.0,
+                }
+            ]
+        )
+        vo2_df = pd.DataFrame([{"startDate": "2025-01-01", "value": 48.5}])
+        try:
+            state.workouts = workouts_mock
+            state.records_by_type = RecordsByType(data={"VO2Max": vo2_df})
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+            state.records_by_type = original_records
+        assert len(rows) == 1
+        # vo2_max should have been populated via the pre-computed dates path.
+        assert rows[0]["vo2_max"] == "48.5 mL/min·kg"
     """Tests for _find_row_index()."""
 
     def test_returns_correct_index_for_matching_id(self) -> None:
@@ -972,21 +1003,22 @@ class TestExtractRunningFields:
         assert result_km["distance_unit"] == "km"
         assert result_mi["distance_unit"] == "mi"
 
-    def test_empty_splits_when_no_route(self) -> None:
-        """No route data should produce an empty splits list."""
+    def test_route_stored_for_lazy_splits_when_no_route(self) -> None:
+        """When no route is present the 'route' key should be None (lazy splits return [])."""
         row = self._make_row()
         result = wt._extract_running_fields(row, None)
-        assert result["splits"] == []
+        assert result.get("route") is None
+        assert "splits" not in result
 
-    def test_splits_computed_from_route(self) -> None:
-        """Splits should be computed from a WorkoutRoute when present."""
+    def test_route_stored_for_lazy_splits_from_route(self) -> None:
+        """When a WorkoutRoute is present it should be stored in 'route' for lazy computation."""
         from datetime import timedelta
 
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
         start = pd.Timestamp("2024-01-01 10:00:00")
         base_time = start.to_pydatetime().replace(tzinfo=None)
-        # 3 m/s × 1001 seconds ≈ 3003 m (via avg-speed calc) → ≥ 3 complete 1km splits
+        # 3 m/s × 1001 seconds ≈ 3003 m → ≥ 3 complete 1 km splits when computed lazily
         points = [
             RoutePoint(
                 time=base_time + timedelta(seconds=i),
@@ -1000,14 +1032,16 @@ class TestExtractRunningFields:
         route = WorkoutRoute(points=points)
         row = self._make_row(route=route, distance=3000.0)
         result = wt._extract_running_fields(row, None)
-        assert len(result["splits"]) >= 3
+        # Route stored for lazy computation; no pre-computed splits key.
+        assert result["route"] is route
+        assert "splits" not in result
 
-    def test_splits_computed_from_route_parts(self) -> None:
-        """Splits should be computed from a pre-merged route (simulating ExportParser output).
+    def test_route_stored_for_lazy_splits_from_merged_route(self) -> None:
+        """A pre-merged route (simulating ExportParser output) should be stored for lazy splits.
 
         ExportParser always stores the fully de-duplicated merged route in ``row['route']``
-        whenever ``route_parts`` are accumulated.  This test verifies that splits are
-        correctly derived from such a merged route object.
+        whenever ``route_parts`` are accumulated.  This test verifies the route reference
+        is preserved so the modal can compute splits correctly.
         """
         from datetime import timedelta
 
@@ -1016,7 +1050,6 @@ class TestExtractRunningFields:
         base_time = pd.Timestamp("2024-01-01 10:00:00").to_pydatetime().replace(tzinfo=None)
 
         # Simulate a merged route built from two segments of ~1500 m each.
-        # Part 1: t=0..500 at 3 m/s → 1500 m; Part 2: t=501..1001 at 3 m/s → 1500 m.
         merged_points = [
             RoutePoint(
                 time=base_time + timedelta(seconds=i),
@@ -1030,8 +1063,9 @@ class TestExtractRunningFields:
         merged_route = WorkoutRoute(points=merged_points)
         row = self._make_row(route=merged_route, distance=3000.0)
         result = wt._extract_running_fields(row, None)
-        # Merged route is ≥ 3000 m → at least 3 complete 1 km splits
-        assert len(result["splits"]) >= 3
+        # Route reference stored; no eager split computation.
+        assert result["route"] is merged_route
+        assert "splits" not in result
 
     def test_running_fields_included_for_running_workouts(self) -> None:
         """Running-specific keys should be present in the row dict for Running workouts."""
@@ -1057,7 +1091,8 @@ class TestExtractRunningFields:
         row = rows[0]
         assert "pace" in row
         assert "cadence" in row
-        assert "splits" in row
+        # Route is stored for lazy splits; no eager 'splits' key produced at table-build time.
+        assert "route" in row
 
     def test_running_fields_absent_for_non_running_workouts(self) -> None:
         """Non-Running workouts should not have running-specific keys."""
@@ -1081,4 +1116,4 @@ class TestExtractRunningFields:
         row = rows[0]
         assert "pace" not in row
         assert "cadence" not in row
-        assert "splits" not in row
+        assert "route" not in row

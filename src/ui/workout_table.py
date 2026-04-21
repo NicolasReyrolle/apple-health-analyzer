@@ -10,7 +10,6 @@ from nicegui import ui
 from app_state import get_distance_unit, get_elevation_unit, state
 from i18n import get_language, t
 from i18n.activity_types import activity_display_label
-from logic.workout_manager.workout_route import WorkoutRoute
 from ui.css import (
     LABEL_EMPTY_STATE_CLASSES,
     RANGE_LABEL_CLASSES,
@@ -104,8 +103,17 @@ def _build_workout_rows() -> list[dict[str, Any]]:
     elevation_unit = get_elevation_unit()
     rows: list[dict[str, Any]] = []
 
+    # Pre-parse VO2Max dates once so _nearest_vo2_max avoids repeating the
+    # pd.to_datetime() call for every running workout in the batch.
+    vo2_df: pd.DataFrame = state.records_by_type.get("VO2Max")
+    vo2_dates: pd.Series | None = None
+    if not vo2_df.empty and "startDate" in vo2_df.columns:
+        vo2_dates = pd.to_datetime(vo2_df["startDate"], errors="coerce").dt.tz_localize(None)
+
     for idx, (_, row) in enumerate(df.iterrows()):
-        row_data = _extract_row_data(row, idx, language_code, distance_unit, elevation_unit)
+        row_data = _extract_row_data(
+            row, idx, language_code, distance_unit, elevation_unit, vo2_dates
+        )
         rows.append(row_data)
 
     return rows
@@ -117,6 +125,7 @@ def _extract_row_data(
     language_code: str,
     distance_unit: str = "km",
     elevation_unit: str = "m",
+    vo2_dates: pd.Series | None = None,
 ) -> dict[str, Any]:
     """Extract and format a single workout row.
 
@@ -126,6 +135,8 @@ def _extract_row_data(
         language_code: The current language code for date formatting.
         distance_unit: The display unit for distance values (``"km"`` or ``"mi"``).
         elevation_unit: The display unit for elevation values (``"m"`` or ``"ft"``).
+        vo2_dates: Pre-parsed tz-naive VO2Max start dates; when provided avoids
+            re-parsing inside :func:`_nearest_vo2_max` for each row.
 
     Returns:
         A dictionary with sort and display values for all columns.
@@ -181,7 +192,7 @@ def _extract_row_data(
     if raw_activity == "Running":
         start_date_raw = row.get("startDate")
         workout_date = start_date_raw if isinstance(start_date_raw, pd.Timestamp) else None
-        result.update(_extract_running_fields(row, workout_date, distance_unit))
+        result.update(_extract_running_fields(row, workout_date, distance_unit, vo2_dates))
 
     return result
 
@@ -238,7 +249,10 @@ def _format_pace(speed_km_h: float, distance_unit: str = "km") -> str:
     return f"{minutes}:{seconds:02d} {suffix}"
 
 
-def _nearest_vo2_max(workout_date: pd.Timestamp | None) -> str:
+def _nearest_vo2_max(
+    workout_date: pd.Timestamp | None,
+    vo2_dates: pd.Series | None = None,
+) -> str:
     """Return the VO2 max value (mL/min·kg) closest in time to *workout_date*.
 
     Looks up ``state.records_by_type["VO2Max"]`` and finds the record whose
@@ -246,6 +260,11 @@ def _nearest_vo2_max(workout_date: pd.Timestamp | None) -> str:
 
     Args:
         workout_date: The workout start date as a :class:`pd.Timestamp`.
+        vo2_dates: Optional pre-parsed, tz-naive Series of VO2Max start dates.
+            When provided it avoids re-parsing the dates on every call, which
+            is important when processing many running workouts in a single batch.
+            When ``None`` the dates are parsed from state on each call (backward-
+            compatible behaviour used in tests and one-off lookups).
 
     Returns:
         A formatted string such as ``"50.1 mL/min·kg"``, or ``"–"`` when no
@@ -257,10 +276,11 @@ def _nearest_vo2_max(workout_date: pd.Timestamp | None) -> str:
     if vo2_df.empty or "startDate" not in vo2_df.columns or "value" not in vo2_df.columns:
         return "–"
 
-    dates = pd.to_datetime(vo2_df["startDate"], errors="coerce").dt.tz_localize(None)
-    if not dates.notna().any():
+    if vo2_dates is None:
+        vo2_dates = pd.to_datetime(vo2_df["startDate"], errors="coerce").dt.tz_localize(None)
+    if not vo2_dates.notna().any():
         return "–"
-    deltas = (dates - workout_date).abs()
+    deltas = (vo2_dates - workout_date).abs()
     min_idx = deltas.idxmin()
     value = _safe_float(vo2_df.loc[min_idx, "value"])
     if value is None:
@@ -268,56 +288,11 @@ def _nearest_vo2_max(workout_date: pd.Timestamp | None) -> str:
     return f"{value:.1f} mL/min·kg"
 
 
-def _compute_splits_from_route(
-    route: WorkoutRoute,
-    distance_m: float | None,
-    split_dist: float,
-) -> list[dict[str, float | int]]:
-    """Compute splits for a single WorkoutRoute object.
-
-    Args:
-        route: The GPS route to compute splits from.
-        distance_m: Optional workout summary distance used for scale correction.
-        split_dist: Split interval in metres.
-
-    Returns:
-        A list of split dicts as returned by :meth:`WorkoutRoute.compute_splits`.
-    """
-    scale = WorkoutRoute.calculate_distance_scale_factor(route.distance_meters, distance_m)
-    return route.compute_splits(split_distance_m=split_dist, distance_scale_factor=scale)
-
-
-def _compute_splits_from_row(
-    row: Any,
-    distance_unit: str,
-) -> list[dict[str, float | int]]:
-    """Compute per-km (or per-mile) GPS splits from a workout DataFrame row.
-
-    Uses the merged ``route`` field, which :class:`~logic.export_parser.ExportParser`
-    keeps fully de-duplicated even for workouts that have multiple GPS segments
-    (``route_parts``).  If ``route`` is absent or empty, returns an empty list.
-
-    Args:
-        row: A pandas Series representing a running workout.
-        distance_unit: ``"km"`` or ``"mi"``; controls the split interval.
-
-    Returns:
-        A list of split dicts, or an empty list when no route data is available.
-    """
-    split_dist = 1000.0 if distance_unit == "km" else 1.0 / METERS_TO_MILES
-    distance_m = _safe_float(row.get("distance"))
-
-    route_obj = row.get("route")
-    if isinstance(route_obj, WorkoutRoute) and not route_obj.is_empty:
-        return _compute_splits_from_route(route_obj, distance_m, split_dist)
-
-    return []
-
-
 def _extract_running_fields(
     row: Any,
     workout_date: pd.Timestamp | None,
     distance_unit: str = "km",
+    vo2_dates: pd.Series | None = None,
 ) -> dict[str, Any]:
     """Extract running-specific display fields from a workout DataFrame row.
 
@@ -325,14 +300,22 @@ def _extract_running_fields(
     Fields that are absent or ``NaN`` fall back to the missing-data sentinel
     ``"–"`` so the modal can hide them automatically.
 
+    GPS splits are **not** computed here; instead, the raw
+    :class:`~logic.workout_manager.workout_route.WorkoutRoute` object is stored
+    under the ``"route"`` key so the modal can compute splits lazily on first
+    open (see :func:`~ui.workout_detail_modal.create_workout_detail_modal`).
+
     Args:
         row: A pandas Series representing a running workout.
         workout_date: The workout start date used for VO2 max look-up.
         distance_unit: ``"km"`` or ``"mi"`` (affects split display label).
+        vo2_dates: Pre-parsed, tz-naive VO2Max start dates; passed through to
+            :func:`_nearest_vo2_max` to avoid repeating the parse per workout.
 
     Returns:
-        A dict with running-specific display and sort values plus a ``splits``
-        list of per-km split dicts (see :meth:`WorkoutRoute.compute_splits`).
+        A dict with running-specific display and sort values.  The ``"route"``
+        key holds the :class:`~logic.workout_manager.workout_route.WorkoutRoute`
+        object (or ``None``) for lazy split computation in the modal.
     """
     # --- Pace (derived from averageRunningSpeed) ---
     speed_raw = _safe_float(row.get("averageRunningSpeed"))
@@ -379,8 +362,9 @@ def _extract_running_fields(
         "vertical_oscillation": vo_display,
         "ground_contact_time": gct_display,
         "step_count": step_count_display,
-        "vo2_max": _nearest_vo2_max(workout_date),
-        "splits": _compute_splits_from_row(row, distance_unit),
+        "vo2_max": _nearest_vo2_max(workout_date, vo2_dates),
+        # Route stored here; splits computed lazily by the modal on first open.
+        "route": row.get("route"),
         "distance_unit": distance_unit,
     }
 

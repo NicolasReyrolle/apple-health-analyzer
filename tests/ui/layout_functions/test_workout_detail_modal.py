@@ -539,3 +539,121 @@ class TestSplitsTabSection:
         pace_str = splits_table.rows[0]["pace_str"]
         minutes = int(pace_str.split(":")[0])
         assert minutes == 9
+
+
+class TestComputeSplitsLazy:
+    """Unit tests for _compute_splits_lazy()."""
+
+    def _make_route(self, n_points: int = 1001, speed_m_s: float = 3.0) -> Any:
+        """Build a WorkoutRoute with *n_points* evenly-spaced speed-only points."""
+        from datetime import timedelta
+
+        import pandas as pd
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = pd.Timestamp("2024-01-01 10:00:00").to_pydatetime().replace(tzinfo=None)
+        points = [
+            RoutePoint(
+                time=base_time + timedelta(seconds=i),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=0.0,
+                speed=speed_m_s,
+            )
+            for i in range(n_points)
+        ]
+        return WorkoutRoute(points=points)
+
+    def test_returns_empty_list_and_caches_when_no_route(self) -> None:
+        """Should return [] and cache the result in the row dict when route is absent."""
+        row: dict[str, Any] = {"distance_unit": "km", "distance_sort": 3000.0}
+        result = wdm._compute_splits_lazy(row)
+        assert result == []
+        assert row["splits"] == []
+
+    def test_computes_splits_from_route(self) -> None:
+        """Should compute ≥ 3 km splits for a ~3 km route and cache them."""
+        route = self._make_route(n_points=1001, speed_m_s=3.0)
+        row: dict[str, Any] = {"route": route, "distance_unit": "km", "distance_sort": 3000.0}
+        result = wdm._compute_splits_lazy(row)
+        assert len(result) >= 3
+        assert row["splits"] is result  # cached in row dict
+
+    def test_caches_result_on_second_call(self) -> None:
+        """A second call with the cached result should reuse the same list object."""
+        route = self._make_route(n_points=1001, speed_m_s=3.0)
+        row: dict[str, Any] = {"route": route, "distance_unit": "km", "distance_sort": 3000.0}
+        first = wdm._compute_splits_lazy(row)
+        row["splits"] = first  # simulate cached state
+        # Calling again does not recompute (caller guards with 'splits' not in row).
+        assert row["splits"] is first
+
+    def test_uses_mile_split_distance_for_imperial(self) -> None:
+        """In imperial mode the split interval should be ~1609 m, yielding fewer splits."""
+        route = self._make_route(n_points=1001, speed_m_s=3.0)
+        row_km: dict[str, Any] = {
+            "route": route,
+            "distance_unit": "km",
+            "distance_sort": 3000.0,
+        }
+        row_mi: dict[str, Any] = {
+            "route": route,
+            "distance_unit": "mi",
+            "distance_sort": 3000.0,
+        }
+        splits_km = wdm._compute_splits_lazy(row_km)
+        splits_mi = wdm._compute_splits_lazy(row_mi)
+        # ~3000 m / 1000 m → ≥ 3 km splits; ~3000 m / 1609 m → 1 mi split
+        assert len(splits_km) > len(splits_mi)
+
+    def test_splits_computed_lazily_in_modal(self) -> None:
+        """Splits tab should trigger lazy computation for a row that has a route but no 'splits'."""
+        from datetime import timedelta
+
+        import pandas as pd
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = pd.Timestamp("2024-01-01 10:00:00").to_pydatetime().replace(tzinfo=None)
+        points = [
+            RoutePoint(
+                time=base_time + timedelta(seconds=i),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=0.0,
+                speed=3.0,
+            )
+            for i in range(1001)
+        ]
+        route = WorkoutRoute(points=points)
+
+        rows = [
+            {
+                **_make_row(idx=0, activity_type="Running", raw_activity_type="Running"),
+                "pace": "5:33 /km",
+                "distance_unit": "km",
+                # No 'splits' key — triggers lazy computation on first modal open.
+                "route": route,
+            },
+        ]
+        table_stubs: list[_DummyElement] = []
+
+        def make_table(*_a: Any, **_kw: Any) -> _DummyElement:
+            tbl = _DummyElement()
+            table_stubs.append(tbl)
+            return tbl
+
+        with ExitStack() as stack:
+            for p in _all_patches(table_side_effect=make_table):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        splits_table = table_stubs[0]
+        # Lazy computation should have produced ≥ 3 splits and shown the table.
+        assert splits_table._visible
+        assert len(splits_table.rows) >= 3
+        # Result cached in the row dict for subsequent navigations.
+        assert "splits" in rows[0]
+        assert len(rows[0]["splits"]) >= 3

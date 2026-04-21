@@ -6,6 +6,7 @@ from typing import Any, TypeAlias
 from nicegui import ui
 
 from i18n import t
+from logic.workout_manager.workout_route import WorkoutRoute
 from ui.css import (
     BUTTON_DENSE_PROPS,
     LABEL_MUTED_CLASSES,
@@ -83,6 +84,43 @@ def _format_elevation_change(elevation_change_m: float) -> str:
     """
     sign = "+" if elevation_change_m >= 0 else ""
     return f"{sign}{int(round(elevation_change_m))} m"
+
+
+def _compute_splits_lazy(row: dict[str, Any]) -> list[dict[str, Any]]:
+    """Compute GPS splits from the route stored in *row* and cache the result.
+
+    Called once the first time the Splits tab is shown for a given workout row.
+    The result is written back into ``row["splits"]`` so subsequent navigations
+    to the same row skip the computation entirely.
+
+    Args:
+        row: A workout row dict as returned by ``_build_workout_rows()``.
+            Must contain a ``"route"`` key with a
+            :class:`~logic.workout_manager.workout_route.WorkoutRoute` object
+            (or ``None``) and a ``"distance_unit"`` key.
+
+    Returns:
+        A list of split dicts, or an empty list when no GPS route is available.
+    """
+    du = row.get("distance_unit", "km")
+    split_dist = 1000.0 if du == "km" else 1.0 / METERS_TO_MILES
+    route_obj = row.get("route")
+    if not isinstance(route_obj, WorkoutRoute) or route_obj.is_empty:
+        splits: list[dict[str, Any]] = []
+        row["splits"] = splits
+        return splits
+    # Use the workout-summary distance for GPS-drift scale correction,
+    # mirroring the logic in WorkoutRoute.find_fastest_segment.
+    distance_sort = row.get("distance_sort")
+    distance_m = (
+        float(distance_sort)
+        if isinstance(distance_sort, (int, float)) and float(distance_sort) > 0
+        else None
+    )
+    scale = WorkoutRoute.calculate_distance_scale_factor(route_obj.distance_meters, distance_m)
+    splits = route_obj.compute_splits(split_distance_m=split_dist, distance_scale_factor=scale)
+    row["splits"] = splits
+    return splits
 
 
 def _update_fields(
@@ -236,7 +274,15 @@ def create_workout_detail_modal(
             _update_fields(running_field_rows, row)
 
     def _refresh_splits_tab(row: dict[str, Any]) -> None:
-        """Update splits tab with GPS-based per-km or per-mi splits."""
+        """Update splits tab with GPS-based per-km or per-mi splits.
+
+        Splits are computed lazily on first open (via :func:`_compute_splits_lazy`)
+        and then cached in ``row["splits"]`` for instant display on subsequent
+        navigations to the same workout.
+        """
+        # Lazy-compute splits on first open; cached result is reused on revisit.
+        if "splits" not in row:
+            _compute_splits_lazy(row)
         splits = row.get("splits") or []
         has_splits = bool(splits)
         no_splits_label.set_visibility(not has_splits)
