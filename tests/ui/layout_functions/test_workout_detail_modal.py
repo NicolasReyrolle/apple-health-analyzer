@@ -713,13 +713,14 @@ class TestComputeSplitsLazy:
         assert row["splits"] is result  # cached in row dict
 
     def test_caches_result_on_second_call(self) -> None:
-        """A second call with the cached result should reuse the same list object."""
+        """A second call should return the same list object without recomputing."""
         route = self._make_route(n_points=1001, speed_m_s=3.0)
         row: dict[str, Any] = {"route": route, "distance_unit": "km", "distance_sort": 3000.0}
         first = wdm._compute_splits_lazy(row)
-        row["splits"] = first  # simulate cached state
-        # Calling again does not recompute (caller guards with 'splits' not in row).
-        assert row["splits"] is first
+        # Call again — the idempotency guard inside _compute_splits_lazy should
+        # return the already-cached list without recomputing.
+        second = wdm._compute_splits_lazy(row)
+        assert second is first
 
     def test_uses_mile_split_distance_for_imperial(self) -> None:
         """In imperial mode the split interval should be ~1609 m, yielding fewer splits."""
