@@ -164,7 +164,7 @@ def create_workout_detail_modal(
                         LABEL_MUTED_CLASSES
                     )
                     # Running-specific metrics; shown only when activity is Running
-                    running_container = ui.column().classes("w-full")
+                    running_container = ui.column().classes(TABS_FULL_CLASSES)
                     with running_container:
                         running_field_rows: dict[str, tuple[Any, Any]] = {}
                         for field_key, label_fn in _RUNNING_FIELD_DISPLAY:
