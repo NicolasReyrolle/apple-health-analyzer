@@ -215,6 +215,35 @@ def _row_has_route(row: dict[str, Any]) -> bool:
     return isinstance(route, WorkoutRoute) and not route.is_empty
 
 
+#: Maps each supported raw activity type to the field keys shown in the Activity tab.
+#: Used by :func:`_row_has_activity_data` to determine whether at least one field
+#: has a non-missing value.
+_ACTIVITY_FIELD_KEYS: dict[str, list[str]] = {
+    "Running": [k for k, _ in _RUNNING_FIELD_DISPLAY],
+    "Walking": [k for k, _ in _WALKING_FIELD_DISPLAY],
+}
+
+
+def _row_has_activity_data(row: dict[str, Any]) -> bool:
+    """Return True when the row has at least one non-missing activity-specific field.
+
+    The Activity tab should only be enabled when there is something meaningful
+    to display.  A row's activity-type fields all default to ``"–"`` when the
+    corresponding statistics are absent from the export (e.g. a Walking workout
+    recorded without cadence or step data).
+
+    Args:
+        row: A workout row dict as returned by ``_build_workout_rows()``.
+
+    Returns:
+        True when at least one field from the activity-type's display spec
+        contains a value other than the missing sentinel ``"–"``.
+    """
+    raw_type = row.get("raw_activity_type")
+    keys = _ACTIVITY_FIELD_KEYS.get(raw_type, [])  # type: ignore[arg-type]
+    return any(str(row.get(k, "–")) not in ("–", "") for k in keys)
+
+
 def create_workout_detail_modal(
     rows: list[dict[str, Any]],
 ) -> Callable[[int], None]:
@@ -341,7 +370,7 @@ def create_workout_detail_modal(
         raw_type = row.get("raw_activity_type")
         is_running = raw_type == "Running"
         is_walking = raw_type == "Walking"
-        has_data = raw_type in ("Running", "Walking")
+        has_data = _row_has_activity_data(row)
         no_activity_label.set_visibility(not has_data)
         running_container.set_visibility(is_running)
         walking_container.set_visibility(is_walking)

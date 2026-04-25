@@ -674,6 +674,19 @@ class TestTabEnableState:
         fn(0)
         assert tab_stubs[1]._enabled
 
+    def test_activity_tab_disabled_for_walking_with_no_data(self) -> None:
+        """Activity tab should be disabled for a Walking workout with all fields missing."""
+        rows = [_make_row(idx=0, activity_type="Walking", raw_activity_type="Walking")]
+        tab_stubs, make_tab = self._make_tab_stubs()
+
+        with ExitStack() as stack:
+            for p in _all_patches(tab_side_effect=make_tab):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        assert not tab_stubs[1]._enabled
+
     def test_splits_tab_disabled_when_no_route(self) -> None:
         """Splits tab should be disabled when the workout has no GPS route."""
         rows = [_make_row(idx=0, activity_type="Running", raw_activity_type="Running")]
@@ -759,6 +772,60 @@ class TestRowHasRoute:
         ]
         assert wdm._row_has_route({"route": WorkoutRoute(points=points)})
 
+
+class TestRowHasActivityData:
+    """Tests for the _row_has_activity_data helper."""
+
+    def test_returns_false_for_unknown_activity_type(self) -> None:
+        """Unsupported activity type has no activity-specific field keys → False."""
+        assert not wdm._row_has_activity_data({"raw_activity_type": "Cycling"})
+
+    def test_returns_false_when_no_raw_activity_type(self) -> None:
+        """Row without raw_activity_type key → False."""
+        assert not wdm._row_has_activity_data({})
+
+    def test_returns_false_for_walking_with_all_missing_fields(self) -> None:
+        """Walking row where every field is '–' (absent from export) → False."""
+        assert not wdm._row_has_activity_data(
+            {
+                "raw_activity_type": "Walking",
+                "pace": "–",
+                "cadence": "–",
+                "step_length": "–",
+                "step_count": "–",
+            }
+        )
+
+    def test_returns_true_for_walking_with_any_data_field(self) -> None:
+        """Walking row with at least one real field value → True."""
+        assert wdm._row_has_activity_data(
+            {
+                "raw_activity_type": "Walking",
+                "pace": "12:30 /km",
+                "cadence": "–",
+                "step_length": "–",
+                "step_count": "–",
+            }
+        )
+
+    def test_returns_false_for_running_with_all_missing_fields(self) -> None:
+        """Running row where every field is '–' → False."""
+        assert not wdm._row_has_activity_data({"raw_activity_type": "Running"})
+
+    def test_returns_true_for_running_with_pace(self) -> None:
+        """Running row with a pace value → True."""
+        assert wdm._row_has_activity_data(
+            {"raw_activity_type": "Running", "pace": "5:30 /km"}
+        )
+
+    def test_ignores_empty_string_values(self) -> None:
+        """Empty string values are treated the same as '–' → False."""
+        assert not wdm._row_has_activity_data(
+            {"raw_activity_type": "Walking", "pace": "", "cadence": ""}
+        )
+
+
+class TestSplitsTabSection:
     """Tests for the Splits tab rendering in the modal."""
 
     def test_splits_table_hidden_when_no_splits(self) -> None:
