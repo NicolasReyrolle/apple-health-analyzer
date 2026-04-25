@@ -19,6 +19,7 @@ from ui.css import (
     MODAL_NAV_COUNTER_CLASSES,
     MODAL_NAV_ROW_CLASSES,
     MODAL_SPLITS_TABLE_CLASSES,
+    MODAL_TAB_PANELS_CLASSES,
     TABLE_DENSE_FLAT_PROPS,
     TABS_FULL_CLASSES,
 )
@@ -41,6 +42,8 @@ _FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
     ("avg_hr", lambda: t("Avg HR")),
     ("elevation", lambda: t("Elevation Gain")),
     ("avg_power", lambda: t("Avg Power")),
+    ("temperature", lambda: t("Temperature")),
+    ("humidity", lambda: t("Humidity")),
 ]
 
 #: Running-specific fields shown in the Activity tab when the workout is Running.
@@ -292,7 +295,7 @@ def create_workout_detail_modal(
                 splits_tab = ui.tab("splits", t("Splits"))
 
             # ---- Tab panels ----
-            with ui.tab_panels(detail_tabs, value="overview").classes(TABS_FULL_CLASSES):
+            with ui.tab_panels(detail_tabs, value="overview").classes(MODAL_TAB_PANELS_CLASSES):
                 # Overview tab: generic workout attributes
                 with ui.tab_panel("overview"):
                     field_rows = _build_field_rows(_FIELD_DISPLAY)

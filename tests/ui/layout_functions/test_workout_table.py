@@ -1238,3 +1238,110 @@ class TestExtractWalkingFields:
         row = rows[0]
         assert "step_length" not in row
         assert "step_count" not in row
+
+
+class TestExtractWeatherFields:
+    """Unit tests for temperature and humidity extraction in _extract_row_data()."""
+
+    def _make_row(self, **kwargs: Any) -> dict[str, Any]:
+        """Build a minimal workout row with weather data."""
+        base: dict[str, Any] = {
+            "activityType": "Walking",
+            "startDate": pd.Timestamp("2025-01-01"),
+            "duration": 1000.0,
+            "WeatherTemperature": 22.222,  # ~72 °F converted to °C by parser
+            "WeatherHumidity": 80.0,       # 80 % (already divided by 100 by parser)
+        }
+        base.update(kwargs)
+        return base
+
+    def test_temperature_displayed_in_celsius_for_metric(self) -> None:
+        """Temperature should show °C when unit system is metric."""
+        row = self._make_row()
+        result = wt._extract_row_data(row, 0, "en", temperature_unit="°C")
+        assert result["temperature"] == "22.2 °C"
+
+    def test_temperature_displayed_in_fahrenheit_for_imperial(self) -> None:
+        """Temperature should be converted back to °F for imperial unit system."""
+        row = self._make_row(WeatherTemperature=0.0)  # 0 °C = 32 °F
+        result = wt._extract_row_data(row, 0, "en", temperature_unit="°F")
+        assert result["temperature"] == "32.0 °F"
+
+    def test_temperature_conversion_accuracy(self) -> None:
+        """22.222 °C should convert to approximately 72.0 °F."""
+        row = self._make_row(WeatherTemperature=22.222)
+        result = wt._extract_row_data(row, 0, "en", temperature_unit="°F")
+        # 22.222 * 9/5 + 32 = 71.9996 ≈ 72.0 °F
+        assert result["temperature"] == "72.0 °F"
+
+    def test_missing_temperature_produces_dash(self) -> None:
+        """Missing WeatherTemperature should produce '–'."""
+        row = self._make_row()
+        del row["WeatherTemperature"]
+        result = wt._extract_row_data(row, 0, "en", temperature_unit="°C")
+        assert result["temperature"] == "–"
+
+    def test_humidity_displayed_as_integer_percentage(self) -> None:
+        """Humidity should show as an integer percentage string."""
+        row = self._make_row(WeatherHumidity=80.0)
+        result = wt._extract_row_data(row, 0, "en")
+        assert result["humidity"] == "80 %"
+
+    def test_humidity_rounds_to_nearest_integer(self) -> None:
+        """Fractional humidity should be rounded to nearest integer."""
+        row = self._make_row(WeatherHumidity=65.6)
+        result = wt._extract_row_data(row, 0, "en")
+        assert result["humidity"] == "66 %"
+
+    def test_missing_humidity_produces_dash(self) -> None:
+        """Missing WeatherHumidity should produce '–'."""
+        row = self._make_row()
+        del row["WeatherHumidity"]
+        result = wt._extract_row_data(row, 0, "en")
+        assert result["humidity"] == "–"
+
+    def test_weather_fields_in_build_workout_rows(self) -> None:
+        """Weather fields should be present in rows built by _build_workout_rows()."""
+        original_workouts: Any = state.workouts
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Walking",
+                    "startDate": pd.Timestamp("2025-01-01"),
+                    "duration": 1000.0,
+                    "WeatherTemperature": 22.222,
+                    "WeatherHumidity": 80.0,
+                }
+            ]
+        )
+        try:
+            state.workouts = workouts_mock
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+        assert len(rows) == 1
+        assert rows[0]["temperature"] == "22.2 °C"
+        assert rows[0]["humidity"] == "80 %"
+
+    def test_weather_fields_missing_when_absent_from_workout(self) -> None:
+        """Workouts without weather metadata should show '–' for temperature and humidity."""
+        original_workouts: Any = state.workouts
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-01-01"),
+                    "duration": 3600.0,
+                }
+            ]
+        )
+        try:
+            state.workouts = workouts_mock
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+        assert len(rows) == 1
+        assert rows[0]["temperature"] == "–"
+        assert rows[0]["humidity"] == "–"

@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 from nicegui import ui
 
-from app_state import get_distance_unit, get_elevation_unit, state
+from app_state import get_distance_unit, get_elevation_unit, get_temperature_unit, state
 from i18n import get_language, t
 from i18n.activity_types import activity_display_label
 from ui.css import (
@@ -101,6 +101,7 @@ def _build_workout_rows() -> list[dict[str, Any]]:
 
     language_code = get_language()
     elevation_unit = get_elevation_unit()
+    temperature_unit = get_temperature_unit()
     rows: list[dict[str, Any]] = []
 
     # Pre-parse VO2Max dates once so _nearest_vo2_max avoids repeating the
@@ -112,7 +113,7 @@ def _build_workout_rows() -> list[dict[str, Any]]:
 
     for idx, (_, row) in enumerate(df.iterrows()):
         row_data = _extract_row_data(
-            row, idx, language_code, distance_unit, elevation_unit, vo2_dates
+            row, idx, language_code, distance_unit, elevation_unit, vo2_dates, temperature_unit
         )
         rows.append(row_data)
 
@@ -126,6 +127,7 @@ def _extract_row_data(
     distance_unit: str = "km",
     elevation_unit: str = "m",
     vo2_dates: pd.Series | None = None,
+    temperature_unit: str = "°C",
 ) -> dict[str, Any]:
     """Extract and format a single workout row.
 
@@ -137,6 +139,7 @@ def _extract_row_data(
         elevation_unit: The display unit for elevation values (``"m"`` or ``"ft"``).
         vo2_dates: Pre-parsed tz-naive VO2Max start dates; when provided avoids
             re-parsing inside :func:`_nearest_vo2_max` for each row.
+        temperature_unit: The display unit for temperature (``"°C"`` or ``"°F"``).
 
     Returns:
         A dictionary with sort and display values for all columns.
@@ -169,6 +172,17 @@ def _extract_row_data(
         lambda v: f"{int(round(v))} W",
     )
 
+    _, temp_display = _build_field_pair(
+        row.get("WeatherTemperature"),
+        lambda v: (
+            f"{v * 9 / 5 + 32:.1f} °F" if temperature_unit == "°F" else f"{v:.1f} °C"
+        ),
+    )
+    _, humidity_display = _build_field_pair(
+        row.get("WeatherHumidity"),
+        lambda v: f"{int(round(v))} %",
+    )
+
     result: dict[str, Any] = {
         "id": f"{date_sort}_{idx}",
         "date_sort": date_sort,
@@ -187,6 +201,8 @@ def _extract_row_data(
         "elevation": elev_display,
         "avg_power_sort": power_sort,
         "avg_power": power_display,
+        "temperature": temp_display,
+        "humidity": humidity_display,
     }
 
     if raw_activity == "Running":

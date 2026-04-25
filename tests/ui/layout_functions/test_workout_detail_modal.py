@@ -211,7 +211,8 @@ class TestFieldDisplay:
     def test_all_expected_keys_present(self) -> None:
         """_FIELD_DISPLAY should cover all generic row fields shown in the table."""
         field_keys = {key for key, _ in wdm._FIELD_DISPLAY}
-        for expected in ["date", "activity_type", "duration", "distance", "calories"]:
+        for expected in ["date", "activity_type", "duration", "distance", "calories",
+                         "temperature", "humidity"]:
             assert expected in field_keys
 
     def test_labels_are_non_empty_strings(self) -> None:
