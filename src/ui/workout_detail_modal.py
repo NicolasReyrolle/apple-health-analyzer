@@ -175,6 +175,46 @@ def _update_fields(
             value_el.set_text(value)
 
 
+def _build_field_rows(
+    field_display: list[tuple[str, _LabelFn]],
+) -> dict[str, tuple[Any, Any]]:
+    """Build label/value field row widgets from a display spec.
+
+    Creates a ``ui.row`` for each entry in *field_display* and returns a dict
+    mapping each field key to its ``(row_element, value_label)`` pair so that
+    :func:`_update_fields` can update values without rebuilding the UI tree.
+
+    Args:
+        field_display: Ordered list of ``(field_key, label_fn)`` pairs.
+
+    Returns:
+        Dict mapping each ``field_key`` to ``(frow, value_el)`` element pairs.
+    """
+    field_rows: dict[str, tuple[Any, Any]] = {}
+    for field_key, label_fn in field_display:
+        with ui.row().classes(MODAL_FIELD_ROW_CLASSES) as frow:
+            ui.label(label_fn()).classes(MODAL_FIELD_LABEL_CLASSES)
+            value_el = ui.label().classes(MODAL_FIELD_VALUE_CLASSES)
+        field_rows[field_key] = (frow, value_el)
+    return field_rows
+
+
+def _row_has_route(row: dict[str, Any]) -> bool:
+    """Return True when the row contains a non-empty GPS route.
+
+    Used to decide whether to enable the Splits tab in the workout detail modal.
+
+    Args:
+        row: A workout row dict as returned by ``_build_workout_rows()``.
+
+    Returns:
+        True when a :class:`~logic.workout_manager.workout_route.WorkoutRoute`
+        with at least one point is stored under the ``"route"`` key.
+    """
+    route = row.get("route")
+    return isinstance(route, WorkoutRoute) and not route.is_empty
+
+
 def create_workout_detail_modal(
     rows: list[dict[str, Any]],
 ) -> Callable[[int], None]:
@@ -193,9 +233,9 @@ def create_workout_detail_modal(
     * **Activity** – type-specific metrics.  Running workouts show pace, cadence,
       stride length, vertical oscillation, ground contact time, step count, and
       VO₂ max.  Walking workouts show pace, cadence, step length, and step count.
-      Other activity types show a placeholder message.
-    * **Splits** – per-km GPS-based splits in a compact table.  Hidden when no
-      GPS route is available.
+      Other activity types show a placeholder message; the tab is disabled.
+    * **Splits** – per-km GPS-based splits in a compact table.  The tab is
+      disabled when no GPS route is available.
 
     Args:
         rows: List of workout row dicts as returned by ``_build_workout_rows()``.
@@ -219,19 +259,14 @@ def create_workout_detail_modal(
             # ---- Tab bar ----
             with ui.tabs().classes(TABS_FULL_CLASSES) as detail_tabs:
                 ui.tab("overview", t("Overview"))
-                ui.tab("activity", t("Activity"))
-                ui.tab("splits", t("Splits"))
+                activity_tab = ui.tab("activity", t("Activity"))
+                splits_tab = ui.tab("splits", t("Splits"))
 
             # ---- Tab panels ----
             with ui.tab_panels(detail_tabs, value="overview").classes(TABS_FULL_CLASSES):
                 # Overview tab: generic workout attributes
                 with ui.tab_panel("overview"):
-                    field_rows: dict[str, tuple[Any, Any]] = {}
-                    for field_key, label_fn in _FIELD_DISPLAY:
-                        with ui.row().classes(MODAL_FIELD_ROW_CLASSES) as frow:
-                            ui.label(label_fn()).classes(MODAL_FIELD_LABEL_CLASSES)
-                            value_el = ui.label().classes(MODAL_FIELD_VALUE_CLASSES)
-                        field_rows[field_key] = (frow, value_el)
+                    field_rows = _build_field_rows(_FIELD_DISPLAY)
 
                 # Activity tab: type-specific metrics
                 with ui.tab_panel("activity"):
@@ -242,21 +277,11 @@ def create_workout_detail_modal(
                     # Running-specific metrics; shown only when activity is Running
                     running_container = ui.column().classes(TABS_FULL_CLASSES)
                     with running_container:
-                        running_field_rows: dict[str, tuple[Any, Any]] = {}
-                        for field_key, label_fn in _RUNNING_FIELD_DISPLAY:
-                            with ui.row().classes(MODAL_FIELD_ROW_CLASSES) as frow:
-                                ui.label(label_fn()).classes(MODAL_FIELD_LABEL_CLASSES)
-                                value_el = ui.label().classes(MODAL_FIELD_VALUE_CLASSES)
-                            running_field_rows[field_key] = (frow, value_el)
+                        running_field_rows = _build_field_rows(_RUNNING_FIELD_DISPLAY)
                     # Walking-specific metrics; shown only when activity is Walking
                     walking_container = ui.column().classes(TABS_FULL_CLASSES)
                     with walking_container:
-                        walking_field_rows: dict[str, tuple[Any, Any]] = {}
-                        for field_key, label_fn in _WALKING_FIELD_DISPLAY:
-                            with ui.row().classes(MODAL_FIELD_ROW_CLASSES) as frow:
-                                ui.label(label_fn()).classes(MODAL_FIELD_LABEL_CLASSES)
-                                value_el = ui.label().classes(MODAL_FIELD_VALUE_CLASSES)
-                            walking_field_rows[field_key] = (frow, value_el)
+                        walking_field_rows = _build_field_rows(_WALKING_FIELD_DISPLAY)
 
                 # Splits tab: per-km GPS splits table
                 with ui.tab_panel("splits"):
@@ -312,16 +337,18 @@ def create_workout_detail_modal(
         next_btn.set_enabled(idx != n - 1)
 
     def _refresh_activity_tab(row: dict[str, Any]) -> None:
-        """Update activity tab: show type-specific metrics for Running and Walking workouts."""
+        """Update activity tab: show type-specific metrics and set tab enabled state."""
         raw_type = row.get("raw_activity_type")
         is_running = raw_type == "Running"
         is_walking = raw_type == "Walking"
-        no_activity_label.set_visibility(not is_running and not is_walking)
+        has_data = raw_type in ("Running", "Walking")
+        no_activity_label.set_visibility(not has_data)
         running_container.set_visibility(is_running)
         walking_container.set_visibility(is_walking)
+        activity_tab.set_enabled(has_data)
         if is_running:
             _update_fields(running_field_rows, row)
-        if is_walking:
+        elif is_walking:
             _update_fields(walking_field_rows, row)
 
     def _refresh_splits_tab(row: dict[str, Any]) -> None:
@@ -351,6 +378,7 @@ def create_workout_detail_modal(
         _refresh_header(idx, n, row)
         _update_fields(field_rows, row)
         _refresh_activity_tab(row)
+        splits_tab.set_enabled(_row_has_route(row))
         # Only refresh the Splits tab when it is currently active; switching to
         # the Splits tab triggers _on_tab_change which handles the initial load.
         if detail_tabs.value == "splits":
