@@ -193,6 +193,8 @@ def _extract_row_data(
         start_date_raw = row.get("startDate")
         workout_date = start_date_raw if isinstance(start_date_raw, pd.Timestamp) else None
         result.update(_extract_running_fields(row, workout_date, distance_unit, vo2_dates))
+    elif raw_activity == "Walking":
+        result.update(_extract_walking_fields(row, distance_unit))
 
     return result
 
@@ -363,6 +365,61 @@ def _extract_running_fields(
         "ground_contact_time": gct_display,
         "step_count": step_count_display,
         "vo2_max": _nearest_vo2_max(workout_date, vo2_dates),
+        # Route stored here; splits computed lazily by the modal on first open.
+        "route": row.get("route"),
+        "distance_unit": distance_unit,
+    }
+
+
+def _extract_walking_fields(
+    row: Any,
+    distance_unit: str = "km",
+) -> dict[str, Any]:
+    """Extract walking-specific display fields from a workout DataFrame row.
+
+    Fields are populated only when the corresponding statistics are present.
+    Fields that are absent or ``NaN`` fall back to the missing-data sentinel
+    ``"–"`` so the modal can hide them automatically.
+
+    Args:
+        row: A pandas Series representing a walking workout.
+        distance_unit: ``"km"`` or ``"mi"`` (affects pace display).
+
+    Returns:
+        A dict with walking-specific display and sort values.  The ``"route"``
+        key holds the :class:`~logic.workout_manager.workout_route.WorkoutRoute`
+        object (or ``None``) for lazy split computation in the modal.
+    """
+    # --- Pace (derived from averageWalkingSpeed) ---
+    speed_raw = _safe_float(row.get("averageWalkingSpeed"))
+    pace_display = _format_pace(speed_raw, distance_unit) if speed_raw is not None else "–"
+    pace_sort = (60.0 / speed_raw) if speed_raw is not None and speed_raw > 0 else _MISSING_SORT
+
+    # --- Cadence ---
+    cadence_sort, cadence_display = _build_field_pair(
+        row.get("averageWalkingCadence"),
+        lambda v: f"{int(round(v))} spm",
+    )
+
+    # --- Step length ---
+    _, step_length_display = _build_field_pair(
+        row.get("averageWalkingStepLength"),
+        lambda v: f"{v:.2f} m",
+    )
+
+    # --- Step count ---
+    _, step_count_display = _build_field_pair(
+        row.get("sumStepCount"),
+        lambda v: f"{int(round(v))}",
+    )
+
+    return {
+        "pace_sort": pace_sort,
+        "pace": pace_display,
+        "cadence_sort": cadence_sort,
+        "cadence": cadence_display,
+        "step_length": step_length_display,
+        "step_count": step_count_display,
         # Route stored here; splits computed lazily by the modal on first open.
         "route": row.get("route"),
         "distance_unit": distance_unit,

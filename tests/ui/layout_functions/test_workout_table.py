@@ -1118,3 +1118,123 @@ class TestExtractRunningFields:
         assert "pace" not in row
         assert "cadence" not in row
         assert "route" not in row
+
+
+class TestExtractWalkingFields:
+    """Unit tests for _extract_walking_fields()."""
+
+    def _make_row(self, **kwargs: Any) -> dict[str, Any]:
+        """Build a minimal row dict with walking statistics."""
+        base: dict[str, Any] = {
+            "activityType": "Walking",
+            "averageWalkingSpeed": 5.0,  # 5 km/h → 12:00 /km
+            "averageWalkingCadence": 110.0,
+            "averageWalkingStepLength": 0.72,
+            "sumStepCount": 6500.0,
+        }
+        base.update(kwargs)
+        return base
+
+    def test_pace_derived_from_walking_speed(self) -> None:
+        """Pace should be derived from averageWalkingSpeed."""
+        row = self._make_row(averageWalkingSpeed=5.0)
+        result = wt._extract_walking_fields(row)
+        assert result["pace"] == "12:00 /km"
+
+    def test_cadence_formatted(self) -> None:
+        """Cadence should show 'spm' unit."""
+        row = self._make_row(averageWalkingCadence=110.0)
+        result = wt._extract_walking_fields(row)
+        assert result["cadence"] == "110 spm"
+
+    def test_step_length_formatted(self) -> None:
+        """Step length should show 'm' unit to 2 decimal places."""
+        row = self._make_row(averageWalkingStepLength=0.72)
+        result = wt._extract_walking_fields(row)
+        assert result["step_length"] == "0.72 m"
+
+    def test_step_count_formatted(self) -> None:
+        """Step count should be an integer string."""
+        row = self._make_row(sumStepCount=6500.0)
+        result = wt._extract_walking_fields(row)
+        assert result["step_count"] == "6500"
+
+    def test_missing_speed_produces_dash(self) -> None:
+        """Missing averageWalkingSpeed should produce '–' for pace."""
+        row = self._make_row()
+        del row["averageWalkingSpeed"]
+        result = wt._extract_walking_fields(row)
+        assert result["pace"] == "–"
+
+    def test_pace_formatted_in_imperial_mode(self) -> None:
+        """Pace should be formatted as '/mi' when distance_unit is 'mi'."""
+        row = self._make_row(averageWalkingSpeed=5.0)
+        result = wt._extract_walking_fields(row, distance_unit="mi")
+        assert result["pace"].endswith("/mi")
+        assert "km" not in result["pace"]
+
+    def test_distance_unit_stored_in_result(self) -> None:
+        """The distance_unit used for pace should be stored in the result dict."""
+        row = self._make_row()
+        result_km = wt._extract_walking_fields(row, distance_unit="km")
+        result_mi = wt._extract_walking_fields(row, distance_unit="mi")
+        assert result_km["distance_unit"] == "km"
+        assert result_mi["distance_unit"] == "mi"
+
+    def test_route_stored_for_lazy_splits_when_no_route(self) -> None:
+        """When no route is present the 'route' key should be None."""
+        row = self._make_row()
+        result = wt._extract_walking_fields(row)
+        assert result.get("route") is None
+        assert "splits" not in result
+
+    def test_walking_fields_included_for_walking_workouts(self) -> None:
+        """Walking-specific keys should be present in the row dict for Walking workouts."""
+        original_workouts: Any = state.workouts
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Walking",
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "duration": 1800.0,
+                    "averageWalkingSpeed": 5.0,
+                    "averageWalkingCadence": 110.0,
+                    "sumStepCount": 6500.0,
+                }
+            ]
+        )
+        try:
+            state.workouts = workouts_mock
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["pace"] == "12:00 /km"
+        assert row["cadence"] == "110 spm"
+        assert row["step_count"] == "6500"
+        assert "route" in row
+
+    def test_walking_fields_absent_for_non_walking_workouts(self) -> None:
+        """Non-Walking workouts should not have walking-specific keys."""
+        original_workouts: Any = state.workouts
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Cycling",
+                    "startDate": pd.Timestamp("2025-01-01"),
+                    "duration": 3600.0,
+                }
+            ]
+        )
+        try:
+            state.workouts = workouts_mock
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+        assert len(rows) == 1
+        row = rows[0]
+        assert "step_length" not in row
+        assert "step_count" not in row

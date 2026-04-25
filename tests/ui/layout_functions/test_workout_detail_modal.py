@@ -215,6 +215,22 @@ class TestFieldDisplay:
             assert label_fn() and isinstance(label_fn(), str)
 
 
+class TestWalkingFieldDisplay:
+    """Tests for the _WALKING_FIELD_DISPLAY constant."""
+
+    def test_all_expected_keys_present(self) -> None:
+        """_WALKING_FIELD_DISPLAY should include pace, cadence, step_length, and step_count."""
+        field_keys = {key for key, _ in wdm._WALKING_FIELD_DISPLAY}
+        for expected in ["pace", "cadence", "step_length", "step_count"]:
+            assert expected in field_keys
+
+    def test_labels_are_non_empty_strings(self) -> None:
+        """Every label in _WALKING_FIELD_DISPLAY should return a non-empty string."""
+        for _key, label_fn in wdm._WALKING_FIELD_DISPLAY:
+            assert callable(label_fn)
+            assert label_fn() and isinstance(label_fn(), str)
+
+
 class TestCreateWorkoutDetailModal:
     """Tests for create_workout_detail_modal()."""
 
@@ -437,7 +453,7 @@ class TestActivityTabSection:
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
-        # column_stubs[0] = running_container (the only ui.column() in the modal)
+        # column_stubs[0] = running_container, column_stubs[1] = walking_container
         running_container = column_stubs[0]
         assert not running_container._visible
 
@@ -498,6 +514,93 @@ class TestActivityTabSection:
         fn(0)
         running_container = column_stubs[0]
         assert running_container._visible  # must be shown despite translated label
+
+    def test_walking_container_hidden_for_non_walking_activity(self) -> None:
+        """Walking container should be hidden when raw_activity_type is not 'Walking'."""
+        rows = [_make_row(idx=0, activity_type="Cycling", raw_activity_type="Cycling")]
+        column_stubs: list[_DummyElement] = []
+
+        def make_column(*_a: Any, **_kw: Any) -> _DummyElement:
+            col = _DummyElement()
+            column_stubs.append(col)
+            return col
+
+        with ExitStack() as stack:
+            for p in _all_patches(column_side_effect=make_column):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        # column_stubs[0] = running_container, column_stubs[1] = walking_container
+        walking_container = column_stubs[1]
+        assert not walking_container._visible
+
+    def test_walking_container_visible_for_walking_activity(self) -> None:
+        """Walking container should be visible when raw_activity_type is 'Walking'."""
+        rows = [
+            {
+                **_make_row(idx=0, activity_type="Walking", raw_activity_type="Walking"),
+                "pace": "12:00 /km",
+                "cadence": "110 spm",
+                "step_length": "0.72 m",
+                "step_count": "6500",
+                "splits": [],
+            },
+        ]
+        column_stubs: list[_DummyElement] = []
+
+        def make_column(*_a: Any, **_kw: Any) -> _DummyElement:
+            col = _DummyElement()
+            column_stubs.append(col)
+            return col
+
+        with ExitStack() as stack:
+            for p in _all_patches(column_side_effect=make_column):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        # column_stubs[0] = running_container, column_stubs[1] = walking_container
+        running_container = column_stubs[0]
+        walking_container = column_stubs[1]
+        assert not running_container._visible
+        assert walking_container._visible
+
+    def test_walking_container_uses_raw_activity_type(self) -> None:
+        """Walking container must use raw_activity_type, not the translated display label.
+
+        Simulates a locale where activity_type is translated but raw_activity_type
+        remains 'Walking'.  The walking container must still be shown.
+        """
+        rows = [
+            {
+                **_make_row(
+                    idx=0,
+                    activity_type="Marche",  # translated display label
+                    raw_activity_type="Walking",  # raw Apple Health type (always English)
+                ),
+                "pace": "12:00 /km",
+                "cadence": "110 spm",
+                "step_length": "0.72 m",
+                "step_count": "6500",
+                "splits": [],
+            },
+        ]
+        column_stubs: list[_DummyElement] = []
+
+        def make_column(*_a: Any, **_kw: Any) -> _DummyElement:
+            col = _DummyElement()
+            column_stubs.append(col)
+            return col
+
+        with ExitStack() as stack:
+            for p in _all_patches(column_side_effect=make_column):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        walking_container = column_stubs[1]
+        assert walking_container._visible  # must be shown despite translated label
 
 
 class TestSplitsTabSection:

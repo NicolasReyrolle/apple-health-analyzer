@@ -55,6 +55,15 @@ _RUNNING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
     ("vo2_max", lambda: t("VO₂ Max")),
 ]
 
+#: Walking-specific fields shown in the Activity tab when the workout is Walking.
+#: All values are ``"–"`` for non-walking workouts and are hidden automatically.
+_WALKING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
+    ("pace", lambda: t("Avg Pace")),
+    ("cadence", lambda: t("Avg Cadence")),
+    ("step_length", lambda: t("Avg Step Length")),
+    ("step_count", lambda: t("Step Count")),
+]
+
 
 def _format_split_pace(pace_min_per_km: float) -> str:
     """Format a pace value (min/km) as a ``mm:ss`` string.
@@ -183,7 +192,8 @@ def create_workout_detail_modal(
     * **Overview** – generic workout attributes (date, distance, calories, etc.).
     * **Activity** – type-specific metrics.  Running workouts show pace, cadence,
       stride length, vertical oscillation, ground contact time, step count, and
-      VO₂ max.  Other activity types show a placeholder message.
+      VO₂ max.  Walking workouts show pace, cadence, step length, and step count.
+      Other activity types show a placeholder message.
     * **Splits** – per-km GPS-based splits in a compact table.  Hidden when no
       GPS route is available.
 
@@ -225,7 +235,7 @@ def create_workout_detail_modal(
 
                 # Activity tab: type-specific metrics
                 with ui.tab_panel("activity"):
-                    # Shown for non-running (or future unsupported) activity types
+                    # Shown for unsupported activity types
                     no_activity_label = ui.label(t("No activity-specific data available.")).classes(
                         LABEL_MUTED_CLASSES
                     )
@@ -238,6 +248,15 @@ def create_workout_detail_modal(
                                 ui.label(label_fn()).classes(MODAL_FIELD_LABEL_CLASSES)
                                 value_el = ui.label().classes(MODAL_FIELD_VALUE_CLASSES)
                             running_field_rows[field_key] = (frow, value_el)
+                    # Walking-specific metrics; shown only when activity is Walking
+                    walking_container = ui.column().classes(TABS_FULL_CLASSES)
+                    with walking_container:
+                        walking_field_rows: dict[str, tuple[Any, Any]] = {}
+                        for field_key, label_fn in _WALKING_FIELD_DISPLAY:
+                            with ui.row().classes(MODAL_FIELD_ROW_CLASSES) as frow:
+                                ui.label(label_fn()).classes(MODAL_FIELD_LABEL_CLASSES)
+                                value_el = ui.label().classes(MODAL_FIELD_VALUE_CLASSES)
+                            walking_field_rows[field_key] = (frow, value_el)
 
                 # Splits tab: per-km GPS splits table
                 with ui.tab_panel("splits"):
@@ -293,12 +312,17 @@ def create_workout_detail_modal(
         next_btn.set_enabled(idx != n - 1)
 
     def _refresh_activity_tab(row: dict[str, Any]) -> None:
-        """Update activity tab: show running metrics only for Running workouts."""
-        is_running = row.get("raw_activity_type") == "Running"
-        no_activity_label.set_visibility(not is_running)
+        """Update activity tab: show type-specific metrics for Running and Walking workouts."""
+        raw_type = row.get("raw_activity_type")
+        is_running = raw_type == "Running"
+        is_walking = raw_type == "Walking"
+        no_activity_label.set_visibility(not is_running and not is_walking)
         running_container.set_visibility(is_running)
+        walking_container.set_visibility(is_walking)
         if is_running:
             _update_fields(running_field_rows, row)
+        if is_walking:
+            _update_fields(walking_field_rows, row)
 
     def _refresh_splits_tab(row: dict[str, Any]) -> None:
         """Update splits tab with GPS-based per-km or per-mi splits.
