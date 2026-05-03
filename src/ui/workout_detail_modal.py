@@ -67,6 +67,19 @@ _WALKING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
     ("step_count", lambda: t("Step Count")),
 ]
 
+#: Hiking-specific fields shown in the Activity tab when the workout is Hiking.
+#: Elevation gain is included here because it is the primary hiking metric.
+#: The remaining locomotion fields (pace, cadence, step length, step count) are
+#: sourced from the same HealthKit walking statistics as :data:`_WALKING_FIELD_DISPLAY`,
+#: avoiding code duplication in :func:`~ui.workout_table._extract_hiking_fields`.
+_HIKING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
+    ("elevation", lambda: t("Elevation Gain")),
+    ("pace", lambda: t("Avg Pace")),
+    ("cadence", lambda: t("Avg Cadence")),
+    ("step_length", lambda: t("Avg Step Length")),
+    ("step_count", lambda: t("Step Count")),
+]
+
 
 def _format_split_pace(pace_min_per_km: float) -> str:
     """Format a pace value (min/km) as a ``mm:ss`` string.
@@ -224,6 +237,7 @@ def _row_has_route(row: dict[str, Any]) -> bool:
 _ACTIVITY_FIELD_KEYS: dict[str, list[str]] = {
     "Running": [k for k, _ in _RUNNING_FIELD_DISPLAY],
     "Walking": [k for k, _ in _WALKING_FIELD_DISPLAY],
+    "Hiking": [k for k, _ in _HIKING_FIELD_DISPLAY],
 }
 
 
@@ -265,6 +279,7 @@ def create_workout_detail_modal(
     * **Activity** – type-specific metrics.  Running workouts show pace, cadence,
       stride length, vertical oscillation, ground contact time, step count, and
       VO₂ max.  Walking workouts show pace, cadence, step length, and step count.
+      Hiking workouts show elevation gain, pace, cadence, step length, and step count.
       Other activity types show a placeholder message; the tab is disabled.
     * **Splits** – per-km GPS-based splits in a compact table.  The tab is
       disabled when no GPS route is available.
@@ -314,6 +329,10 @@ def create_workout_detail_modal(
                     walking_container = ui.column().classes(TABS_FULL_CLASSES)
                     with walking_container:
                         walking_field_rows = _build_field_rows(_WALKING_FIELD_DISPLAY)
+                    # Hiking-specific metrics; shown only when activity is Hiking
+                    hiking_container = ui.column().classes(TABS_FULL_CLASSES)
+                    with hiking_container:
+                        hiking_field_rows = _build_field_rows(_HIKING_FIELD_DISPLAY)
 
                 # Splits tab: per-km GPS splits table
                 with ui.tab_panel("splits"):
@@ -373,15 +392,19 @@ def create_workout_detail_modal(
         raw_type = row.get("raw_activity_type")
         is_running = raw_type == "Running"
         is_walking = raw_type == "Walking"
+        is_hiking = raw_type == "Hiking"
         has_data = _row_has_activity_data(row)
         no_activity_label.set_visibility(not has_data)
         running_container.set_visibility(is_running)
         walking_container.set_visibility(is_walking)
+        hiking_container.set_visibility(is_hiking)
         activity_tab.set_enabled(has_data)
         if is_running:
             _update_fields(running_field_rows, row)
         elif is_walking:
             _update_fields(walking_field_rows, row)
+        elif is_hiking:
+            _update_fields(hiking_field_rows, row)
 
     def _refresh_splits_tab(row: dict[str, Any]) -> None:
         """Update splits tab with GPS-based per-km or per-mi splits.
