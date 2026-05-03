@@ -28,6 +28,29 @@ from units import METERS_TO_MILES
 #: Callable returning a translated label string; alias for readability.
 _LabelFn: TypeAlias = Callable[[], str]
 
+# ---------------------------------------------------------------------------
+# Shared label-function constants reused across multiple field display lists.
+# These are defined as functions so that ``t(...)`` is called at render time,
+# keeping the string literals visible to pybabel for catalog extraction while
+# eliminating duplication across the Running/Walking/Hiking display specs.
+# ---------------------------------------------------------------------------
+
+
+def _label_avg_pace() -> str:
+    """Return the translated label for the average pace field."""
+    return t("Avg Pace")
+
+
+def _label_avg_cadence() -> str:
+    """Return the translated label for the average cadence field."""
+    return t("Avg Cadence")
+
+
+def _label_step_count() -> str:
+    """Return the translated label for the step count field."""
+    return t("Step Count")
+
+
 #: Ordered list of ``(row_key, label_fn)`` for the generic detail view.
 #: Each ``label_fn`` is a zero-argument callable that returns the translated
 #: label at render time.  Using literal ``t("…")`` calls inside the lambdas
@@ -49,22 +72,22 @@ _FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
 #: Running-specific fields shown in the Activity tab when the workout is Running.
 #: All values are ``"–"`` for non-running workouts and are hidden automatically.
 _RUNNING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
-    ("pace", lambda: t("Avg Pace")),
-    ("cadence", lambda: t("Avg Cadence")),
+    ("pace", _label_avg_pace),
+    ("cadence", _label_avg_cadence),
     ("stride_length", lambda: t("Avg Stride Length")),
     ("vertical_oscillation", lambda: t("Avg Vertical Oscillation")),
     ("ground_contact_time", lambda: t("Avg Ground Contact Time")),
-    ("step_count", lambda: t("Step Count")),
+    ("step_count", _label_step_count),
     ("vo2_max", lambda: t("VO₂ Max")),
 ]
 
 #: Walking-specific fields shown in the Activity tab when the workout is Walking.
 #: All values are ``"–"`` for non-walking workouts and are hidden automatically.
 _WALKING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
-    ("pace", lambda: t("Avg Pace")),
-    ("cadence", lambda: t("Avg Cadence")),
+    ("pace", _label_avg_pace),
+    ("cadence", _label_avg_cadence),
     ("step_length", lambda: t("Avg Step Length")),
-    ("step_count", lambda: t("Step Count")),
+    ("step_count", _label_step_count),
 ]
 
 #: Hiking-specific fields shown in the Activity tab when the workout is Hiking.
@@ -74,10 +97,10 @@ _WALKING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
 #: avoiding code duplication in :func:`~ui.workout_table._extract_hiking_fields`.
 _HIKING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
     ("elevation", lambda: t("Elevation Gain")),
-    ("pace", lambda: t("Avg Pace")),
-    ("cadence", lambda: t("Avg Cadence")),
+    ("pace", _label_avg_pace),
+    ("cadence", _label_avg_cadence),
     ("step_length", lambda: t("Avg Step Length")),
-    ("step_count", lambda: t("Step Count")),
+    ("step_count", _label_step_count),
 ]
 
 
