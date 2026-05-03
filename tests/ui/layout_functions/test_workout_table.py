@@ -313,10 +313,10 @@ class TestRenderWorkoutTable:
                 wt.render_workout_table.func()
 
             table_mock.assert_called_once()
-            # One slot per data column plus the actions column plus the pagination-label slot:
+            # One slot per data column plus the actions column:
             # date, activity_type, duration, distance, calories,
-            # avg_hr, elevation, avg_power, actions, pagination-label
-            assert len(table_stub.slots) == 10
+            # avg_hr, elevation, avg_power, actions
+            assert len(table_stub.slots) == 9
             slot_names = [s[0] for s in table_stub.slots]
             assert "body-cell-date" in slot_names
             assert "body-cell-activity_type" in slot_names
@@ -327,7 +327,6 @@ class TestRenderWorkoutTable:
             assert "body-cell-elevation" in slot_names
             assert "body-cell-avg_power" in slot_names
             assert "body-cell-actions" in slot_names
-            assert "pagination-label" in slot_names
         finally:
             state.file_loaded = original_file_loaded
             state.workouts = original_workouts
@@ -399,8 +398,8 @@ class TestRenderWorkoutTable:
             state.file_loaded = original_file_loaded
             state.workouts = original_workouts
 
-    def test_pagination_label_slot_uses_of_translation(self) -> None:
-        """The pagination-label slot template should include the translated 'of' word."""
+    def test_pagination_label_prop_uses_of_translation(self) -> None:
+        """The :pagination-label prop should embed the translated 'of' word."""
         original_file_loaded = state.file_loaded
         original_workouts: Any = state.workouts
 
@@ -428,12 +427,13 @@ class TestRenderWorkoutTable:
             ):
                 wt.render_workout_table.func()
 
-            slot_dict = dict(table_stub.slots)
-            pagination_slot = slot_dict.get("pagination-label", "")
-            assert "tr:of" in pagination_slot
-            assert "props.firstRowIndex" in pagination_slot
-            assert "props.endRowIndex" in pagination_slot
-            assert "props.totalRowsNumber" in pagination_slot
+            pagination_label_props = [p for p in table_stub.props_calls if ":pagination-label" in p]
+            assert len(pagination_label_props) == 1
+            prop_value = pagination_label_props[0]
+            # The prop must declare a three-argument arrow function.
+            assert "(a, b, c) =>" in prop_value
+            # The translated "of" word must be embedded in the JS arrow function.
+            assert "tr:of" in prop_value
         finally:
             state.file_loaded = original_file_loaded
             state.workouts = original_workouts
