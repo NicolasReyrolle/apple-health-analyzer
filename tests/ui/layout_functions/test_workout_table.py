@@ -313,10 +313,10 @@ class TestRenderWorkoutTable:
                 wt.render_workout_table.func()
 
             table_mock.assert_called_once()
-            # One slot per data column plus the actions column:
+            # One slot per data column plus the actions column plus the pagination-label slot:
             # date, activity_type, duration, distance, calories,
-            # avg_hr, elevation, avg_power, actions
-            assert len(table_stub.slots) == 9
+            # avg_hr, elevation, avg_power, actions, pagination-label
+            assert len(table_stub.slots) == 10
             slot_names = [s[0] for s in table_stub.slots]
             assert "body-cell-date" in slot_names
             assert "body-cell-activity_type" in slot_names
@@ -327,6 +327,7 @@ class TestRenderWorkoutTable:
             assert "body-cell-elevation" in slot_names
             assert "body-cell-avg_power" in slot_names
             assert "body-cell-actions" in slot_names
+            assert "pagination-label" in slot_names
         finally:
             state.file_loaded = original_file_loaded
             state.workouts = original_workouts
@@ -361,6 +362,78 @@ class TestRenderWorkoutTable:
             pagination = call_kwargs.kwargs.get("pagination", {})
             assert pagination.get("sortBy") == "date_sort"
             assert pagination.get("descending") is True
+        finally:
+            state.file_loaded = original_file_loaded
+            state.workouts = original_workouts
+
+    def test_table_rows_per_page_label_prop_is_set(self) -> None:
+        """Table should set rows-per-page-label prop for translation."""
+        original_file_loaded = state.file_loaded
+        original_workouts: Any = state.workouts
+
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "duration": 3660.0,
+                }
+            ]
+        )
+
+        table_stub = DummyTable()
+
+        try:
+            state.file_loaded = True
+            state.workouts = workouts_mock
+
+            with (
+                patch("ui.workout_table.ui.table", return_value=table_stub),
+                patch("ui.workout_table.create_workout_detail_modal", return_value=lambda _: None),
+            ):
+                wt.render_workout_table.func()
+
+            assert any("rows-per-page-label" in p for p in table_stub.props_calls)
+        finally:
+            state.file_loaded = original_file_loaded
+            state.workouts = original_workouts
+
+    def test_pagination_label_slot_uses_of_translation(self) -> None:
+        """The pagination-label slot template should include the translated 'of' word."""
+        original_file_loaded = state.file_loaded
+        original_workouts: Any = state.workouts
+
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-09-16"),
+                    "duration": 3660.0,
+                }
+            ]
+        )
+
+        table_stub = DummyTable()
+
+        try:
+            state.file_loaded = True
+            state.workouts = workouts_mock
+
+            with (
+                patch("ui.workout_table.ui.table", return_value=table_stub),
+                patch("ui.workout_table.create_workout_detail_modal", return_value=lambda _: None),
+                patch("ui.workout_table.t", side_effect=lambda msg, **_kw: f"tr:{msg}"),
+            ):
+                wt.render_workout_table.func()
+
+            slot_dict = dict(table_stub.slots)
+            pagination_slot = slot_dict.get("pagination-label", "")
+            assert "tr:of" in pagination_slot
+            assert "props.firstRowIndex" in pagination_slot
+            assert "props.endRowIndex" in pagination_slot
+            assert "props.totalRowsNumber" in pagination_slot
         finally:
             state.file_loaded = original_file_loaded
             state.workouts = original_workouts

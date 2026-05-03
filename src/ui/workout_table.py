@@ -548,6 +548,18 @@ def render_workout_table() -> None:
         pagination={"sortBy": "date_sort", "descending": True, "rowsPerPage": 15},
     ).classes(TABLE_FULL_CLASSES)
 
+    # Translate Quasar's built-in pagination labels so they respect the active language.
+    table.props(f'rows-per-page-label="{t("Records per page:")}"')
+    of_label = t("of")
+    pagination_slot = (
+        f"<span>"
+        f"{{{{ props.firstRowIndex + 1 }}}}-{{{{ props.endRowIndex }}}}"
+        f" {of_label} "
+        f"{{{{ props.totalRowsNumber }}}}"
+        f"</span>"
+    )
+    table.add_slot("pagination-label", pagination_slot)
+
     # Render formatted display values via body-cell slots while keeping raw
     # numeric field values for sorting.
     for col_name, display_field in [
