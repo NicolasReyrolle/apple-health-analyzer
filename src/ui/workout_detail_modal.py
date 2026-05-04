@@ -122,6 +122,8 @@ def _build_swim_display_rows(intervals: list[SwimInterval]) -> list[dict[str, An
 
     Delegates to :func:`~logic.workout_manager.swimming.build_swim_interval_display_rows`
     which merges all laps within each interval into a single summary row.
+    Stroke labels that require translation ("Mixed", "Unknown") are translated
+    here since :mod:`logic.workout_manager.swimming` is i18n-agnostic.
 
     Args:
         intervals: Ordered list of :class:`~logic.workout_manager.swimming.SwimInterval`
@@ -130,7 +132,13 @@ def _build_swim_display_rows(intervals: list[SwimInterval]) -> list[dict[str, An
     Returns:
         List of row dicts ready for assignment to a ``ui.table``.
     """
-    return build_swim_interval_display_rows(intervals)
+    rows = build_swim_interval_display_rows(intervals)
+    # Translate stroke labels that are shown directly to users.
+    _translatable_strokes = {"Mixed", "Unknown"}
+    for row in rows:
+        if row.get("stroke") in _translatable_strokes:
+            row["stroke"] = t(row["stroke"])
+    return rows
 
 
 def _format_split_pace(pace_min_per_km: float) -> str:

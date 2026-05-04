@@ -763,3 +763,10 @@ msgstr ""
 
 msgid "Rest"
 msgstr ""
+
+# Workout detail modal – swim interval stroke style labels (displayed directly in UI)
+msgid "Mixed"
+msgstr ""
+
+msgid "Unknown"
+msgstr ""
