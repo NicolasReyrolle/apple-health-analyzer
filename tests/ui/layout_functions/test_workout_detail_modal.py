@@ -1672,3 +1672,111 @@ class TestDistanceFormatTwoDecimals:
         _, display = wt._extract_distance_field(row, distance_unit="mi")
         expected = f"{1609.344 * METERS_TO_MILES:.2f} mi"
         assert display == expected
+
+
+# ---------------------------------------------------------------------------
+# _build_swim_display_rows – stroke label translation
+# ---------------------------------------------------------------------------
+
+
+class TestBuildSwimDisplayRowsStrokeTranslation:
+    """Unit tests for stroke-label translation in _build_swim_display_rows()."""
+
+    def _make_interval(self, stroke: str) -> Any:
+        """Build a minimal SwimInterval with a single lap of the given stroke."""
+        from logic.workout_manager.swimming import SwimInterval, SwimLap
+
+        lap = SwimLap(
+            lap_number=1,
+            distance_m=50.0,
+            duration_s=60.0,
+            stroke_style=stroke,
+            swolf=None,
+        )
+        return SwimInterval(laps=[lap])
+
+    def test_freestyle_stroke_is_translated(self) -> None:
+        """'Freestyle' stroke label must pass through t()."""
+        interval = self._make_interval("Freestyle")
+        rows = wdm._build_swim_display_rows([interval])
+        # In English t("Freestyle") == "Freestyle"
+        assert rows[0]["stroke"] == "Freestyle"
+
+    def test_backstroke_is_translated(self) -> None:
+        """'Backstroke' stroke label must pass through t()."""
+        interval = self._make_interval("Backstroke")
+        rows = wdm._build_swim_display_rows([interval])
+        assert rows[0]["stroke"] == "Backstroke"
+
+    def test_breaststroke_is_translated(self) -> None:
+        """'Breaststroke' stroke label must pass through t()."""
+        interval = self._make_interval("Breaststroke")
+        rows = wdm._build_swim_display_rows([interval])
+        assert rows[0]["stroke"] == "Breaststroke"
+
+    def test_butterfly_is_translated(self) -> None:
+        """'Butterfly' stroke label must pass through t()."""
+        interval = self._make_interval("Butterfly")
+        rows = wdm._build_swim_display_rows([interval])
+        assert rows[0]["stroke"] == "Butterfly"
+
+    def test_kickboard_is_translated(self) -> None:
+        """'Kickboard' stroke label must pass through t()."""
+        interval = self._make_interval("Kickboard")
+        rows = wdm._build_swim_display_rows([interval])
+        assert rows[0]["stroke"] == "Kickboard"
+
+    def test_mixed_stroke_is_translated(self) -> None:
+        """'Mixed' stroke label must pass through t()."""
+        from logic.workout_manager.swimming import SwimInterval, SwimLap
+
+        interval = SwimInterval(
+            laps=[
+                SwimLap(
+                    lap_number=1,
+                    distance_m=50.0,
+                    duration_s=60.0,
+                    stroke_style="Freestyle",
+                    swolf=None,
+                ),
+                SwimLap(
+                    lap_number=2,
+                    distance_m=50.0,
+                    duration_s=60.0,
+                    stroke_style="Backstroke",
+                    swolf=None,
+                ),
+            ],
+        )
+        rows = wdm._build_swim_display_rows([interval])
+        assert rows[0]["stroke"] == "Mixed"
+
+    def test_unknown_stroke_is_translated(self) -> None:
+        """'Unknown' stroke label must pass through t()."""
+        interval = self._make_interval("Unknown")
+        rows = wdm._build_swim_display_rows([interval])
+        assert rows[0]["stroke"] == "Unknown"
+
+    def test_all_strokes_translated_in_french(self) -> None:
+        """All stroke labels are wrapped in t() and appear translated in French."""
+        from unittest.mock import patch
+
+        fr_expected = {
+            "Freestyle": "Nage libre",
+            "Backstroke": "Dos crawlé",
+            "Breaststroke": "Brasse",
+            "Butterfly": "Papillon",
+            "Kickboard": "Planche",
+        }
+        for stroke, expected_fr in fr_expected.items():
+            interval = self._make_interval(stroke)
+            with patch("i18n.get_language", return_value="fr"):
+                rows = wdm._build_swim_display_rows([interval])
+            assert rows[0]["stroke"] == expected_fr, (
+                f"Expected French translation for '{stroke}' to be '{expected_fr}'"
+            )
+
+    def test_empty_intervals_returns_empty_list(self) -> None:
+        """No intervals → empty rows list."""
+        rows = wdm._build_swim_display_rows([])
+        assert rows == []

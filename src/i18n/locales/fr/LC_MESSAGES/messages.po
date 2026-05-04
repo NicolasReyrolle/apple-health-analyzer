@@ -735,7 +735,7 @@ msgstr "VO₂ Max"
 
 # Workout detail modal – tab labels and empty-state messages
 msgid "Intervals"
-msgstr "Longueurs"
+msgstr "Intervalles"
 
 msgid "No activity-specific data available."
 msgstr "Aucune donnée spécifique à cette activité."
@@ -744,7 +744,7 @@ msgid "No GPS route available."
 msgstr "Aucun tracé GPS disponible."
 
 msgid "No lap data available."
-msgstr "Aucune donnée de longueur disponible."
+msgstr "Aucune donnée de distance disponible."
 
 # Workout detail modal – splits table column headers
 msgid "Pace"
