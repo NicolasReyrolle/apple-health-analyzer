@@ -251,7 +251,15 @@ def build_swim_intervals(
 
 
 def _merge_interval_stroke(laps: list[SwimLap]) -> str:
-    """Return a single stroke label for *laps*, or ``"Mixed"`` if multiple are used."""
+    """Return a merged stroke label for the laps in one interval.
+
+    * Returns the common stroke label when all laps share the same stroke.
+    * Returns ``"Mixed"`` when laps use two or more distinct known stroke styles.
+    * Returns ``"Unknown"`` when all laps are ``"Unknown"`` or *laps* is empty.
+
+    ``"Unknown"`` laps are excluded from the set of known strokes but do not
+    trigger ``"Mixed"``; only known-stroke diversity causes that label.
+    """
     strokes = {lap.stroke_style for lap in laps if lap.stroke_style != "Unknown"}
     if len(strokes) > 1:
         return _MIXED_STROKE_LABEL

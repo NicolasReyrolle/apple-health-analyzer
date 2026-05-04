@@ -132,13 +132,11 @@ def _build_swim_display_rows(intervals: list[SwimInterval]) -> list[dict[str, An
     Returns:
         List of row dicts ready for assignment to a ``ui.table``.
     """
-    rows = build_swim_interval_display_rows(intervals)
-    # Translate stroke labels that are shown directly to users.
     _translatable_strokes = {"Mixed", "Unknown"}
-    for row in rows:
-        if row.get("stroke") in _translatable_strokes:
-            row["stroke"] = t(row["stroke"])
-    return rows
+    return [
+        {**row, "stroke": t(row["stroke"])} if row.get("stroke") in _translatable_strokes else row
+        for row in build_swim_interval_display_rows(intervals)
+    ]
 
 
 def _format_split_pace(pace_min_per_km: float) -> str:
