@@ -116,6 +116,15 @@ _SWIMMING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
     ("swimming_stroke_count", lambda: t("Total Strokes")),
 ]
 
+#: Cycling-specific fields shown in the Activity tab when the workout is Cycling.
+#: Speed, cadence, power, and functional threshold power are shown when available.
+_CYCLING_FIELD_DISPLAY: list[tuple[str, _LabelFn]] = [
+    ("cycling_speed", lambda: t("Avg Speed")),
+    ("cycling_cadence", _label_avg_cadence),
+    ("cycling_power", lambda: t("Avg Power")),
+    ("cycling_ftp", lambda: t("Functional Threshold Power")),
+]
+
 
 def _build_swim_display_rows(intervals: list[SwimInterval]) -> list[dict[str, Any]]:
     """Build display-ready rows for the swim interval table.
@@ -297,6 +306,7 @@ _ACTIVITY_FIELD_KEYS: dict[str, list[str]] = {
     "Hiking": [k for k, _ in _HIKING_FIELD_DISPLAY],
     # Swimming: enable Activity tab when any summary field is present.
     "Swimming": [k for k, _ in _SWIMMING_FIELD_DISPLAY],
+    "Cycling": [k for k, _ in _CYCLING_FIELD_DISPLAY],
 }
 
 
@@ -444,6 +454,7 @@ def create_workout_detail_modal(
       VO₂ max.  Walking workouts show pace, cadence, step length, and step count.
       Hiking workouts show elevation gain, pace, cadence, step length, and step count.
       Swimming workouts show location, lap length, and total stroke count.
+      Cycling workouts show speed, cadence, power, and functional threshold power.
       Other activity types show a placeholder message; the tab is disabled.
     * **Intervals** – per-workout interval data.  For Swimming workouts each row
       represents one active set with distance, time, stroke style, average SWOLF,
@@ -504,6 +515,10 @@ def create_workout_detail_modal(
                     swimming_container = ui.column().classes(TABS_FULL_CLASSES)
                     with swimming_container:
                         swimming_field_rows = _build_field_rows(_SWIMMING_FIELD_DISPLAY)
+                    # Cycling-specific metrics; shown only when activity is Cycling
+                    cycling_container = ui.column().classes(TABS_FULL_CLASSES)
+                    with cycling_container:
+                        cycling_field_rows = _build_field_rows(_CYCLING_FIELD_DISPLAY)
 
                 # Intervals tab: swim lap table (Swimming) or GPS splits (other workouts with GPS)
                 with ui.tab_panel("intervals"):
@@ -619,6 +634,7 @@ def create_workout_detail_modal(
         "Walking": (walking_container, walking_field_rows),
         "Hiking": (hiking_container, hiking_field_rows),
         "Swimming": (swimming_container, swimming_field_rows),
+        "Cycling": (cycling_container, cycling_field_rows),
     }
 
     def _refresh_activity_tab(row: dict[str, Any]) -> None:
