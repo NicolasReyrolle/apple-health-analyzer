@@ -757,6 +757,9 @@ msgstr "Aucune donnée de distance disponible."
 msgid "Pace"
 msgstr "Allure"
 
+msgid "Speed"
+msgstr "Vitesse"
+
 msgid "Elev"
 msgstr "Dénivelé"
 

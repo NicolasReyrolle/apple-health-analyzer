@@ -164,6 +164,22 @@ def _format_split_pace(pace_min_per_km: float) -> str:
     return f"{minutes}:{seconds:02d}"
 
 
+def _format_split_speed(pace_min_per_km: float, distance_unit: str) -> str:
+    """Format a speed value derived from a pace (min/km).
+
+    Args:
+        pace_min_per_km: Pace in minutes per kilometre (must be > 0).
+        distance_unit: ``"km"`` to return km/h, ``"mi"`` to return mph.
+
+    Returns:
+        Formatted string such as ``"10.0 km/h"`` or ``"6.2 mph"``.
+    """
+    speed_km_h = 60.0 / pace_min_per_km
+    if distance_unit == "mi":
+        return f"{speed_km_h * 1000.0 * METERS_TO_MILES:.1f} mph"
+    return f"{speed_km_h:.1f} km/h"
+
+
 def _format_elevation_change(elevation_change_m: float) -> str:
     """Format an elevation change in metres as a compact signed string.
 
@@ -187,17 +203,18 @@ def _format_split_rows(
         splits: List of split dicts from
             :meth:`~logic.workout_manager.workout_route.WorkoutRoute.compute_splits`.
         distance_unit: Active distance unit, ``"km"`` or ``"mi"``.  Controls
-            the pace-scale factor applied before formatting.
+            the pace-scale factor applied before formatting and the speed unit.
 
     Returns:
-        List of row dicts with ``"split"``, ``"pace_str"``, and ``"elev_str"``
-        keys ready for direct assignment to ``ui.table.rows``.
+        List of row dicts with ``"split"``, ``"pace_str"``, ``"speed_str"``,
+        and ``"elev_str"`` keys ready for direct assignment to ``ui.table.rows``.
     """
     pace_scale = 1.0 / (1000.0 * METERS_TO_MILES) if distance_unit == "mi" else 1.0
     return [
         {
             "split": int(s["split"]),
             "pace_str": _format_split_pace(float(s["pace_min_per_km"]) * pace_scale),
+            "speed_str": _format_split_speed(float(s["pace_min_per_km"]), distance_unit),
             "elev_str": _format_elevation_change(float(s["elevation_change_m"])),
         }
         for s in splits
@@ -592,6 +609,13 @@ def create_workout_detail_modal(
                             "name": "pace",
                             "label": t("Pace"),
                             "field": "pace_str",
+                            "align": "right",
+                            "sortable": False,
+                        },
+                        {
+                            "name": "speed",
+                            "label": t("Speed"),
+                            "field": "speed_str",
                             "align": "right",
                             "sortable": False,
                         },
