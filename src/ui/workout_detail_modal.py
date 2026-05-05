@@ -156,7 +156,7 @@ def _format_split_pace(pace_min_per_km: float, distance_unit: str) -> str:
             the unit label appended to the string.
 
     Returns:
-        Formatted string such as ``"4:32 /km"`` or ``"7:17 /mi"``.
+        Formatted string such as ``"4:32 min/km"`` or ``"7:17 min/mi"``.
     """
     pace_scale = 1.0 / (1000.0 * METERS_TO_MILES) if distance_unit == "mi" else 1.0
     scaled = pace_min_per_km * pace_scale
@@ -165,7 +165,7 @@ def _format_split_pace(pace_min_per_km: float, distance_unit: str) -> str:
     if seconds == 60:
         minutes += 1
         seconds = 0
-    return f"{minutes}:{seconds:02d} /{distance_unit}"
+    return f"{minutes}:{seconds:02d} min/{distance_unit}"
 
 
 def _format_split_speed(pace_min_per_km: float, distance_unit: str) -> str:
