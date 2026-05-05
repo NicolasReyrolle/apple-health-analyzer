@@ -548,7 +548,7 @@ def _extract_cycling_fields(
     """
     # --- Speed ---
     speed_raw = _safe_float(row.get("averageCyclingSpeed"))
-    if speed_raw is not None:
+    if speed_raw is not None and speed_raw > 0:
         if distance_unit == "mi":
             # km/h → mph: multiply by 1000 (m/km) then by METERS_TO_MILES (mile/m)
             cycling_speed_display = f"{speed_raw * 1000.0 * METERS_TO_MILES:.1f} mph"

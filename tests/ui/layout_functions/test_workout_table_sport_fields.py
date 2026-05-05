@@ -666,6 +666,18 @@ class TestExtractCyclingFields:
         result = wt._extract_cycling_fields(row)
         assert result["cycling_speed"] == "–"
 
+    def test_zero_speed_produces_dash(self) -> None:
+        """Zero averageCyclingSpeed should produce '–' (treated as absent)."""
+        row = self._make_row(averageCyclingSpeed=0.0)
+        result = wt._extract_cycling_fields(row)
+        assert result["cycling_speed"] == "–"
+
+    def test_negative_speed_produces_dash(self) -> None:
+        """Negative averageCyclingSpeed should produce '–' (invalid value)."""
+        row = self._make_row(averageCyclingSpeed=-5.0)
+        result = wt._extract_cycling_fields(row)
+        assert result["cycling_speed"] == "–"
+
     def test_cadence_formatted_in_rpm(self) -> None:
         """Cadence should show 'rpm' unit."""
         row = self._make_row(averageCyclingCadence=85.0)
