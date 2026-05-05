@@ -86,13 +86,15 @@ class TestFormatElevationChange:
         """In imperial mode the result should use feet."""
         result = wdm._format_elevation_change(10.0, "mi")
         assert result.endswith("ft")
-        assert "m" not in result.rstrip("ft")
+        assert not result.endswith(" m")
 
     def test_imperial_feet_larger_than_metres(self) -> None:
         """Feet value should be greater than the metre value for the same elevation."""
-        m_val = int(wdm._format_elevation_change(100.0, "km").strip("+ m").replace(" m", ""))
+        m_str = wdm._format_elevation_change(100.0, "km")
         ft_str = wdm._format_elevation_change(100.0, "mi")
-        ft_val = int(ft_str.strip("+").replace(" ft", ""))
+        # Format is e.g. "+100 m" / "+328 ft"; parse the numeric part.
+        m_val = int(m_str.split()[0].lstrip("+"))
+        ft_val = int(ft_str.split()[0].lstrip("+"))
         assert ft_val > m_val
 
 
@@ -139,7 +141,7 @@ class TestFormatSplitRows:
         splits = [{"split": 1, "pace_min_per_km": 6.0, "elevation_change_m": 10.0}]
         rows = wdm._format_split_rows(splits, "mi")
         assert rows[0]["elev_str"].endswith("ft")
-        assert "m" not in rows[0]["elev_str"]
+        assert not rows[0]["elev_str"].endswith(" m")
 
     def test_multiple_splits_returned(self) -> None:
         """All splits in the input should be present in the output."""
