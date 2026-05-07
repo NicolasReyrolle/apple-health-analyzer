@@ -865,3 +865,64 @@ class TestGetLongestWorkoutDetails:
         assert result is not None
         assert result["distance"] == pytest.approx(8.0)  # type: ignore[misc]
         assert result["duration"] is None
+
+
+class TestGetWorkoutRecordDetails:
+    """Test suite for WorkoutManager.get_workout_record_details method."""
+
+    def test_get_workout_record_details_for_elevation(self) -> None:
+        """Should return highest elevation workout for selected activity types."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Running", "Walking"],
+                    "ElevationAscended": [100, 250, 300],
+                    "duration": [1800.0, 3600.0, 4000.0],
+                    "startDate": pd.to_datetime(["2024-01-01", "2024-02-01", "2024-03-01"]),
+                }
+            )
+        )
+        result = workouts.get_workout_record_details(
+            activity_types=["Running"],
+            metric_column="ElevationAscended",
+            unit="m",
+        )
+        assert result is not None
+        assert result["value"] == pytest.approx(250.0)  # type: ignore[misc]
+        assert result["duration"] == pytest.approx(3600.0)  # type: ignore[misc]
+
+    def test_get_workout_record_details_for_all_activities(self) -> None:
+        """Should support all activities when activity_types is None."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running", "Cycling"],
+                    "sumActiveEnergyBurned": [500, 900],
+                    "duration": [1800.0, 5400.0],
+                    "startDate": pd.to_datetime(["2024-01-01", "2024-01-02"]),
+                }
+            )
+        )
+        result = workouts.get_workout_record_details(
+            activity_types=None,
+            metric_column="sumActiveEnergyBurned",
+        )
+        assert result is not None
+        assert result["value"] == pytest.approx(900.0)  # type: ignore[misc]
+        assert result["duration"] == pytest.approx(5400.0)  # type: ignore[misc]
+
+    def test_get_workout_record_details_returns_none_for_empty_activity_filter(self) -> None:
+        """Should return None when activity_types is an empty list."""
+        workouts = wm.WorkoutManager(
+            pd.DataFrame(
+                {
+                    "activityType": ["Running"],
+                    "duration": [1800.0],
+                }
+            )
+        )
+        result = workouts.get_workout_record_details(
+            activity_types=[],
+            metric_column="duration",
+        )
+        assert result is None

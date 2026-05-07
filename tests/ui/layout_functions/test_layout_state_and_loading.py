@@ -265,10 +265,15 @@ def test_refresh_longest_workout_metrics_uses_expected_activity_groups() -> None
     original_workouts = state.workouts
 
     workouts_mock = MagicMock()
-    workouts_mock.get_longest_workout_details.side_effect = [
-        {"distance": 12.0, "date": datetime(2025, 1, 1), "duration": 3600},
+    workouts_mock.get_workout_record_details.side_effect = [
+        {"value": 12.0, "date": datetime(2025, 1, 1), "duration": 3600},
         None,
-        {"distance": 40.0, "date": datetime(2025, 1, 2), "duration": 5400},
+        {"value": 40.0, "date": datetime(2025, 1, 2), "duration": 5400},
+        {"value": 3.2, "date": datetime(2025, 1, 3), "duration": 2200},
+        {"value": 400.0, "date": datetime(2025, 1, 4), "duration": 3000},
+        {"value": 200.0, "date": datetime(2025, 1, 5), "duration": 2800},
+        {"value": 7200.0, "date": datetime(2025, 1, 6), "duration": 7200},
+        {"value": 900.0, "date": datetime(2025, 1, 7), "duration": 1800},
     ]
 
     try:
@@ -276,10 +281,15 @@ def test_refresh_longest_workout_metrics_uses_expected_activity_groups() -> None
         with patch("ui.layout.get_language", return_value="en"):
             layout._refresh_longest_workout_metrics()  # type: ignore[attr-defined]
 
-        calls = workouts_mock.get_longest_workout_details.call_args_list
-        assert calls[0].args[0] == ["Running"]
-        assert calls[1].args[0] == ["Walking", "Hiking"]
-        assert calls[2].args[0] == ["Cycling"]
+        calls = workouts_mock.get_workout_record_details.call_args_list
+        assert calls[0].kwargs["activity_types"] == ["Running"]
+        assert calls[1].kwargs["activity_types"] == ["Walking", "Hiking"]
+        assert calls[2].kwargs["activity_types"] == ["Cycling"]
+        assert calls[3].kwargs["activity_types"] == ["Swimming"]
+        assert calls[4].kwargs["activity_types"] == ["Running"]
+        assert calls[5].kwargs["activity_types"] == ["Walking", "Hiking"]
+        assert calls[6].kwargs["activity_types"] is None
+        assert calls[7].kwargs["activity_types"] is None
     finally:
         state.workouts = original_workouts
 

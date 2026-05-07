@@ -515,41 +515,67 @@ class WorkoutManagerAggregationsMixin:
         and ``duration`` (float in seconds or ``None``), or ``None`` when no matching workout
         exists.
         """
-        if (
-            self.workouts.empty
-            or "distance" not in self.workouts.columns
-            or "activityType" not in self.workouts.columns
-        ):
+        details = self.get_workout_record_details(
+            activity_types=activity_types,
+            metric_column="distance",
+            unit=unit,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if details is None:
+            return None
+        return {
+            "distance": details["value"],
+            "date": details["date"],
+            "duration": details["duration"],
+        }
+
+    def get_workout_record_details(
+        self,
+        metric_column: str,
+        activity_types: list[str] | None = None,
+        unit: str | None = None,
+        start_date: datetime | pd.Timestamp | None = None,
+        end_date: datetime | pd.Timestamp | None = None,
+    ) -> dict[str, Any] | None:
+        """Return details for the workout with the highest value for one metric column."""
+        if self.workouts.empty or metric_column not in self.workouts.columns:
             return None
 
         all_workouts = self._filter_workouts("All", start_date, end_date)
         if all_workouts.empty:
             return None
 
-        filtered = all_workouts[all_workouts["activityType"].isin(activity_types)]
-        if filtered.empty:
+        filtered = all_workouts
+        if activity_types is not None:
+            if not activity_types or "activityType" not in all_workouts.columns:
+                return None
+            filtered = all_workouts[all_workouts["activityType"].isin(activity_types)]
+            if filtered.empty:
+                return None
+
+        value_series = filtered[metric_column].dropna()
+        if value_series.empty:
             return None
 
-        distance_series = filtered["distance"].dropna()
-        if distance_series.empty:
-            return None
-        idx = distance_series.idxmax()
-
+        idx = value_series.idxmax()
         row = filtered.loc[[idx]].iloc[0]
-        divisor = self._get_length_unit_divisor(unit)
-        raw_distance: float = float(row["distance"])
+        raw_value: float = float(row[metric_column])
+        converted_value = raw_value
+        if unit is not None:
+            converted_value = raw_value / self._get_length_unit_divisor(unit)
+
         raw_duration_val = row["duration"] if "duration" in filtered.columns else None
         raw_duration: float | None = (
             None
             if raw_duration_val is None or pd.isna(raw_duration_val)
             else float(raw_duration_val)
         )
-        result: dict[str, Any] = {
-            "distance": raw_distance / divisor,
+        return {
+            "value": converted_value,
             "date": row["startDate"] if "startDate" in filtered.columns else None,
             "duration": raw_duration,
         }
-        return result
 
     def get_distance_bounds(
         self,

@@ -139,7 +139,7 @@ def test_refresh_data_passes_date_range_to_workouts() -> None:
     workouts_mock.get_total_elevation.return_value = 4
     workouts_mock.get_total_calories.return_value = 5
     workouts_mock.get_longest_workout.return_value = 0.0
-    workouts_mock.get_longest_workout_details.return_value = None
+    workouts_mock.get_workout_record_details.return_value = None
     workouts_mock.get_distance_bounds.return_value = (0.0, 0.0)
     workouts_mock.get_duration_bounds.return_value = (0.0, 0.0)
 
@@ -186,7 +186,7 @@ def test_refresh_data_triggers_best_segments_load_when_tab_selected() -> None:
     workouts_mock.get_total_elevation.return_value = 4
     workouts_mock.get_total_calories.return_value = 5
     workouts_mock.get_longest_workout.return_value = 0.0
-    workouts_mock.get_longest_workout_details.return_value = None
+    workouts_mock.get_workout_record_details.return_value = None
     workouts_mock.get_distance_bounds.return_value = (0.0, 0.0)
     workouts_mock.get_duration_bounds.return_value = (0.0, 0.0)
 
@@ -221,7 +221,7 @@ def test_refresh_data_triggers_best_segments_load_when_tab_selected() -> None:
         assert state.best_segments_rows == []
         assert state.best_segments_loaded is False
         create_task_mock.assert_called_once()
-        assert workouts_mock.get_longest_workout_details.call_count == 3
+        assert workouts_mock.get_workout_record_details.call_count == 8
     finally:
         state.workouts = original_workouts
         state.selected_main_tab = original_selected_tab

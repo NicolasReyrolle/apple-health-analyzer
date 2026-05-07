@@ -108,6 +108,21 @@ msgstr ""
 msgid "Longest Cycling"
 msgstr ""
 
+msgid "Longest Swim"
+msgstr ""
+
+msgid "Most Elevation (Run)"
+msgstr ""
+
+msgid "Most Elevation (Walk/Hike)"
+msgstr ""
+
+msgid "Longest Duration Workout"
+msgstr ""
+
+msgid "Most Calories Workout"
+msgstr ""
+
 msgid "No data"
 msgstr ""
 

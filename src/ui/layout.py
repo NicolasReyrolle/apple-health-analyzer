@@ -271,8 +271,10 @@ def _set_longest_metric_from_details(
     metric_key: str,
     details: dict[str, Any] | None,
     language_code: str,
+    details_value_key: str = "distance",
+    value_divisor: float = 1.0,
 ) -> None:
-    """Set one longest-workout metric display/tooltip from details."""
+    """Set one personal-record metric display/tooltip from details."""
     metrics: dict[str, int | float] = state.metrics  # type: ignore[assignment]
     metrics_display: dict[str, str] = state.metrics_display  # type: ignore[assignment]
     metrics_tooltip: dict[str, str] = state.metrics_tooltip  # type: ignore[assignment]
@@ -283,16 +285,17 @@ def _set_longest_metric_from_details(
         metrics_tooltip[metric_key] = t("No data")
         return
 
-    distance_value = details.get("distance")
-    distance_float = 0.0
-    if distance_value is not None:
+    value_raw = details.get(details_value_key)
+    value_float = 0.0
+    if value_raw is not None:
         try:
-            distance_float = float(distance_value)
+            value_float = float(value_raw)
         except (TypeError, ValueError):
-            distance_float = 0.0
+            value_float = 0.0
 
-    metrics[metric_key] = distance_float
-    metrics_display[metric_key] = format_float(distance_float)
+    value_for_display = value_float / value_divisor if value_divisor else 0.0
+    metrics[metric_key] = value_for_display
+    metrics_display[metric_key] = format_float(value_for_display)
 
     date_value = details.get("date")
     duration_value = details.get("duration")
@@ -321,23 +324,66 @@ def _set_longest_metric_from_details(
 
 
 def _refresh_longest_workout_metrics() -> None:
-    """Refresh longest run/walk/cycling metrics and tooltips."""
+    """Refresh overview personal-record metrics and tooltips."""
     language_code = get_language()
     dist_unit = get_distance_unit()
-    metric_configs = [
-        ("longest_run", ["Running"]),
-        ("longest_walk", ["Walking", "Hiking"]),
-        ("longest_cycling", ["Cycling"]),
+    elev_unit = get_elevation_unit()
+    metric_configs: list[dict[str, Any]] = [
+        {"key": "longest_run", "activities": ["Running"], "column": "distance", "unit": dist_unit},
+        {
+            "key": "longest_walk",
+            "activities": ["Walking", "Hiking"],
+            "column": "distance",
+            "unit": dist_unit,
+        },
+        {
+            "key": "longest_cycling",
+            "activities": ["Cycling"],
+            "column": "distance",
+            "unit": dist_unit,
+        },
+        {
+            "key": "longest_swim",
+            "activities": ["Swimming"],
+            "column": "distance",
+            "unit": dist_unit,
+        },
+        {
+            "key": "most_elevation_run",
+            "activities": ["Running"],
+            "column": "ElevationAscended",
+            "unit": elev_unit,
+        },
+        {
+            "key": "most_elevation_walk",
+            "activities": ["Walking", "Hiking"],
+            "column": "ElevationAscended",
+            "unit": elev_unit,
+        },
+        {
+            "key": "longest_duration_workout",
+            "activities": None,
+            "column": "duration",
+            "value_divisor": 3600.0,
+        },
+        {"key": "most_calories_workout", "activities": None, "column": "sumActiveEnergyBurned"},
     ]
 
-    for metric_key, activity_types in metric_configs:
-        details = state.workouts.get_longest_workout_details(
-            activity_types,
-            unit=dist_unit,
+    for config in metric_configs:
+        details = state.workouts.get_workout_record_details(
+            metric_column=config["column"],
+            activity_types=config["activities"],
+            unit=config.get("unit"),
             start_date=state.start_date,
             end_date=state.end_date,
         )
-        _set_longest_metric_from_details(metric_key, details, language_code)
+        _set_longest_metric_from_details(
+            config["key"],
+            details,
+            language_code,
+            details_value_key="value",
+            value_divisor=config.get("value_divisor", 1.0),
+        )
 
 
 def _reset_best_segments_state() -> None:
@@ -785,6 +831,47 @@ def render_body() -> None:
                     dist_unit,
                     tooltip_ref=state.metrics_tooltip,
                     tooltip_key="longest_cycling",
+                )
+                stat_card(
+                    t("Longest Swim"),
+                    state.metrics_display,
+                    "longest_swim",
+                    dist_unit,
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_swim",
+                )
+            with ui.row().classes(ROW_CENTERED_CLASSES):
+                stat_card(
+                    t("Most Elevation (Run)"),
+                    state.metrics_display,
+                    "most_elevation_run",
+                    elev_unit,
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="most_elevation_run",
+                )
+                stat_card(
+                    t("Most Elevation (Walk/Hike)"),
+                    state.metrics_display,
+                    "most_elevation_walk",
+                    elev_unit,
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="most_elevation_walk",
+                )
+                stat_card(
+                    t("Longest Duration Workout"),
+                    state.metrics_display,
+                    "longest_duration_workout",
+                    "h",
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_duration_workout",
+                )
+                stat_card(
+                    t("Most Calories Workout"),
+                    state.metrics_display,
+                    "most_calories_workout",
+                    "kcal",
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="most_calories_workout",
                 )
 
         with ui.tab_panel("activities"):
