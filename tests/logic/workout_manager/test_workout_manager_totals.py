@@ -890,6 +890,7 @@ class TestGetWorkoutRecordDetails:
         assert result is not None
         assert result["value"] == pytest.approx(250.0)  # type: ignore[misc]
         assert result["duration"] == pytest.approx(3600.0)  # type: ignore[misc]
+        assert result["workout_index"] == 1
 
     def test_get_workout_record_details_for_all_activities(self) -> None:
         """Should support all activities when activity_types is None."""

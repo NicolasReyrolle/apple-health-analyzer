@@ -1,7 +1,7 @@
 """Shared UI chart and card components for Apple Health Analyzer."""
 
 import copy
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 from nicegui import ui
 
@@ -17,6 +17,7 @@ from ui.css import (
     LABEL_UPPERCASE_CLASSES,
     ROW_CENTERED_CLASSES,
     STAT_CARD_CLASSES,
+    STAT_CARD_CLICKABLE_CLASSES,
     STAT_CARD_LABEL_CLASSES,
     STAT_CARD_UNIT_CLASSES,
     STAT_CARD_VALUE_CLASSES,
@@ -57,6 +58,7 @@ def stat_card(
     unit: str = "",
     tooltip_ref: dict[str, str] | None = None,
     tooltip_key: str | None = None,
+    on_click: Callable[[], None] | None = None,
 ) -> None:
     """Create a reactive KPI card with an optional hover tooltip.
 
@@ -82,8 +84,14 @@ def stat_card(
             translated ``"No data"`` fallback.
         tooltip_key: Key inside *tooltip_ref* to read the tooltip text from.
             Required when *tooltip_ref* is provided; ignored otherwise.
+        on_click: Optional click handler. When provided, the card gets clickable
+            hover styles and opens the callback on click.
     """
-    with ui.card().classes(STAT_CARD_CLASSES):
+    card = ui.card().classes(STAT_CARD_CLASSES)
+    if on_click is not None:
+        card.classes(STAT_CARD_CLICKABLE_CLASSES)
+        card.on("click", lambda _event: on_click())
+    with card:
         ui.label(label).classes(STAT_CARD_LABEL_CLASSES)
         with ui.row().classes(STAT_CARD_VALUE_ROW_CLASSES):
             # Bind the text to the dictionary key for reactive updates

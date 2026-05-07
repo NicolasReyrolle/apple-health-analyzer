@@ -575,6 +575,7 @@ class WorkoutManagerAggregationsMixin:
             "value": converted_value,
             "date": row["startDate"] if "startDate" in filtered.columns else None,
             "duration": raw_duration,
+            "workout_index": idx,
         }
 
     def get_distance_bounds(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import ExitStack
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
@@ -270,6 +271,49 @@ def test_set_longest_metric_from_details_rejects_zero_divisor() -> None:
             details_value_key="value",
             value_divisor=0.0,
         )
+
+
+def test_set_longest_metric_from_details_supports_display_options() -> None:
+    """Personal-record helper should support precision, integer, and hh:mm displays."""
+    original_metrics = dict(state.metrics)
+    original_display = dict(state.metrics_display)
+    original_tooltip = dict(state.metrics_tooltip)
+    original_workout_index = dict(state.metrics_workout_index)
+
+    try:
+        layout._set_longest_metric_from_details(  # type: ignore[attr-defined]
+            "longest_swim",
+            {"value": 1.236, "date": datetime(2025, 3, 4), "duration": 1200, "workout_index": 11},
+            "en",
+            details_value_key="value",
+            decimal_places=2,
+        )
+        assert state.metrics_display["longest_swim"] == "1.24"
+        assert state.metrics_tooltip["longest_swim"] == "03/04/2025"
+        assert state.metrics_workout_index["longest_swim"] == 11
+
+        layout._set_longest_metric_from_details(  # type: ignore[attr-defined]
+            "most_calories_workout",
+            {"value": 512.6, "date": datetime(2025, 3, 4), "workout_index": 12},
+            "en",
+            details_value_key="value",
+            round_to_int=True,
+        )
+        assert state.metrics_display["most_calories_workout"] == "513"
+
+        layout._set_longest_metric_from_details(  # type: ignore[attr-defined]
+            "longest_duration_workout",
+            {"value": 7260.0, "date": datetime(2025, 3, 4), "workout_index": 13},
+            "en",
+            details_value_key="value",
+            display_as_hours_minutes=True,
+        )
+        assert state.metrics_display["longest_duration_workout"] == "2 h 01 min"
+    finally:
+        state.metrics = original_metrics
+        state.metrics_display = original_display
+        state.metrics_tooltip = original_tooltip
+        state.metrics_workout_index = original_workout_index
 
 
 def test_refresh_longest_workout_metrics_uses_expected_activity_groups() -> None:
@@ -638,6 +682,58 @@ def test_render_body_health_data_tab_change_schedules_load() -> None:
         on_change(SimpleNamespace(value=SimpleNamespace(name="health_data")))
 
     health_load_mock.assert_called_once()
+
+
+def test_render_body_record_card_click_opens_detail_modal() -> None:
+    """Clicking a record card should open the workout detail modal at that workout."""
+    fake_app = SimpleNamespace(storage=SimpleNamespace(user={"input_file_path": ""}))
+    stat_card_calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+    original_record_indexes = dict(state.metrics_workout_index)
+
+    def _capture_stat_card(*_args: Any, **kwargs: Any) -> None:
+        stat_card_calls.append((_args, kwargs))
+
+    try:
+        state.metrics_workout_index["longest_run"] = 42
+        with ExitStack() as stack:
+            stack.enter_context(patch("ui.layout.ui.row", return_value=DummyContext()))
+            stack.enter_context(patch("ui.layout.ui.input", return_value=DummyComponent()))
+            stack.enter_context(patch("ui.layout.ui.button", return_value=DummyComponent()))
+            stack.enter_context(patch("ui.layout.ui.spinner", return_value=DummyComponent()))
+            stack.enter_context(patch("ui.layout.ui.label", return_value=DummyComponent()))
+            stack.enter_context(patch("ui.layout.app", fake_app))
+            stack.enter_context(patch("ui.layout.ui.tabs", return_value=DummyTabs()))
+            stack.enter_context(
+                patch(
+                    "ui.layout.ui.tab",
+                    side_effect=lambda name, _label: DummyTab(name),  # type: ignore[arg-type]
+                )
+            )
+            stack.enter_context(patch("ui.layout.ui.tab_panels", return_value=DummyContext()))
+            stack.enter_context(patch("ui.layout.ui.tab_panel", return_value=DummyContext()))
+            stack.enter_context(patch("ui.layout.stat_card", side_effect=_capture_stat_card))
+            stack.enter_context(patch("ui.layout.render_activity_graphs"))
+            stack.enter_context(patch("ui.layout.render_trends_tab"))
+            stack.enter_context(patch("ui.layout.render_health_data_tab"))
+            stack.enter_context(patch("ui.layout.render_best_segments_tab"))
+            stack.enter_context(patch("ui.layout.render_workout_table"))
+            stack.enter_context(patch("ui.layout.render_distance_range_selector"))
+            stack.enter_context(patch("ui.layout.render_duration_range_selector"))
+            stack.enter_context(
+                patch("ui.layout._build_workout_rows", return_value=[{"workout_index": 42}])
+            )
+            create_modal_mock = stack.enter_context(patch("ui.layout.create_workout_detail_modal"))
+            open_detail_mock = MagicMock()
+            create_modal_mock.return_value = open_detail_mock
+            layout.render_body()
+
+        longest_run_call = next(call for call in stat_card_calls if call[0][2] == "longest_run")
+        on_click = longest_run_call[1].get("on_click")
+        assert callable(on_click)
+        on_click()
+        open_detail_mock.assert_called_once_with(0)
+    finally:
+        state.metrics_workout_index = original_record_indexes
 
 
 def test_render_header_builds_language_menu_items() -> None:

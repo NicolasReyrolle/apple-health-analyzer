@@ -137,6 +137,16 @@ class AppState:
             "longest_duration_workout": "",
             "most_calories_workout": "",
         }
+        self.metrics_workout_index: dict[str, object | None] = {
+            "longest_run": None,
+            "longest_walk": None,
+            "longest_cycling": None,
+            "longest_swim": None,
+            "most_elevation_run": None,
+            "most_elevation_walk": None,
+            "longest_duration_workout": None,
+            "most_calories_workout": None,
+        }
         self.best_segments_rows: list[dict[str, Any]] = []
         self.best_segments_loading: bool = False
         self.best_segments_loaded: bool = False

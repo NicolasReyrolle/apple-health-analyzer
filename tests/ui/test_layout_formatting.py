@@ -75,6 +75,17 @@ class _DummyWorkouts(WorkoutManager):
         """Return no longest workout details in this dummy implementation."""
         return None
 
+    def get_workout_record_details(
+        self,
+        metric_column: str,
+        activity_types: list[str] | None = None,
+        unit: str | None = None,
+        start_date: datetime | pd.Timestamp | None = None,
+        end_date: datetime | pd.Timestamp | None = None,
+    ) -> dict[str, Any] | None:
+        """Return no workout record details in this dummy implementation."""
+        return None
+
     def get_distance_bounds(
         self,
         unit: str = "km",

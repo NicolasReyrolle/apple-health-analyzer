@@ -58,7 +58,9 @@ from ui.helpers import (
 )
 from ui.local_file_picker import LocalFilePicker
 from ui.trends_tab import render_trends_graphs, render_trends_tab
+from ui.workout_detail_modal import create_workout_detail_modal
 from ui.workout_table import (
+    _build_workout_rows,
     render_distance_range_selector,
     render_duration_range_selector,
     render_workout_table,
@@ -273,13 +275,18 @@ def _set_longest_metric_from_details(
     language_code: str,
     details_value_key: str = "distance",
     value_divisor: float = 1.0,
+    decimal_places: int = 1,
+    round_to_int: bool = False,
+    display_as_hours_minutes: bool = False,
 ) -> None:
     """Set one personal-record metric display/tooltip from details."""
     metrics: dict[str, int | float] = state.metrics  # type: ignore[assignment]
     metrics_display: dict[str, str] = state.metrics_display  # type: ignore[assignment]
     metrics_tooltip: dict[str, str] = state.metrics_tooltip  # type: ignore[assignment]
+    metrics_workout_index: dict[str, object | None] = state.metrics_workout_index
     metrics[metric_key] = 0.0
     metrics_display[metric_key] = format_float(0.0)
+    metrics_workout_index[metric_key] = None
 
     if details is None:
         metrics_tooltip[metric_key] = t("No data")
@@ -297,8 +304,22 @@ def _set_longest_metric_from_details(
         raise ValueError(f"value_divisor must not be zero for metric '{metric_key}'")
 
     value_for_display = value_float / value_divisor
-    metrics[metric_key] = value_for_display
-    metrics_display[metric_key] = format_float(value_for_display)
+    metrics_workout_index[metric_key] = details.get("workout_index")
+
+    if display_as_hours_minutes:
+        metrics[metric_key] = value_float
+        total_minutes = max(0, int(round(value_float / 60.0)))
+        hours, minutes = divmod(total_minutes, 60)
+        metrics_display[metric_key] = (
+            f"{hours} h {minutes:02d} min" if hours > 0 else f"{minutes} min"
+        )
+    elif round_to_int:
+        rounded_value = int(round(value_for_display))
+        metrics[metric_key] = rounded_value
+        metrics_display[metric_key] = format_integer(rounded_value)
+    else:
+        metrics[metric_key] = value_for_display
+        metrics_display[metric_key] = format_float(value_for_display, decimal_places=decimal_places)
 
     date_value = details.get("date")
     duration_value = details.get("duration")
@@ -316,9 +337,7 @@ def _set_longest_metric_from_details(
         else:
             duration_str = format_duration_label(duration_float)
 
-    if date_str and duration_str:
-        metrics_tooltip[metric_key] = f"{date_str} — {duration_str}"
-    elif date_str:
+    if date_str:
         metrics_tooltip[metric_key] = date_str
     elif duration_str:
         metrics_tooltip[metric_key] = duration_str
@@ -350,6 +369,7 @@ def _refresh_longest_workout_metrics() -> None:
             "activities": ["Swimming"],
             "column": "distance",
             "unit": dist_unit,
+            "decimal_places": 2,
         },
         {
             "key": "most_elevation_run",
@@ -367,9 +387,14 @@ def _refresh_longest_workout_metrics() -> None:
             "key": "longest_duration_workout",
             "activities": None,
             "column": "duration",
-            "value_divisor": 3600.0,
+            "display_as_hours_minutes": True,
         },
-        {"key": "most_calories_workout", "activities": None, "column": "sumActiveEnergyBurned"},
+        {
+            "key": "most_calories_workout",
+            "activities": None,
+            "column": "sumActiveEnergyBurned",
+            "round_to_int": True,
+        },
     ]
 
     for config in metric_configs:
@@ -386,6 +411,9 @@ def _refresh_longest_workout_metrics() -> None:
             language_code,
             details_value_key="value",
             value_divisor=config.get("value_divisor", 1.0),
+            decimal_places=config.get("decimal_places", 1),
+            round_to_int=config.get("round_to_int", False),
+            display_as_hours_minutes=config.get("display_as_hours_minutes", False),
         )
 
 
@@ -803,12 +831,28 @@ def render_body() -> None:
         with ui.tab_panel("summary"):
             dist_unit = get_distance_unit()
             elev_unit = get_elevation_unit()
+            full_rows = _build_workout_rows()
+            open_detail = create_workout_detail_modal(full_rows)
+            row_index_by_workout_index: dict[object, int] = {
+                workout_index: idx
+                for idx, workout_index in enumerate(row.get("workout_index") for row in full_rows)
+                if workout_index is not None
+            }
+
+            def _open_record_metric(metric_key: str) -> None:
+                workout_index = state.metrics_workout_index.get(metric_key)
+                if workout_index is None:
+                    return
+                row_index = row_index_by_workout_index.get(workout_index)
+                if row_index is None:
+                    return
+                open_detail(row_index)
+
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Count"), state.metrics_display, "count")
                 stat_card(t("Distance"), state.metrics_display, "distance", dist_unit)
                 stat_card(t("Duration"), state.metrics_display, "duration", "h")
                 stat_card(t("Elevation"), state.metrics_display, "elevation", elev_unit)
-            with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(t("Calories"), state.metrics_display, "calories", "kcal")
             with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(
@@ -818,6 +862,7 @@ def render_body() -> None:
                     dist_unit,
                     tooltip_ref=state.metrics_tooltip,
                     tooltip_key="longest_run",
+                    on_click=lambda: _open_record_metric("longest_run"),
                 )
                 stat_card(
                     t("Longest Walk/Hike"),
@@ -826,24 +871,8 @@ def render_body() -> None:
                     dist_unit,
                     tooltip_ref=state.metrics_tooltip,
                     tooltip_key="longest_walk",
+                    on_click=lambda: _open_record_metric("longest_walk"),
                 )
-                stat_card(
-                    t("Longest Cycling"),
-                    state.metrics_display,
-                    "longest_cycling",
-                    dist_unit,
-                    tooltip_ref=state.metrics_tooltip,
-                    tooltip_key="longest_cycling",
-                )
-                stat_card(
-                    t("Longest Swim"),
-                    state.metrics_display,
-                    "longest_swim",
-                    dist_unit,
-                    tooltip_ref=state.metrics_tooltip,
-                    tooltip_key="longest_swim",
-                )
-            with ui.row().classes(ROW_CENTERED_CLASSES):
                 stat_card(
                     t("Most Elevation (Run)"),
                     state.metrics_display,
@@ -851,6 +880,7 @@ def render_body() -> None:
                     elev_unit,
                     tooltip_ref=state.metrics_tooltip,
                     tooltip_key="most_elevation_run",
+                    on_click=lambda: _open_record_metric("most_elevation_run"),
                 )
                 stat_card(
                     t("Most Elevation (Walk/Hike)"),
@@ -859,14 +889,35 @@ def render_body() -> None:
                     elev_unit,
                     tooltip_ref=state.metrics_tooltip,
                     tooltip_key="most_elevation_walk",
+                    on_click=lambda: _open_record_metric("most_elevation_walk"),
+                )
+            with ui.row().classes(ROW_CENTERED_CLASSES):
+                stat_card(
+                    t("Longest Cycling"),
+                    state.metrics_display,
+                    "longest_cycling",
+                    dist_unit,
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_cycling",
+                    on_click=lambda: _open_record_metric("longest_cycling"),
+                )
+                stat_card(
+                    t("Longest Swim"),
+                    state.metrics_display,
+                    "longest_swim",
+                    dist_unit,
+                    tooltip_ref=state.metrics_tooltip,
+                    tooltip_key="longest_swim",
+                    on_click=lambda: _open_record_metric("longest_swim"),
                 )
                 stat_card(
                     t("Longest Duration Workout"),
                     state.metrics_display,
                     "longest_duration_workout",
-                    "h",
+                    "",
                     tooltip_ref=state.metrics_tooltip,
                     tooltip_key="longest_duration_workout",
+                    on_click=lambda: _open_record_metric("longest_duration_workout"),
                 )
                 stat_card(
                     t("Most Calories Workout"),
@@ -875,6 +926,7 @@ def render_body() -> None:
                     "kcal",
                     tooltip_ref=state.metrics_tooltip,
                     tooltip_key="most_calories_workout",
+                    on_click=lambda: _open_record_metric("most_calories_workout"),
                 )
 
         with ui.tab_panel("activities"):
