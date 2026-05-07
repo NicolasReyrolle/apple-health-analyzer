@@ -106,6 +106,11 @@ class AppState:
             "longest_run": 0.0,
             "longest_walk": 0.0,
             "longest_cycling": 0.0,
+            "longest_swim": 0.0,
+            "most_elevation_run": 0.0,
+            "most_elevation_walk": 0.0,
+            "longest_duration_workout": 0.0,
+            "most_calories_workout": 0.0,
         }
         self.metrics_display: dict[str, str] = {
             "count": "0",
@@ -116,11 +121,31 @@ class AppState:
             "longest_run": "0.0",
             "longest_walk": "0.0",
             "longest_cycling": "0.0",
+            "longest_swim": "0.0",
+            "most_elevation_run": "0.0",
+            "most_elevation_walk": "0.0",
+            "longest_duration_workout": "0.0",
+            "most_calories_workout": "0.0",
         }
         self.metrics_tooltip: dict[str, str] = {
             "longest_run": "",
             "longest_walk": "",
             "longest_cycling": "",
+            "longest_swim": "",
+            "most_elevation_run": "",
+            "most_elevation_walk": "",
+            "longest_duration_workout": "",
+            "most_calories_workout": "",
+        }
+        self.metrics_workout_index: dict[str, object | None] = {
+            "longest_run": None,
+            "longest_walk": None,
+            "longest_cycling": None,
+            "longest_swim": None,
+            "most_elevation_run": None,
+            "most_elevation_walk": None,
+            "longest_duration_workout": None,
+            "most_calories_workout": None,
         }
         self.best_segments_rows: list[dict[str, Any]] = []
         self.best_segments_loading: bool = False

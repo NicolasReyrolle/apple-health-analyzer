@@ -100,6 +100,12 @@ LABEL_UPPERCASE_CLASSES = "text-sm text-gray-500 uppercase"
 #: Stat-card container dimensions and centring.
 STAT_CARD_CLASSES = "w-40 h-24 items-center justify-center shadow-sm"
 
+#: Additional classes for stat cards that are clickable actions.
+STAT_CARD_CLICKABLE_CLASSES = "cursor-pointer hover:shadow-md transition-shadow"
+
+#: Keyboard/ARIA props for clickable stat cards.
+STAT_CARD_CLICKABLE_PROPS = "tabindex=0 role=button"
+
 #: Small muted uppercase label inside a stat card.
 STAT_CARD_LABEL_CLASSES = "text-xs text-gray-500 uppercase"
 

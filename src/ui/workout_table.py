@@ -156,9 +156,16 @@ def _build_workout_rows(
     if not vo2_df.empty and "startDate" in vo2_df.columns:
         vo2_dates = pd.to_datetime(vo2_df["startDate"], errors="coerce").dt.tz_localize(None)
 
-    for idx, (_, row) in enumerate(df.iterrows()):
+    for idx, (workout_index, row) in enumerate(df.iterrows()):
         row_data = _extract_row_data(
-            row, idx, language_code, distance_unit, elevation_unit, vo2_dates, temperature_unit
+            row,
+            idx,
+            language_code,
+            distance_unit,
+            elevation_unit,
+            vo2_dates,
+            temperature_unit,
+            workout_index=workout_index,
         )
         rows.append(row_data)
 
@@ -173,6 +180,7 @@ def _extract_row_data(
     elevation_unit: str = "m",
     vo2_dates: pd.Series | None = None,
     temperature_unit: str = "°C",
+    workout_index: object | None = None,
 ) -> dict[str, Any]:
     """Extract and format a single workout row.
 
@@ -230,6 +238,7 @@ def _extract_row_data(
 
     result: dict[str, Any] = {
         "id": f"{date_sort}_{idx}",
+        "workout_index": workout_index,
         "date_sort": date_sort,
         "date": date_display,
         "raw_activity_type": raw_activity,

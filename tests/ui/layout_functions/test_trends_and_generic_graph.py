@@ -322,6 +322,44 @@ class TestRenderGenericGraph:
 class TestChartsModuleComponents:
     """Tests for chart helpers implemented in ui.charts."""
 
+    def test_stat_card_click_handler_is_wired_when_provided(self) -> None:
+        """stat_card should register click handler and invoke callback when clicked."""
+
+        class _CardProbe(DummyRow):
+            def __init__(self) -> None:
+                self.events: dict[str, Any] = {}
+                self.props_calls: list[str] = []
+
+            def on(self, event: str, handler: Any) -> _CardProbe:
+                self.events[event] = handler
+                return self
+
+            def props(self, *args: Any, **_kwargs: Any) -> _CardProbe:
+                self.props_calls.extend(str(arg) for arg in args)
+                return self
+
+        card_probe = _CardProbe()
+        callback = MagicMock()
+
+        with (
+            patch("ui.charts.ui.card", return_value=card_probe),
+            patch("ui.charts.ui.row", return_value=DummyRow()),
+            patch("ui.charts.ui.label", return_value=DummyComponent()),
+        ):
+            charts.stat_card(
+                "Distance",
+                value_ref={"distance": "10.0"},
+                key="distance",
+                on_click=callback,
+            )
+
+        assert "tabindex=0 role=button" in card_probe.props_calls
+        assert "click" in card_probe.events
+        assert "keydown.enter" in card_probe.events
+        assert "keydown.space" in card_probe.events
+        card_probe.events["click"](object())
+        callback.assert_called_once()
+
     def test_stat_card_binds_tooltip_when_configured(self) -> None:
         """stat_card should create and bind tooltip when tooltip refs are provided."""
         tooltip_component = DummyComponent()

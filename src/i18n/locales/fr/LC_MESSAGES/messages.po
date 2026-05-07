@@ -113,6 +113,21 @@ msgstr "Marche/Randonnée la plus longue"
 msgid "Longest Cycling"
 msgstr "Sortie à vélo la plus longue"
 
+msgid "Longest Swim"
+msgstr "Nage la plus longue"
+
+msgid "Most Elevation (Run)"
+msgstr "Dénivelé max (course)"
+
+msgid "Most Elevation (Walk/Hike)"
+msgstr "Dénivelé max (marche/randonnée)"
+
+msgid "Longest Duration Workout"
+msgstr "Séance la plus longue"
+
+msgid "Most Calories Workout"
+msgstr "Séance la plus calorique"
+
 msgid "No data"
 msgstr "Aucune donnée"
 
