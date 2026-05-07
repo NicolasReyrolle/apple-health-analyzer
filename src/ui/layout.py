@@ -308,7 +308,7 @@ def _set_longest_metric_from_details(
 
     if display_as_hours_minutes:
         metrics[metric_key] = value_float
-        total_minutes = max(0, int(round(value_float / 60.0)))
+        total_minutes = int(round(value_float / 60.0))
         hours, minutes = divmod(total_minutes, 60)
         metrics_display[metric_key] = (
             f"{hours} h {minutes:02d} min" if hours > 0 else f"{minutes} min"
@@ -833,11 +833,10 @@ def render_body() -> None:
             elev_unit = get_elevation_unit()
             full_rows = _build_workout_rows()
             open_detail = create_workout_detail_modal(full_rows)
-            row_index_by_workout_index: dict[object, int] = {
-                workout_index: idx
-                for idx, workout_index in enumerate(row.get("workout_index") for row in full_rows)
-                if workout_index is not None
-            }
+            row_index_by_workout_index: dict[object, int] = {}
+            for idx, workout_index in enumerate(row.get("workout_index") for row in full_rows):
+                if workout_index is not None and workout_index not in row_index_by_workout_index:
+                    row_index_by_workout_index[workout_index] = idx
 
             def _open_record_metric(metric_key: str) -> None:
                 workout_index = state.metrics_workout_index.get(metric_key)

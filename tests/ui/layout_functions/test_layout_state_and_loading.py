@@ -727,7 +727,11 @@ def test_render_body_record_card_click_opens_detail_modal() -> None:
             create_modal_mock.return_value = open_detail_mock
             layout.render_body()
 
-        longest_run_call = next(call for call in stat_card_calls if call[0][2] == "longest_run")
+        longest_run_call = next(
+            (call for call in stat_card_calls if call[0][2] == "longest_run"),
+            None,
+        )
+        assert longest_run_call is not None
         on_click = longest_run_call[1].get("on_click")
         assert callable(on_click)
         on_click()
