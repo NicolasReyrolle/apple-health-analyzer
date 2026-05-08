@@ -57,6 +57,23 @@ def _toolbox_config(*, restore: bool = False) -> dict[str, object]:
     return {"feature": feature}
 
 
+def _extract_chart_click_args(event: object) -> dict[str, object]:
+    args = getattr(event, "args", {})
+    if isinstance(args, dict):
+        return args
+    if isinstance(args, (list, tuple)) and args and isinstance(args[0], dict):
+        return args[0]
+    return {}
+
+
+def _normalize_chart_data_index(raw_data_index: object) -> int | None:
+    if isinstance(raw_data_index, str) and raw_data_index.isdigit():
+        raw_data_index = int(raw_data_index)
+    if isinstance(raw_data_index, float) and raw_data_index.is_integer():
+        raw_data_index = int(raw_data_index)
+    return raw_data_index if isinstance(raw_data_index, int) else None
+
+
 def stat_card(
     label: str,
     value_ref: dict[str, str],
@@ -459,21 +476,6 @@ def render_scatter_graph(
         card_chart = ui.echart(card_config)
 
     if on_point_click is not None:
-        def _extract_event_args(event: object) -> dict[str, object]:
-            args = getattr(event, "args", {})
-            if isinstance(args, dict):
-                return args
-            if isinstance(args, (list, tuple)) and args and isinstance(args[0], dict):
-                return args[0]
-            return {}
-
-        def _normalize_data_index(raw_data_index: object) -> int | None:
-            if isinstance(raw_data_index, str) and raw_data_index.isdigit():
-                raw_data_index = int(raw_data_index)
-            if isinstance(raw_data_index, float) and raw_data_index.is_integer():
-                raw_data_index = int(raw_data_index)
-            return raw_data_index if isinstance(raw_data_index, int) else None
-
         def _extract_click_value(args: object) -> object:
             if not isinstance(args, dict):
                 return None
@@ -483,7 +485,7 @@ def render_scatter_graph(
             return data if data is not None else args.get("value")
 
         def _handle_click(event: object) -> None:
-            args = _extract_event_args(event)
+            args = _extract_chart_click_args(event)
             value = _extract_click_value(args)
             # Metadata points store workout_index at position 3 in
             # [x, y, date_label, workout_index].
@@ -492,9 +494,9 @@ def render_scatter_graph(
             if isinstance(value, list) and len(value) >= 4 and value[3] is not None:
                 on_point_click(value[3])
                 return
-            data_index = _normalize_data_index(args.get("dataIndex"))
+            data_index = _normalize_chart_data_index(args.get("dataIndex"))
             if data_index is None:
-                data_index = _normalize_data_index(args.get("dataIndexInside"))
+                data_index = _normalize_chart_data_index(args.get("dataIndexInside"))
             if isinstance(data_index, int) and 0 <= data_index < len(chart_data):
                 point = chart_data[data_index]
                 if len(point) >= 4 and point[3] is not None:
