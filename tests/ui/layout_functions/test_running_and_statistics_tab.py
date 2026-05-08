@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
@@ -50,12 +50,14 @@ def test_render_running_tab_builds_scatter_data_from_workouts() -> None:
     original_graphs = state.health_data_graphs
     original_cp_loading = state.health_data_cp_loading
     original_date_text = state.date_range_text
+    original_selected_tab = state.selected_main_tab
 
     try:
         state.workouts = _sample_workouts_manager()
         state.health_data_graphs = {"critical_power": {"2025-01": 300}, "w_prime": {"2025-01": 20}}
         state.health_data_cp_loading = False
         state.date_range_text = ""
+        state.selected_main_tab = "running"
 
         with (
             patch("ui.running_tab.ui.row", return_value=DummyRow()),
@@ -78,6 +80,7 @@ def test_render_running_tab_builds_scatter_data_from_workouts() -> None:
         state.health_data_graphs = original_graphs
         state.health_data_cp_loading = original_cp_loading
         state.date_range_text = original_date_text
+        state.selected_main_tab = original_selected_tab
 
 
 def test_render_statistics_tab_builds_heatmap_and_boxplot_from_workouts() -> None:
@@ -85,11 +88,13 @@ def test_render_statistics_tab_builds_heatmap_and_boxplot_from_workouts() -> Non
     original_workouts: Any = state.workouts
     original_activity = state.selected_activity_type
     original_date_text = state.date_range_text
+    original_selected_tab = state.selected_main_tab
 
     try:
         state.workouts = _sample_workouts_manager()
         state.selected_activity_type = "All"
         state.date_range_text = ""
+        state.selected_main_tab = "statistics"
 
         with (
             patch("ui.statistics_tab.ui.row", return_value=DummyRow()),
@@ -109,6 +114,7 @@ def test_render_statistics_tab_builds_heatmap_and_boxplot_from_workouts() -> Non
         state.workouts = original_workouts
         state.selected_activity_type = original_activity
         state.date_range_text = original_date_text
+        state.selected_main_tab = original_selected_tab
 
 
 def test_render_running_tab_shows_health_loading_before_cp_graphs() -> None:
@@ -118,6 +124,7 @@ def test_render_running_tab_shows_health_loading_before_cp_graphs() -> None:
     original_cp_loading = state.health_data_cp_loading
     original_workouts: Any = state.workouts
     original_date_text = state.date_range_text
+    original_selected_tab = state.selected_main_tab
 
     try:
         state.health_data_loading = True
@@ -125,6 +132,7 @@ def test_render_running_tab_shows_health_loading_before_cp_graphs() -> None:
         state.health_data_cp_loading = False
         state.workouts = _sample_workouts_manager()
         state.date_range_text = ""
+        state.selected_main_tab = "running"
 
         with (
             patch("ui.running_tab.ui.row", return_value=DummyRow()),
@@ -148,4 +156,41 @@ def test_render_running_tab_shows_health_loading_before_cp_graphs() -> None:
         state.health_data_loaded = original_loaded
         state.health_data_cp_loading = original_cp_loading
         state.workouts = original_workouts
+        state.date_range_text = original_date_text
+        state.selected_main_tab = original_selected_tab
+
+
+def test_running_tab_defers_workout_detail_until_click() -> None:
+    """Workout rows/modal should be built only when clicking a scatter point."""
+    original_workouts: Any = state.workouts
+    original_selected_tab = state.selected_main_tab
+    original_date_text = state.date_range_text
+
+    captured_on_click: Any = None
+
+    def _capture_scatter(*_args: Any, **kwargs: Any) -> None:
+        nonlocal captured_on_click
+        captured_on_click = kwargs["on_point_click"]
+
+    try:
+        state.workouts = _sample_workouts_manager()
+        state.selected_main_tab = "running"
+        state.date_range_text = ""
+
+        with (
+            patch("ui.running_tab.ui.row", return_value=DummyRow()),
+            patch("ui.running_tab.render_scatter_graph", side_effect=_capture_scatter),
+            patch("ui.running_tab.render_generic_graph"),
+            patch("ui.running_tab.render_best_segments_tab"),
+            patch("ui.running_tab._build_workout_rows", return_value=[]) as build_rows_mock,
+            patch("ui.running_tab.create_workout_detail_modal", return_value=MagicMock()),
+        ):
+            running_tab.render_running_tab.func()
+            build_rows_mock.assert_not_called()
+            assert callable(captured_on_click)
+            captured_on_click(0)
+            build_rows_mock.assert_called_once()
+    finally:
+        state.workouts = original_workouts
+        state.selected_main_tab = original_selected_tab
         state.date_range_text = original_date_text

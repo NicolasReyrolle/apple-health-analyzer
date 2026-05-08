@@ -197,7 +197,8 @@ async def load_health_data(force: bool = False) -> None:
 
     state.health_data_loading = True
     render_health_data_tab.refresh()
-    render_running_tab.refresh()
+    if state.selected_main_tab == "running":
+        render_running_tab.refresh()
 
     try:
         # Phase 1 — fast graphs: HR, body mass, VO2 max
@@ -207,7 +208,8 @@ async def load_health_data(force: bool = False) -> None:
         state.health_data_loading = False
         state.health_data_cp_loading = True
         render_health_data_tab.refresh()
-        render_running_tab.refresh()
+        if state.selected_main_tab == "running":
+            render_running_tab.refresh()
 
         # Phase 2 — slow graphs: critical power and W'
         try:
@@ -218,13 +220,15 @@ async def load_health_data(force: bool = False) -> None:
         finally:
             state.health_data_cp_loading = False
             render_health_data_tab.refresh()
-            render_running_tab.refresh()
+            if state.selected_main_tab == "running":
+                render_running_tab.refresh()
     except Exception:
         _logger.exception("Failed to load health data tab")
         state.health_data_loading = False
         state.health_data_cp_loading = False
         render_health_data_tab.refresh()
-        render_running_tab.refresh()
+        if state.selected_main_tab == "running":
+            render_running_tab.refresh()
 
 
 def handle_json_export() -> None:
@@ -475,8 +479,10 @@ def refresh_data() -> None:
     render_activity_graphs.refresh()
     render_trends_graphs.refresh()
     render_health_data_tab.refresh()
-    render_running_tab.refresh()
-    render_statistics_tab.refresh()
+    if state.selected_main_tab == "running":
+        render_running_tab.refresh()
+    if state.selected_main_tab == "statistics":
+        render_statistics_tab.refresh()
     render_best_segments_tab.refresh()
     render_distance_range_selector.refresh()
     render_duration_range_selector.refresh()
@@ -511,7 +517,8 @@ def render_period_selector() -> None:
         _reset_health_data_state()
         render_trends_graphs.refresh()
         render_health_data_tab.refresh()
-        render_running_tab.refresh()
+        if state.selected_main_tab == "running":
+            render_running_tab.refresh()
         if state.selected_main_tab in {"health_data", "running"}:
             schedule_health_data_load()
 
@@ -811,8 +818,11 @@ def render_body() -> None:
         )
         state.selected_main_tab = tab_name
         if tab_name == "running":
+            render_running_tab.refresh()
             schedule_best_segments_load()
             schedule_health_data_load()
+        elif tab_name == "statistics":
+            render_statistics_tab.refresh()
         elif tab_name == "health_data":
             schedule_health_data_load()
 

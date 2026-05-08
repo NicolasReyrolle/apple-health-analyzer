@@ -107,20 +107,28 @@ def _build_scatter_points(
 
 
 def _build_workout_detail_opener() -> Callable[[object], None]:
-    full_rows = _build_workout_rows(activity_type="All", skip_range_filters=True)
-    row_index_by_workout_index: dict[object, int] = {}
-    for idx, row in enumerate(full_rows):
-        row_workout_index = row.get("workout_index")
-        if row_workout_index is not None and row_workout_index not in row_index_by_workout_index:
-            row_index_by_workout_index[row_workout_index] = idx
+    full_rows: list[dict[str, object]] | None = None
+    row_index_by_workout_index: dict[object, int] | None = None
     open_detail: Callable[[int], None] | None = None
 
     def _open(workout_index: object) -> None:
-        nonlocal open_detail
+        nonlocal full_rows, row_index_by_workout_index, open_detail
+        if row_index_by_workout_index is None:
+            full_rows = _build_workout_rows(activity_type="All", skip_range_filters=True)
+            row_index_by_workout_index = {}
+            for idx, row in enumerate(full_rows):
+                row_workout_index = row.get("workout_index")
+                if (
+                    row_workout_index is not None
+                    and row_workout_index not in row_index_by_workout_index
+                ):
+                    row_index_by_workout_index[row_workout_index] = idx
         row_index = row_index_by_workout_index.get(workout_index)
         if row_index is None:
             return
         if open_detail is None:
+            if full_rows is None:
+                return
             open_detail = create_workout_detail_modal(full_rows)
         open_detail(row_index)
 
@@ -130,6 +138,8 @@ def _build_workout_detail_opener() -> Callable[[object], None]:
 @ui.refreshable
 def render_running_tab() -> None:
     """Render running-specific charts and best-segment insights."""
+    if state.selected_main_tab != "running":
+        return
     distance_unit = get_distance_unit()
     elevation_unit = get_elevation_unit()
     pace_unit = f"min/{distance_unit}"

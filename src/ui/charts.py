@@ -356,20 +356,18 @@ def render_scatter_graph(
             chart_data.append([x, y])
 
     tooltip_formatter = (
-        (
-            "function(params) {"
-            f"var base = '{x_axis_label}: ' + params.value[0] + '{value_suffix_x}' + "
-            f"'<br/>{y_axis_label}: ' + params.value[1] + '{value_suffix_y}';"
-            "if (params.value.length > 2 && params.value[2]) {"
-            f"  return base + '<br/>{date_label}: ' + params.value[2];"
-            "}"
-            "return base;"
-            "}"
-        )
+        "function(params) {"
+        f"var text = '{x_axis_label}: ' + params.value[0] + '{value_suffix_x}' + "
+        f"'\\n{y_axis_label}: ' + params.value[1] + '{value_suffix_y}';"
+        "if (params.value.length > 2 && params.value[2]) {"
+        f"  return text + '\\n{date_label}: ' + params.value[2];"
+        "}"
+        "return text;"
+        "}"
         if includes_metadata
         else (
             f"{x_axis_label}: {{@[0]}}{value_suffix_x}"
-            f"<br/>{y_axis_label}: {{@[1]}}{value_suffix_y}"
+            f"\n{y_axis_label}: {{@[1]}}{value_suffix_y}"
         )
     )
 
@@ -433,24 +431,37 @@ def render_heat_map_graph(
     x_axis_name: str = "",
     y_axis_name: str = "",
     value_label: str | None = None,
+    value_label_singular: str | None = None,
+    value_label_plural: str | None = None,
     fullscreen_description: str = "",
 ) -> None:
     """Render an ECharts heat map from indexed (x, y, value) triplets."""
     max_value = max((value for *_coords, value in values), default=1)
     value_label_text = value_label if value_label is not None else t("Workouts")
+    singular_label = value_label_singular if value_label_singular is not None else t("workout")
+    plural_label = value_label_plural if value_label_plural is not None else t("workouts")
     x_labels_values = list(x_labels)
     y_labels_values = list(y_labels)
-    x_labels_js = json.dumps(x_labels_values)
     y_labels_js = json.dumps(y_labels_values)
-    value_label_js = json.dumps(value_label_text)
+    singular_label_js = json.dumps(singular_label)
+    plural_label_js = json.dumps(plural_label)
+    from_label_js = json.dumps(t("from"))
+    to_label_js = json.dumps(t("to"))
     tooltip_formatter = (
         "function(params) {"
-        f"var xLabels = {x_labels_js};"
         f"var yLabels = {y_labels_js};"
-        f"var valueLabel = {value_label_js};"
+        f"var singularLabel = {singular_label_js};"
+        f"var pluralLabel = {plural_label_js};"
+        f"var fromLabel = {from_label_js};"
+        f"var toLabel = {to_label_js};"
         "var point = params.value;"
-        "return yLabels[point[1]] + ' · ' + xLabels[point[0]] + '<br/>' + "
-        "point[2] + ' ' + valueLabel;"
+        "var hour = Number(point[0]);"
+        "var startHour = String(hour).padStart(2, '0') + ':00';"
+        "var endHour = String((hour + 1) % 24).padStart(2, '0') + ':00';"
+        "var count = Number(point[2]);"
+        "var noun = count === 1 ? singularLabel : pluralLabel;"
+        "return yLabels[point[1]] + ', ' + fromLabel + ' ' + startHour + "
+        "' ' + toLabel + ' ' + endHour + ': ' + count + ' ' + noun;"
         "}"
     )
 

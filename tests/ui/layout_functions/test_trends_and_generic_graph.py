@@ -472,6 +472,8 @@ class TestChartsModuleComponents:
         assert chart_options["backgroundColor"] == "transparent"
         assert chart_options["series"][0]["type"] == "scatter"
         assert chart_options["series"][0]["data"] == [[5.0, 4.5], [10.0, 5.1]]
+        assert "<br" not in chart_options["tooltip"][":formatter"]
+        assert "\n" in chart_options["tooltip"][":formatter"]
 
     def test_render_scatter_graph_supports_date_tooltip_and_click_handler(self) -> None:
         """Metadata points should include date in tooltip and expose click callbacks."""
@@ -509,6 +511,7 @@ class TestChartsModuleComponents:
         chart_options = echart_mock.call_args.args[0]
         assert chart_options["series"][0]["data"] == [[5.0, 4.5, "01/06/2025", 12]]
         assert "Date" in chart_options["tooltip"][":formatter"]
+        assert "<br" not in chart_options["tooltip"][":formatter"]
         assert "click" in chart_probe.events
         chart_probe.events["click"](MagicMock(args={"data": [5.0, 4.5, "01/06/2025", 12]}))
         click_callback.assert_called_once_with(12)
@@ -537,6 +540,8 @@ class TestChartsModuleComponents:
                 x_axis_name="Hour of day",
                 y_axis_name="Day of week",
                 value_label="Workouts",
+                value_label_singular="workout",
+                value_label_plural="workouts",
             )
 
         fullscreen_options = echart_calls[0]
@@ -548,6 +553,9 @@ class TestChartsModuleComponents:
         assert "visualMap" in fullscreen_options
         assert fullscreen_options["xAxis"]["name"] == "Hour of day"
         assert fullscreen_options["yAxis"]["name"] == "Day of week"
+        assert "from" in fullscreen_options["tooltip"][":formatter"]
+        assert "to" in fullscreen_options["tooltip"][":formatter"]
+        assert "<br" not in fullscreen_options["tooltip"][":formatter"]
 
     def test_render_box_plot_graph_builds_boxplot_series(self) -> None:
         """render_box_plot_graph should emit one boxplot row per category."""

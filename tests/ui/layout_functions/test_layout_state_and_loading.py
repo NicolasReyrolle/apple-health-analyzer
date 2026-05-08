@@ -119,12 +119,14 @@ async def test_load_health_data_success_and_exception_paths() -> None:
     original_loaded = state.health_data_loaded
     original_file_loaded = state.file_loaded
     original_graphs = state.health_data_graphs
+    original_selected_tab = state.selected_main_tab
 
     try:
         state.health_data_loading = False
         state.health_data_loaded = False
         state.file_loaded = True
         state.health_data_graphs = {}
+        state.selected_main_tab = "running"
 
         with patch("ui.layout.render_health_data_tab.refresh") as refresh_mock:
             with patch("ui.layout.render_running_tab.refresh") as running_refresh_mock:
@@ -158,6 +160,7 @@ async def test_load_health_data_success_and_exception_paths() -> None:
         state.health_data_loaded = original_loaded
         state.file_loaded = original_file_loaded
         state.health_data_graphs = original_graphs
+        state.selected_main_tab = original_selected_tab
 
 
 @pytest.mark.asyncio
@@ -190,6 +193,37 @@ async def test_load_health_data_early_return_guards() -> None:
         state.health_data_loading = original_loading
         state.health_data_loaded = original_loaded
         state.file_loaded = original_file_loaded
+
+
+@pytest.mark.asyncio
+async def test_load_health_data_does_not_refresh_running_when_tab_not_selected() -> None:
+    """load_health_data should avoid running-tab refresh work when tab is inactive."""
+    original_loading = state.health_data_loading
+    original_loaded = state.health_data_loaded
+    original_file_loaded = state.file_loaded
+    original_graphs = state.health_data_graphs
+    original_selected_tab = state.selected_main_tab
+
+    try:
+        state.health_data_loading = False
+        state.health_data_loaded = False
+        state.file_loaded = True
+        state.health_data_graphs = {}
+        state.selected_main_tab = "summary"
+
+        with patch("ui.layout.render_health_data_tab.refresh"):
+            with patch("ui.layout.render_running_tab.refresh") as running_refresh_mock:
+                with patch(
+                    "ui.layout.asyncio.to_thread", new=AsyncMock(return_value={"heart_rate": {}})
+                ):
+                    await layout.load_health_data(force=True)
+        running_refresh_mock.assert_not_called()
+    finally:
+        state.health_data_loading = original_loading
+        state.health_data_loaded = original_loaded
+        state.file_loaded = original_file_loaded
+        state.health_data_graphs = original_graphs
+        state.selected_main_tab = original_selected_tab
 
 
 def test_refresh_summary_metrics_updates_values_and_display() -> None:
@@ -650,7 +684,7 @@ def test_render_period_selector_period_change_schedules_health_load_on_health_ta
 
         render_trends_graphs_mock.refresh.assert_called_once()
         render_health_data_tab_mock.refresh.assert_called_once()
-        render_running_tab_mock.refresh.assert_called_once()
+        render_running_tab_mock.refresh.assert_not_called()
         schedule_mock.assert_called_once()
     finally:
         state.selected_main_tab = original_tab
