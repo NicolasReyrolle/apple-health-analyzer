@@ -357,7 +357,6 @@ def render_scatter_graph(
 
     trend_data: list[list[float]] = []
     if len(chart_data) >= 2:
-
         def _to_float(value: float | str | object | None) -> float | None:
             if isinstance(value, (int, float, str)):
                 try:
@@ -460,7 +459,6 @@ def render_scatter_graph(
         card_chart = ui.echart(card_config)
 
     if on_point_click is not None:
-
         def _extract_click_value(args: object) -> object:
             if not isinstance(args, dict):
                 return None
