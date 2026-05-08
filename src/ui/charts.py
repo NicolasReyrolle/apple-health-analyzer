@@ -459,6 +459,14 @@ def render_scatter_graph(
         card_chart = ui.echart(card_config)
 
     if on_point_click is not None:
+        def _extract_event_args(event: object) -> dict[str, object]:
+            args = getattr(event, "args", {})
+            if isinstance(args, dict):
+                return args
+            if isinstance(args, (list, tuple)) and args and isinstance(args[0], dict):
+                return args[0]
+            return {}
+
         def _extract_click_value(args: object) -> object:
             if not isinstance(args, dict):
                 return None
@@ -468,7 +476,7 @@ def render_scatter_graph(
             return data if data is not None else args.get("value")
 
         def _handle_click(event: object) -> None:
-            args = getattr(event, "args", {})
+            args = _extract_event_args(event)
             value = _extract_click_value(args)
             # Metadata points store workout_index at position 3 in
             # [x, y, date_label, workout_index].
@@ -478,7 +486,11 @@ def render_scatter_graph(
                 on_point_click(value[3])
                 return
             data_index = args.get("dataIndex") if isinstance(args, dict) else None
+            if data_index is None and isinstance(args, dict):
+                data_index = args.get("dataIndexInside")
             if isinstance(data_index, str) and data_index.isdigit():
+                data_index = int(data_index)
+            if isinstance(data_index, float) and data_index.is_integer():
                 data_index = int(data_index)
             if isinstance(data_index, int) and 0 <= data_index < len(chart_data):
                 point = chart_data[data_index]

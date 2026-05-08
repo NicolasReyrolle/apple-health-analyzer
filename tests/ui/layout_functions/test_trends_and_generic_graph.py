@@ -523,6 +523,12 @@ class TestChartsModuleComponents:
         click_callback.reset_mock()
         chart_probe.events["click"](MagicMock(args={"dataIndex": "0"}))
         click_callback.assert_called_once_with(12)
+        click_callback.reset_mock()
+        chart_probe.events["click"](MagicMock(args={"dataIndex": 0.0}))
+        click_callback.assert_called_once_with(12)
+        click_callback.reset_mock()
+        chart_probe.events["click"](MagicMock(args=[{"dataIndexInside": 0}]))
+        click_callback.assert_called_once_with(12)
 
     def test_render_scatter_graph_keeps_trendline_when_x_values_are_constant(self) -> None:
         """Trendline should still render as a horizontal guide for constant X values."""
