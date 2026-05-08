@@ -357,29 +357,32 @@ def render_scatter_graph(
 
     trend_data: list[list[float]] = []
     if len(chart_data) >= 2:
-        def _to_float(value: float | str | object | None) -> float:
+        def _to_float(value: float | str | object | None) -> float | None:
             if isinstance(value, (int, float, str)):
                 return float(value)
-            return 0.0
+            return None
 
         x_values = [_to_float(point[0]) for point in chart_data]
         y_values = [_to_float(point[1]) for point in chart_data]
-        x_mean = sum(x_values) / len(x_values)
-        y_mean = sum(y_values) / len(y_values)
-        denominator = sum((x_value - x_mean) ** 2 for x_value in x_values)
-        if denominator > 0:
-            numerator = sum(
-                (x_value - x_mean) * (y_value - y_mean)
-                for x_value, y_value in zip(x_values, y_values, strict=True)
-            )
-            slope = numerator / denominator
-            intercept = y_mean - slope * x_mean
-            x_min = min(x_values)
-            x_max = max(x_values)
-            trend_data = [
-                [x_min, slope * x_min + intercept],
-                [x_max, slope * x_max + intercept],
-            ]
+        if not any(value is None for value in x_values + y_values):
+            x_numeric = [value for value in x_values if value is not None]
+            y_numeric = [value for value in y_values if value is not None]
+            x_mean = sum(x_numeric) / len(x_numeric)
+            y_mean = sum(y_numeric) / len(y_numeric)
+            denominator = sum((x_value - x_mean) ** 2 for x_value in x_numeric)
+            if denominator > 0:
+                numerator = sum(
+                    (x_value - x_mean) * (y_value - y_mean)
+                    for x_value, y_value in zip(x_numeric, y_numeric, strict=True)
+                )
+                slope = numerator / denominator
+                intercept = y_mean - slope * x_mean
+                x_min = min(x_numeric)
+                x_max = max(x_numeric)
+                trend_data = [
+                    [x_min, slope * x_min + intercept],
+                    [x_max, slope * x_max + intercept],
+                ]
 
     tooltip_formatter = (
         "function(params) {"
@@ -441,17 +444,17 @@ def render_scatter_graph(
         card_chart = ui.echart(card_config)
 
     if on_point_click is not None:
+        def _extract_click_value(args: object) -> object:
+            if not isinstance(args, dict):
+                return None
+            data = args.get("data")
+            if isinstance(data, dict):
+                return data.get("value")
+            return data if data is not None else args.get("value")
 
         def _handle_click(event: object) -> None:
             args = getattr(event, "args", {})
-            if not isinstance(args, dict):
-                return
-            data = args.get("data")
-            value: object
-            if isinstance(data, dict):
-                value = data.get("value")
-            else:
-                value = data if data is not None else args.get("value")
+            value = _extract_click_value(args)
             # Metadata points store workout_index at position 3 in
             # [x, y, date_label, workout_index].
             if isinstance(value, tuple):
@@ -459,7 +462,7 @@ def render_scatter_graph(
             if isinstance(value, list) and len(value) >= 4 and value[3] is not None:
                 on_point_click(value[3])
                 return
-            data_index = args.get("dataIndex")
+            data_index = args.get("dataIndex") if isinstance(args, dict) else None
             if isinstance(data_index, int) and 0 <= data_index < len(chart_data):
                 point = chart_data[data_index]
                 if len(point) >= 4 and point[3] is not None:

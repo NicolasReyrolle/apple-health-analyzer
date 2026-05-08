@@ -535,7 +535,10 @@ def render_period_selector() -> None:
 
 
 async def _refresh_selected_tab_content(tab_name: str) -> None:
-    """Refresh tab content on the next event-loop turn to keep tab switching responsive."""
+    """Refresh tab content on the next event-loop turn to keep tab switching responsive.
+
+    The selected-tab guard avoids stale refreshes when the user switches tabs quickly.
+    """
     await asyncio.sleep(0)
     if state.selected_main_tab != tab_name:
         return
