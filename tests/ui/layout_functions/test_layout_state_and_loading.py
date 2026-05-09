@@ -746,32 +746,30 @@ def test_render_body_health_data_tab_change_schedules_load() -> None:
         tabs_created.append(tabs)
         return tabs
 
-    with ExitStack() as stack:
-        stack.enter_context(patch("ui.layout.ui.row", return_value=DummyContext()))
-        stack.enter_context(patch("ui.layout.ui.input", return_value=DummyComponent()))
-        stack.enter_context(patch("ui.layout.ui.button", return_value=DummyComponent()))
-        stack.enter_context(patch("ui.layout.ui.spinner", return_value=DummyComponent()))
-        stack.enter_context(patch("ui.layout.ui.label", return_value=DummyComponent()))
-        stack.enter_context(patch("ui.layout.app", fake_app))
-        stack.enter_context(patch("ui.layout.ui.tabs", side_effect=_tabs_factory))
-        stack.enter_context(
-            patch(
-                "ui.layout.ui.tab",
-                side_effect=lambda name, _label: DummyTab(name),  # type: ignore[arg-type]
-            )
-        )
-        stack.enter_context(patch("ui.layout.ui.tab_panels", return_value=DummyContext()))
-        stack.enter_context(patch("ui.layout.ui.tab_panel", return_value=DummyContext()))
-        stack.enter_context(patch("ui.layout.stat_card"))
-        stack.enter_context(patch("ui.layout.render_activity_graphs"))
-        stack.enter_context(patch("ui.layout.render_trends_tab"))
-        stack.enter_context(patch("ui.layout.render_statistics_tab"))
-        stack.enter_context(patch("ui.layout.render_health_data_tab"))
-        stack.enter_context(patch("ui.layout.render_running_tab"))
-        stack.enter_context(patch("ui.layout.render_workout_table"))
-        stack.enter_context(patch("ui.layout.render_distance_range_selector"))
-        stack.enter_context(patch("ui.layout.render_duration_range_selector"))
-        health_load_mock = stack.enter_context(patch("ui.layout.schedule_health_data_load"))
+    with (
+        patch("ui.layout.ui.row", return_value=DummyContext()),
+        patch("ui.layout.ui.input", return_value=DummyComponent()),
+        patch("ui.layout.ui.button", return_value=DummyComponent()),
+        patch("ui.layout.ui.spinner", return_value=DummyComponent()),
+        patch("ui.layout.ui.label", return_value=DummyComponent()),
+        patch("ui.layout.app", fake_app),
+        patch("ui.layout.ui.tabs", side_effect=_tabs_factory),
+        patch(
+            "ui.layout.ui.tab",
+            side_effect=lambda name, _label: DummyTab(name),  # type: ignore[arg-type]
+        ),
+        patch("ui.layout.ui.tab_panels", return_value=DummyContext()),
+        patch("ui.layout.ui.tab_panel", return_value=DummyContext()),
+        patch("ui.layout.stat_card"),
+        patch("ui.layout.render_activity_graphs"),
+        patch("ui.layout.render_trends_tab"),
+        patch("ui.layout.render_health_data_tab"),
+        patch("ui.layout.render_running_tab"),
+        patch("ui.layout.render_workout_table"),
+        patch("ui.layout.render_distance_range_selector"),
+        patch("ui.layout.render_duration_range_selector"),
+        patch("ui.layout.schedule_health_data_load") as health_load_mock,
+    ):
         layout.render_body()
         on_change = tabs_created[0].on_change
         on_change(SimpleNamespace(value=SimpleNamespace(name="health_data")))
@@ -789,33 +787,31 @@ def test_render_body_health_data_tab_change_does_not_schedule_refresh() -> None:
         tabs_created.append(tabs)
         return tabs
 
-    with ExitStack() as stack:
-        stack.enter_context(patch("ui.layout.ui.row", return_value=DummyContext()))
-        stack.enter_context(patch("ui.layout.ui.input", return_value=DummyComponent()))
-        stack.enter_context(patch("ui.layout.ui.button", return_value=DummyComponent()))
-        stack.enter_context(patch("ui.layout.ui.spinner", return_value=DummyComponent()))
-        stack.enter_context(patch("ui.layout.ui.label", return_value=DummyComponent()))
-        stack.enter_context(patch("ui.layout.app", fake_app))
-        stack.enter_context(patch("ui.layout.ui.tabs", side_effect=_tabs_factory))
-        stack.enter_context(
-            patch(
-                "ui.layout.ui.tab",
-                side_effect=lambda name, _label: DummyTab(name),  # type: ignore[arg-type]
-            )
-        )
-        stack.enter_context(patch("ui.layout.ui.tab_panels", return_value=DummyContext()))
-        stack.enter_context(patch("ui.layout.ui.tab_panel", return_value=DummyContext()))
-        stack.enter_context(patch("ui.layout.stat_card"))
-        stack.enter_context(patch("ui.layout.render_activity_graphs"))
-        stack.enter_context(patch("ui.layout.render_trends_tab"))
-        stack.enter_context(patch("ui.layout.render_statistics_tab"))
-        stack.enter_context(patch("ui.layout.render_health_data_tab"))
-        stack.enter_context(patch("ui.layout.render_running_tab"))
-        stack.enter_context(patch("ui.layout.render_workout_table"))
-        stack.enter_context(patch("ui.layout.render_distance_range_selector"))
-        stack.enter_context(patch("ui.layout.render_duration_range_selector"))
-        refresh_mock = stack.enter_context(patch("ui.layout.schedule_selected_tab_refresh"))
-        stack.enter_context(patch("ui.layout.schedule_health_data_load"))
+    with (
+        patch("ui.layout.ui.row", return_value=DummyContext()),
+        patch("ui.layout.ui.input", return_value=DummyComponent()),
+        patch("ui.layout.ui.button", return_value=DummyComponent()),
+        patch("ui.layout.ui.spinner", return_value=DummyComponent()),
+        patch("ui.layout.ui.label", return_value=DummyComponent()),
+        patch("ui.layout.app", fake_app),
+        patch("ui.layout.ui.tabs", side_effect=_tabs_factory),
+        patch(
+            "ui.layout.ui.tab",
+            side_effect=lambda name, _label: DummyTab(name),  # type: ignore[arg-type]
+        ),
+        patch("ui.layout.ui.tab_panels", return_value=DummyContext()),
+        patch("ui.layout.ui.tab_panel", return_value=DummyContext()),
+        patch("ui.layout.stat_card"),
+        patch("ui.layout.render_activity_graphs"),
+        patch("ui.layout.render_trends_tab"),
+        patch("ui.layout.render_health_data_tab"),
+        patch("ui.layout.render_running_tab"),
+        patch("ui.layout.render_workout_table"),
+        patch("ui.layout.render_distance_range_selector"),
+        patch("ui.layout.render_duration_range_selector"),
+        patch("ui.layout.schedule_selected_tab_refresh") as refresh_mock,
+        patch("ui.layout.schedule_health_data_load"),
+    ):
         layout.render_body()
         on_change = tabs_created[0].on_change
         on_change(SimpleNamespace(value=SimpleNamespace(name="health_data")))

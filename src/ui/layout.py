@@ -563,9 +563,6 @@ async def _refresh_selected_tab_content(tab_name: str) -> None:
         return
     if tab_name == "running":
         render_running_tab.refresh()
-    elif tab_name == "health_data":
-        render_statistics_tab.refresh()
-        render_health_data_tab.refresh()
 
 
 def render_left_drawer() -> None:
