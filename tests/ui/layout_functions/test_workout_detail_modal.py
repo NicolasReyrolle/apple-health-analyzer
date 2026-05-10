@@ -820,6 +820,30 @@ class TestGetRowRoutes:
         routes = wdm._get_row_routes({"route": route})
         assert routes == [route]
 
+    def test_falls_back_to_route_when_route_parts_is_empty_list(self) -> None:
+        """_get_row_routes should return merged route when route_parts is empty."""
+        from datetime import timedelta
+
+        import pandas as pd
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = pd.Timestamp("2024-01-01").to_pydatetime()
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=base_time + timedelta(seconds=i),
+                    latitude=48.0 + (i * 0.0001),
+                    longitude=2.0 + (i * 0.0001),
+                    altitude=0.0,
+                    speed=3.0,
+                )
+                for i in range(3)
+            ]
+        )
+        routes = wdm._get_row_routes({"route_parts": [], "route": route})
+        assert routes == [route]
+
 
 class TestRowHasActivityData:
     """Tests for the _row_has_activity_data helper."""

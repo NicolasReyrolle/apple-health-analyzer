@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Callable
+from math import isfinite
 from threading import Lock
 from typing import Any, TypeAlias, cast
 from uuid import uuid4
@@ -386,10 +387,21 @@ def _do_refresh_route_tab(
     if not has_route:
         return
 
+    def _point_pair(point: Any) -> list[float] | None:
+        """Return a [lat, lon] pair for map rendering, or None if invalid."""
+        lat = getattr(point, "latitude", None)
+        lon = getattr(point, "longitude", None)
+        if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            return None
+        lat_f, lon_f = float(lat), float(lon)
+        if not (isfinite(lat_f) and isfinite(lon_f)):
+            return None
+        return [lat_f, lon_f]
+
     route_data = [
         {
             "name": t("Route {index}").format(index=idx),
-            "points": [[point.latitude, point.longitude] for point in route.points],
+            "points": [pair for point in route.points if (pair := _point_pair(point)) is not None],
         }
         for idx, route in enumerate(routes, start=1)
         if route.points
@@ -416,6 +428,7 @@ def _do_refresh_route_tab(
 
   L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
     maxZoom: 19,
+    // Keep attribution visible to comply with OSM tile usage requirements.
     attribution: '&copy; OpenStreetMap contributors'
   }}).addTo(map);
 
