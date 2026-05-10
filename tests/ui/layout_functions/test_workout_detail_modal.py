@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from typing import Any
+from unittest.mock import patch
 
 from ui import workout_detail_modal as wdm
 
@@ -208,6 +209,45 @@ class TestCreateWorkoutDetailModal:
         fn(0)  # Start at row 0 → counter shows "1 / 2"
         prev_btn.click()  # Attempt to navigate before the first row
         assert nav_counter._text == "1 / 2"  # Still on row 0
+
+    def test_route_tab_change_triggers_map_render_js(self) -> None:
+        """Switching to the Route tab should render the Leaflet map via run_javascript."""
+        from datetime import timedelta
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = __import__("pandas").Timestamp("2024-01-01").to_pydatetime()
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=base_time + timedelta(seconds=i),
+                    latitude=48.85 + (i * 0.0001),
+                    longitude=2.35 + (i * 0.0001),
+                    altitude=35.0,
+                    speed=3.0,
+                )
+                for i in range(3)
+            ]
+        )
+        rows = [{**_make_row(idx=0), "route": route}]
+        tabs_stub = _DummyElement()
+        js_calls: list[str] = []
+
+        with ExitStack() as stack:
+            for p in _all_patches(tabs_stub=tabs_stub):
+                stack.enter_context(p)
+            stack.enter_context(
+                patch(
+                    "ui.workout_detail_modal.ui.run_javascript",
+                    side_effect=lambda code: js_calls.append(code),
+                )
+            )
+            fn = wdm.create_workout_detail_modal(rows)
+            fn(0)
+            assert not js_calls
+            tabs_stub.fire_value_change("route")
+            assert js_calls
+            assert "L.map" in js_calls[0]
 
 
 class TestActivityTabSection:
@@ -595,10 +635,58 @@ class TestTabEnableState:
             fn = wdm.create_workout_detail_modal(rows)
 
         fn(0)
+        assert not tab_stubs[3]._enabled
+
+    def test_route_tab_disabled_when_no_route(self) -> None:
+        """Route tab should be disabled when the workout has no GPS route."""
+        rows = [_make_row(idx=0, activity_type="Running", raw_activity_type="Running")]
+        tab_stubs, make_tab = self._make_tab_stubs()
+
+        with ExitStack() as stack:
+            for p in _all_patches(tab_side_effect=make_tab):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
         assert not tab_stubs[2]._enabled
 
     def test_splits_tab_enabled_when_route_present(self) -> None:
         """Intervals tab should be enabled when the workout has a non-empty GPS route."""
+        from datetime import timedelta
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = __import__("pandas").Timestamp("2024-01-01 10:00:00").to_pydatetime()
+        points = [
+            RoutePoint(
+                time=base_time + timedelta(seconds=i),
+                latitude=0.0,
+                longitude=0.0,
+                altitude=100.0,
+                speed=3.0,
+            )
+            for i in range(100)
+        ]
+        route = WorkoutRoute(points=points)
+        rows = [
+            {
+                **_make_row(idx=0, activity_type="Running", raw_activity_type="Running"),
+                "route": route,
+                "splits": [],
+            }
+        ]
+        tab_stubs, make_tab = self._make_tab_stubs()
+
+        with ExitStack() as stack:
+            for p in _all_patches(tab_side_effect=make_tab):
+                stack.enter_context(p)
+            fn = wdm.create_workout_detail_modal(rows)
+
+        fn(0)
+        assert tab_stubs[3]._enabled
+
+    def test_route_tab_enabled_when_route_present(self) -> None:
+        """Route tab should be enabled when the workout has a non-empty GPS route."""
         from datetime import timedelta
 
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
@@ -668,6 +756,57 @@ class TestRowHasRoute:
             for i in range(5)
         ]
         assert wdm._row_has_route({"route": WorkoutRoute(points=points)})
+
+
+class TestGetRowRoutes:
+    """Tests for the _get_row_routes helper."""
+
+    def test_prefers_non_empty_route_parts_over_merged_route(self) -> None:
+        """When route_parts is present, _get_row_routes returns only non-empty parts."""
+        from datetime import timedelta
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = __import__("pandas").Timestamp("2024-01-01").to_pydatetime()
+        part = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=base_time + timedelta(seconds=i),
+                    latitude=48.0 + (i * 0.0001),
+                    longitude=2.0 + (i * 0.0001),
+                    altitude=0.0,
+                    speed=3.0,
+                )
+                for i in range(3)
+            ]
+        )
+        merged_route = WorkoutRoute(points=[])
+        routes = wdm._get_row_routes(
+            {"route_parts": [WorkoutRoute(points=[]), part], "route": merged_route}
+        )
+        assert routes == [part]
+
+    def test_falls_back_to_route_when_route_parts_missing(self) -> None:
+        """_get_row_routes should return the merged route when route_parts is absent."""
+        from datetime import timedelta
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = __import__("pandas").Timestamp("2024-01-01").to_pydatetime()
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=base_time + timedelta(seconds=i),
+                    latitude=48.0 + (i * 0.0001),
+                    longitude=2.0 + (i * 0.0001),
+                    altitude=0.0,
+                    speed=3.0,
+                )
+                for i in range(3)
+            ]
+        )
+        routes = wdm._get_row_routes({"route": route})
+        assert routes == [route]
 
 
 class TestRowHasActivityData:

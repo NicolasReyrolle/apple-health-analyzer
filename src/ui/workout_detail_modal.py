@@ -1,7 +1,9 @@
 """Workout detail modal dialog for Apple Health Analyzer."""
 
+import json
 from collections.abc import Callable
 from typing import Any, TypeAlias, cast
+from uuid import uuid4
 
 from nicegui import ui
 
@@ -24,6 +26,8 @@ from ui.css import (
     MODAL_HEADER_ROW_CLASSES,
     MODAL_NAV_COUNTER_CLASSES,
     MODAL_NAV_ROW_CLASSES,
+    MODAL_ROUTE_MAP_CONTAINER_CLASSES,
+    MODAL_ROUTE_MAP_HTML_CLASSES,
     MODAL_SPLITS_TABLE_CLASSES,
     MODAL_SWIM_TABLE_CLASSES,
     MODAL_TAB_PANELS_CLASSES,
@@ -34,6 +38,7 @@ from units import METERS_TO_FEET, METERS_TO_MILES
 
 #: Callable returning a translated label string; alias for readability.
 _LabelFn: TypeAlias = Callable[[], str]
+_LEAFLET_ASSETS_ADDED = False
 
 # ---------------------------------------------------------------------------
 # Shared label-function constants reused across multiple field display lists.
@@ -322,6 +327,125 @@ def _row_has_route(row: dict[str, Any]) -> bool:
     return isinstance(route, WorkoutRoute) and not route.is_empty
 
 
+def _get_row_routes(row: dict[str, Any]) -> list[WorkoutRoute]:
+    """Return non-empty route parts for the row, falling back to the merged route."""
+    route_parts = row.get("route_parts")
+    if isinstance(route_parts, list):
+        valid_parts = [
+            part for part in route_parts if isinstance(part, WorkoutRoute) and not part.is_empty
+        ]
+        if valid_parts:
+            return valid_parts
+    route = row.get("route")
+    if isinstance(route, WorkoutRoute) and not route.is_empty:
+        return [route]
+    return []
+
+
+def _ensure_leaflet_assets() -> None:
+    """Inject Leaflet CSS/JS assets once per process."""
+    global _LEAFLET_ASSETS_ADDED
+    if _LEAFLET_ASSETS_ADDED:
+        return
+    ui.add_head_html(
+        '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />',
+        shared=True,
+    )
+    ui.add_head_html(
+        '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>',
+        shared=True,
+    )
+    _LEAFLET_ASSETS_ADDED = True
+
+
+def _do_refresh_route_tab(
+    no_route_label: Any,
+    route_map: Any,
+    route_map_id: str,
+    row: dict[str, Any],
+) -> None:
+    """Update the Route tab map and markers for the current workout row."""
+    routes = _get_row_routes(row)
+    has_route = bool(routes)
+    no_route_label.set_visibility(not has_route)
+    route_map.set_visibility(has_route)
+    if not has_route:
+        return
+
+    route_data = [
+        {
+            "name": f"{t('Route')} {idx}",
+            "points": [[point.latitude, point.longitude] for point in route.points],
+        }
+        for idx, route in enumerate(routes, start=1)
+        if route.points
+    ]
+    if not route_data:
+        no_route_label.set_visibility(True)
+        route_map.set_visibility(False)
+        return
+
+    js = f"""
+(() => {{
+  const mapId = {json.dumps(route_map_id)};
+  const routeData = {json.dumps(route_data)};
+  const startLabel = {json.dumps(t("Start"))};
+  const endLabel = {json.dumps(t("End"))};
+  const mapStore = window.__ahaRouteMaps || (window.__ahaRouteMaps = {{}});
+
+  if (mapStore[mapId]) {{
+    mapStore[mapId].remove();
+  }}
+
+  const map = L.map(mapId, {{ zoomControl: true }});
+  mapStore[mapId] = map;
+
+  L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }}).addTo(map);
+
+  const colors = ['#2563eb', '#ef4444', '#10b981', '#a855f7', '#f59e0b'];
+  const overlayLayers = {{}};
+  const allPoints = [];
+
+  routeData.forEach((route, index) => {{
+    if (!route.points || route.points.length === 0) {{
+      return;
+    }}
+    const color = colors[index % colors.length];
+    const polyline = L.polyline(route.points, {{ color, weight: 4, opacity: 0.9 }})
+      .bindTooltip(route.name);
+    polyline.addTo(map);
+    overlayLayers[route.name] = polyline;
+    allPoints.push(...route.points);
+
+    const startPoint = route.points[0];
+    const endPoint = route.points[route.points.length - 1];
+    L.circleMarker(startPoint, {{ radius: 6, color: '#16a34a', fillOpacity: 1 }})
+      .bindTooltip(`${{startLabel}} - ${{route.name}}`)
+      .addTo(map);
+    L.circleMarker(endPoint, {{ radius: 6, color: '#dc2626', fillOpacity: 1 }})
+      .bindTooltip(`${{endLabel}} - ${{route.name}}`)
+      .addTo(map);
+  }});
+
+  if (routeData.length > 1) {{
+    L.control.layers(null, overlayLayers, {{ collapsed: false }}).addTo(map);
+  }}
+
+  if (allPoints.length > 0) {{
+    map.fitBounds(allPoints, {{ padding: [20, 20] }});
+  }} else {{
+    map.setView([0, 0], 1);
+  }}
+
+  setTimeout(() => map.invalidateSize(), 0);
+}})();
+"""
+    ui.run_javascript(js)
+
+
 #: Maps each supported raw activity type to the Activity-tab field keys used by
 #: :func:`_row_has_activity_data`.  Derived from
 #: :data:`~logic.workout_detail_schema.PER_TYPE_FIELDS` using the ``display_row_key``
@@ -470,7 +594,7 @@ def create_workout_detail_modal(
     Navigation within the open modal is supported via left/right arrow buttons.
     The dialog closes on Esc (Quasar default) or when the close button is clicked.
 
-    The modal is organised into three tabs:
+    The modal is organised into four tabs:
 
     * **Overview** – generic workout attributes (date, distance, calories, heart rate,
       VO₂ max, elevation, etc.) shared by all workout types.
@@ -481,6 +605,9 @@ def create_workout_detail_modal(
       Swimming workouts show location, lap length, and total stroke count.
       Cycling workouts show speed, cadence, power, and functional threshold power.
       Other activity types show a placeholder message; the tab is disabled.
+    * **Route** – interactive map for workouts with GPS points.  Route geometry is
+      rendered from ``route_parts`` (when available) or the merged ``route`` field,
+      with start/end markers and selectable overlays for multi-part routes.
     * **Intervals** – per-workout interval data.  For Swimming workouts each row
       represents one active set with distance, time, stroke style, average SWOLF,
       and rest duration.  For workouts with a GPS route the table shows per-km (or
@@ -497,7 +624,9 @@ def create_workout_detail_modal(
     if not rows:
         return lambda _: None
 
+    _ensure_leaflet_assets()
     modal_state: dict[str, int] = {"index": 0}
+    route_map_id = f"workout-route-map-{uuid4().hex}"
 
     with ui.dialog() as dialog:
         with ui.card().classes(MODAL_CARD_CLASSES):
@@ -510,6 +639,7 @@ def create_workout_detail_modal(
             with ui.tabs().classes(TABS_FULL_CLASSES) as detail_tabs:
                 ui.tab("overview", t("Overview"))
                 activity_tab = ui.tab("activity", t("Activity"))
+                route_tab = ui.tab("route", t("Route"))
                 intervals_tab = ui.tab("intervals", t("Intervals"))
 
             # ---- Tab panels ----
@@ -644,6 +774,16 @@ def create_workout_detail_modal(
                         .props(TABLE_DENSE_FLAT_PROPS)
                     )
 
+                # Route tab: interactive Leaflet route map with start/end markers
+                with ui.tab_panel("route"):
+                    no_route_label = ui.label(t("No GPS route available.")).classes(
+                        LABEL_MUTED_CLASSES
+                    )
+                    with ui.row().classes(MODAL_ROUTE_MAP_CONTAINER_CLASSES):
+                        route_map = ui.html(f'<div id="{route_map_id}"></div>').classes(
+                            MODAL_ROUTE_MAP_HTML_CLASSES
+                        )
+
             # ---- Navigation footer ----
             with ui.row().classes(MODAL_NAV_ROW_CLASSES):
                 prev_btn = ui.button(
@@ -682,6 +822,10 @@ def create_workout_detail_modal(
             no_swim_laps_label, swim_table, no_splits_label, splits_table, splits_columns, row
         )
 
+    def _refresh_route_tab(row: dict[str, Any]) -> None:
+        """Delegate to module-level helper; updates Route tab map and route visibility."""
+        _do_refresh_route_tab(no_route_label, route_map, route_map_id, row)
+
     def _refresh() -> None:
         """Update all modal elements to reflect the current workout."""
         idx = modal_state["index"]
@@ -691,11 +835,15 @@ def create_workout_detail_modal(
         _refresh_header(idx, n, row)
         _update_fields(field_rows, row)
         _refresh_activity_tab(row)
-        intervals_tab.set_enabled(_row_has_swim_laps(row) or _row_has_route(row))
+        has_route = bool(_get_row_routes(row))
+        route_tab.set_enabled(has_route)
+        intervals_tab.set_enabled(_row_has_swim_laps(row) or has_route)
         # Only refresh the Intervals tab when it is currently active; switching to
         # it triggers _on_tab_change which handles the initial load.
         if detail_tabs.value == "intervals":
             _refresh_intervals_tab(row)
+        if detail_tabs.value == "route":
+            _refresh_route_tab(row)
 
     def _navigate(delta: int) -> None:
         """Move to the next or previous workout by *delta* steps."""
@@ -705,15 +853,17 @@ def create_workout_detail_modal(
             _refresh()
 
     def _on_tab_change(e: Any) -> None:
-        """Refresh the Intervals tab when the user switches to it.
+        """Refresh route-dependent tabs when the user switches to them.
 
         Swim intervals are loaded on first open and GPS splits are computed
         lazily (via :func:`_compute_splits_lazy`) and cached in
         ``row["splits"]`` for instant display on subsequent navigations.
-        Other tab changes are ignored.
+        The Route tab renders a Leaflet map from the workout's GPS geometry.
         """
         if e.value == "intervals":
             _refresh_intervals_tab(rows[modal_state["index"]])
+        if e.value == "route":
+            _refresh_route_tab(rows[modal_state["index"]])
 
     detail_tabs.on_value_change(_on_tab_change)
 
