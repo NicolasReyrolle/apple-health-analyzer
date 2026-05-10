@@ -214,9 +214,11 @@ class TestCreateWorkoutDetailModal:
         """Switching to the Route tab should render the Leaflet map via run_javascript."""
         from datetime import timedelta
 
+        import pandas as pd
+
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
-        base_time = __import__("pandas").Timestamp("2024-01-01").to_pydatetime()
+        base_time = pd.Timestamp("2024-01-01").to_pydatetime()
         route = WorkoutRoute(
             points=[
                 RoutePoint(
@@ -654,9 +656,11 @@ class TestTabEnableState:
         """Intervals tab should be enabled when the workout has a non-empty GPS route."""
         from datetime import timedelta
 
+        import pandas as pd
+
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
-        base_time = __import__("pandas").Timestamp("2024-01-01 10:00:00").to_pydatetime()
+        base_time = pd.Timestamp("2024-01-01 10:00:00").to_pydatetime()
         points = [
             RoutePoint(
                 time=base_time + timedelta(seconds=i),
@@ -689,9 +693,11 @@ class TestTabEnableState:
         """Route tab should be enabled when the workout has a non-empty GPS route."""
         from datetime import timedelta
 
+        import pandas as pd
+
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
-        base_time = __import__("pandas").Timestamp("2024-01-01 10:00:00").to_pydatetime()
+        base_time = pd.Timestamp("2024-01-01 10:00:00").to_pydatetime()
         points = [
             RoutePoint(
                 time=base_time + timedelta(seconds=i),
@@ -742,9 +748,11 @@ class TestRowHasRoute:
         """Row with a non-empty WorkoutRoute should return True."""
         from datetime import timedelta
 
+        import pandas as pd
+
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
-        base_time = __import__("pandas").Timestamp("2024-01-01").to_pydatetime()
+        base_time = pd.Timestamp("2024-01-01").to_pydatetime()
         points = [
             RoutePoint(
                 time=base_time + timedelta(seconds=i),
@@ -765,9 +773,11 @@ class TestGetRowRoutes:
         """When route_parts is present, _get_row_routes returns only non-empty parts."""
         from datetime import timedelta
 
+        import pandas as pd
+
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
-        base_time = __import__("pandas").Timestamp("2024-01-01").to_pydatetime()
+        base_time = pd.Timestamp("2024-01-01").to_pydatetime()
         part = WorkoutRoute(
             points=[
                 RoutePoint(
@@ -790,9 +800,11 @@ class TestGetRowRoutes:
         """_get_row_routes should return the merged route when route_parts is absent."""
         from datetime import timedelta
 
+        import pandas as pd
+
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
-        base_time = __import__("pandas").Timestamp("2024-01-01").to_pydatetime()
+        base_time = pd.Timestamp("2024-01-01").to_pydatetime()
         route = WorkoutRoute(
             points=[
                 RoutePoint(

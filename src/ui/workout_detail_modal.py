@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Callable
+from threading import Lock
 from typing import Any, TypeAlias, cast
 from uuid import uuid4
 
@@ -39,6 +40,7 @@ from units import METERS_TO_FEET, METERS_TO_MILES
 #: Callable returning a translated label string; alias for readability.
 _LabelFn: TypeAlias = Callable[[], str]
 _LEAFLET_ASSETS_ADDED = False
+_LEAFLET_ASSETS_LOCK = Lock()
 
 # ---------------------------------------------------------------------------
 # Shared label-function constants reused across multiple field display lists.
@@ -345,17 +347,29 @@ def _get_row_routes(row: dict[str, Any]) -> list[WorkoutRoute]:
 def _ensure_leaflet_assets() -> None:
     """Inject Leaflet CSS/JS assets once per process."""
     global _LEAFLET_ASSETS_ADDED
-    if _LEAFLET_ASSETS_ADDED:
-        return
-    ui.add_head_html(
-        '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />',
-        shared=True,
-    )
-    ui.add_head_html(
-        '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>',
-        shared=True,
-    )
-    _LEAFLET_ASSETS_ADDED = True
+    with _LEAFLET_ASSETS_LOCK:
+        if _LEAFLET_ASSETS_ADDED:
+            return
+        leaflet_css = (
+            '<link rel="stylesheet" '
+            'href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" '
+            'integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" '
+            'crossorigin="" />'
+        )
+        leaflet_js = (
+            '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" '
+            'integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" '
+            'crossorigin=""></script>'
+        )
+        ui.add_head_html(
+            leaflet_css,
+            shared=True,
+        )
+        ui.add_head_html(
+            leaflet_js,
+            shared=True,
+        )
+        _LEAFLET_ASSETS_ADDED = True
 
 
 def _do_refresh_route_tab(
@@ -374,7 +388,7 @@ def _do_refresh_route_tab(
 
     route_data = [
         {
-            "name": f"{t('Route')} {idx}",
+            "name": t("Route {index}").format(index=idx),
             "points": [[point.latitude, point.longitude] for point in route.points],
         }
         for idx, route in enumerate(routes, start=1)
@@ -440,6 +454,8 @@ def _do_refresh_route_tab(
     map.setView([0, 0], 1);
   }}
 
+  // Defer size invalidation until after the tab panel is painted; without this,
+  // Leaflet may calculate the map size while the panel is still hidden.
   setTimeout(() => map.invalidateSize(), 0);
 }})();
 """
