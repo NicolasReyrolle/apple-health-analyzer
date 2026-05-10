@@ -390,6 +390,72 @@ class TestLoadRoute:
         assert result is not None
         assert result.points == []
 
+    def test_load_route_logs_malformed_trackpoint_error_details(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Malformed trackpoints should include error details in debug logs."""
+        zip_path = tmp_path / "route_export.zip"
+        gpx_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+    <trk>
+        <trkseg>
+            <trkpt lat="48.8566" lon="2.3522">
+                <time>not-a-time</time>
+            </trkpt>
+        </trkseg>
+    </trk>
+</gpx>
+"""
+        with ZipFile(zip_path, "w") as zf:
+            zf.writestr("apple_health_export/workout-routes/malformed_route.gpx", gpx_content)
+
+        parser = ExportParser()
+        with ZipFile(zip_path, "r") as zf, caplog.at_level("DEBUG"):
+            result = parser._load_route(zf, "/workout-routes/malformed_route.gpx")
+
+        assert result is not None
+        assert result.points == []
+        assert any(
+            "Skipping malformed GPX trackpoint for /workout-routes/malformed_route.gpx (error:"
+            in record.message
+            for record in caplog.records
+        )
+
+    def test_load_route_missing_lat_lon_does_not_emit_duplicate_malformed_log(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Missing coordinates should only emit the dedicated missing-lat/lon log."""
+        zip_path = tmp_path / "route_export.zip"
+        gpx_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+    <trk>
+        <trkseg>
+            <trkpt lat="" lon="">
+                <time>2024-01-01T10:00:00Z</time>
+            </trkpt>
+        </trkseg>
+    </trk>
+</gpx>
+"""
+        with ZipFile(zip_path, "w") as zf:
+            zf.writestr("apple_health_export/workout-routes/missing_coords_route.gpx", gpx_content)
+
+        parser = ExportParser()
+        with ZipFile(zip_path, "r") as zf, caplog.at_level("DEBUG"):
+            result = parser._load_route(zf, "/workout-routes/missing_coords_route.gpx")
+
+        assert result is not None
+        assert result.points == []
+        assert any(
+            "Skipping GPX trackpoint with missing latitude/longitude" in record.message
+            for record in caplog.records
+        )
+        assert not any(
+            "Skipping malformed GPX trackpoint for /workout-routes/missing_coords_route.gpx"
+            in record.message
+            for record in caplog.records
+        )
+
 
 class TestProcessWorkoutRoute:
     """Test the _process_workout_route method."""

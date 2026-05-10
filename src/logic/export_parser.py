@@ -556,12 +556,15 @@ class ExportParser:
                         point_data = self._extract_gpx_point_data(elem)
                         try:
                             points.append(self._create_route_point(*point_data))
-                        except (TypeError, ValueError):
-                            _logger.debug(
-                                "Skipping malformed GPX trackpoint for %s: %s",
-                                route_path,
-                                elem.attrib,
-                            )
+                        except (TypeError, ValueError) as exc:
+                            # Missing lat/lon is already reported in _extract_gpx_point_data.
+                            if point_data[0] and point_data[1]:
+                                _logger.debug(
+                                    "Skipping malformed GPX trackpoint for %s (error: %s): %s",
+                                    route_path,
+                                    exc,
+                                    elem.attrib,
+                                )
                         elem.clear()
                 return WorkoutRoute(points=points)
         except KeyError:
