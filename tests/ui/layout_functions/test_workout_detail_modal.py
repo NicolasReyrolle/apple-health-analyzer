@@ -210,8 +210,8 @@ class TestCreateWorkoutDetailModal:
         prev_btn.click()  # Attempt to navigate before the first row
         assert nav_counter._text == "1 / 2"  # Still on row 0
 
-    def test_route_tab_change_triggers_map_render_js(self) -> None:
-        """Switching to the Route tab should render the Leaflet map via run_javascript."""
+    def test_route_tab_change_triggers_route_refresh(self) -> None:
+        """Switching to the Route tab should trigger Route-tab refresh."""
         from datetime import timedelta
 
         import pandas as pd
@@ -233,23 +233,24 @@ class TestCreateWorkoutDetailModal:
         )
         rows = [{**_make_row(idx=0), "route": route}]
         tabs_stub = _DummyElement()
-        js_calls: list[str] = []
+        route_refresh_calls: list[dict[str, Any]] = []
 
         with ExitStack() as stack:
             for p in _all_patches(tabs_stub=tabs_stub):
                 stack.enter_context(p)
             stack.enter_context(
                 patch(
-                    "ui.workout_detail_modal.ui.run_javascript",
-                    side_effect=lambda code: js_calls.append(code),
+                    "ui.workout_detail_modal._do_refresh_route_tab",
+                    side_effect=lambda _no_route_label, _route_map, row: route_refresh_calls.append(
+                        row
+                    ),
                 )
             )
             fn = wdm.create_workout_detail_modal(rows)
             fn(0)
-            assert not js_calls
+            assert not route_refresh_calls
             tabs_stub.fire_value_change("route")
-            assert js_calls
-            assert "L.map" in js_calls[0]
+            assert route_refresh_calls
 
 
 class TestActivityTabSection:

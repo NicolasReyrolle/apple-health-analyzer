@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 from unittest.mock import patch
+from uuid import uuid4
 
 
 def _make_row(
@@ -66,6 +67,7 @@ class _DummyElement:
         self._visible = True
         self._enabled = True
         self._text = ""
+        self.id = str(uuid4())
         self._props_added: list[str] = []
         self._props_removed: list[str] = []
         self.rows: list[Any] = []
@@ -129,6 +131,35 @@ class _DummyElement:
         container.  This stub does nothing to avoid runtime errors in unit tests
         where no actual NiceGUI context is active.
         """
+
+    def clear_layers(self) -> None:
+        """Stub for ui.leaflet.clear_layers()."""
+
+    def tile_layer(self, *_a: Any, **_kw: Any) -> _DummyElement:
+        """Stub for ui.leaflet.tile_layer()."""
+        return self
+
+    def generic_layer(self, *_a: Any, **_kw: Any) -> _DummyElement:
+        """Stub for ui.leaflet.generic_layer()."""
+        return _DummyElement()
+
+    def marker(self, *_a: Any, **_kw: Any) -> _DummyElement:
+        """Stub for ui.leaflet.marker()."""
+        return _DummyElement()
+
+    def run_layer_method(self, *_a: Any, **_kw: Any) -> _DummyElement:
+        """Stub for ui.leaflet.run_layer_method()."""
+        return self
+
+    def run_map_method(self, *_a: Any, **_kw: Any) -> _DummyElement:
+        """Stub for ui.leaflet.run_map_method()."""
+        return self
+
+    def set_center(self, *_a: Any, **_kw: Any) -> None:
+        """Stub for ui.leaflet.set_center()."""
+
+    def set_zoom(self, *_a: Any, **_kw: Any) -> None:
+        """Stub for ui.leaflet.set_zoom()."""
 
     def open(self) -> None:
         """Stub for dialog.open()."""
@@ -202,6 +233,7 @@ def _all_patches(
             "ui.workout_detail_modal.ui.table",
             side_effect=table_side_effect or (lambda *a, **kw: _DummyElement()),
         ),
+        patch("ui.workout_detail_modal.ui.leaflet", return_value=stub),
         patch("ui.workout_detail_modal.ui.html", return_value=stub),
         patch("ui.workout_detail_modal.ui.add_head_html", return_value=None),
         patch("ui.workout_detail_modal.ui.run_javascript", return_value=None),

@@ -1,11 +1,8 @@
 """Workout detail modal dialog for Apple Health Analyzer."""
 
-import json
 from collections.abc import Callable
 from math import isfinite
-from threading import Lock
 from typing import Any, TypeAlias, cast
-from uuid import uuid4
 
 from nicegui import ui
 
@@ -40,8 +37,6 @@ from units import METERS_TO_FEET, METERS_TO_MILES
 
 #: Callable returning a translated label string; alias for readability.
 _LabelFn: TypeAlias = Callable[[], str]
-_LEAFLET_ASSETS_ADDED = False
-_LEAFLET_ASSETS_LOCK = Lock()
 
 # ---------------------------------------------------------------------------
 # Shared label-function constants reused across multiple field display lists.
@@ -345,38 +340,9 @@ def _get_row_routes(row: dict[str, Any]) -> list[WorkoutRoute]:
     return []
 
 
-def _ensure_leaflet_assets() -> None:
-    """Inject Leaflet CSS/JS assets once per process."""
-    global _LEAFLET_ASSETS_ADDED
-    with _LEAFLET_ASSETS_LOCK:
-        if _LEAFLET_ASSETS_ADDED:
-            return
-        leaflet_css = (
-            '<link rel="stylesheet" '
-            'href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" '
-            'integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" '
-            'crossorigin="" />'
-        )
-        leaflet_js = (
-            '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" '
-            'integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" '
-            'crossorigin=""></script>'
-        )
-        ui.add_head_html(
-            leaflet_css,
-            shared=True,
-        )
-        ui.add_head_html(
-            leaflet_js,
-            shared=True,
-        )
-        _LEAFLET_ASSETS_ADDED = True
-
-
 def _do_refresh_route_tab(
     no_route_label: Any,
     route_map: Any,
-    route_map_id: str,
     row: dict[str, Any],
 ) -> None:
     """Update the Route tab map and markers for the current workout row."""
@@ -398,7 +364,7 @@ def _do_refresh_route_tab(
             return None
         return [lat_f, lon_f]
 
-    route_data = [
+    route_data: list[dict[str, Any]] = [
         {
             "name": t("Route {index}").format(index=idx),
             "points": [pair for point in route.points if (pair := _point_pair(point)) is not None],
@@ -411,68 +377,56 @@ def _do_refresh_route_tab(
         route_map.set_visibility(False)
         return
 
-    js = f"""
-(() => {{
-  const mapId = {json.dumps(route_map_id)};
-  const routeData = {json.dumps(route_data)};
-  const startLabel = {json.dumps(t("Start"))};
-  const endLabel = {json.dumps(t("End"))};
-  const mapStore = window.__ahaRouteMaps || (window.__ahaRouteMaps = {{}});
+    route_map.clear_layers()
+    route_map.tile_layer(
+        url_template=r"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        options={
+            "maxZoom": 19,
+            "attribution": "&copy; OpenStreetMap contributors",
+        },
+    )
 
-  if (mapStore[mapId]) {{
-    mapStore[mapId].remove();
-  }}
+    colors = ["#2563eb", "#ef4444", "#10b981", "#a855f7", "#f59e0b"]
+    all_points: list[list[float]] = []
+    start_label = t("Start")
+    end_label = t("End")
 
-  const map = L.map(mapId, {{ zoomControl: true }});
-  mapStore[mapId] = map;
+    for index, route in enumerate(route_data):
+        points = cast(list[list[float]], route["points"])
+        if not points:
+            continue
+        color = colors[index % len(colors)]
+        polyline = route_map.generic_layer(
+            name="polyline",
+            args=[points, {"color": color, "weight": 4, "opacity": 0.9}],
+        )
+        route_map.run_layer_method(polyline.id, "bindTooltip", route["name"])
+        all_points.extend(points)
 
-  L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-    maxZoom: 19,
-    // Keep attribution visible to comply with OSM tile usage requirements.
-    attribution: '&copy; OpenStreetMap contributors'
-  }}).addTo(map);
+        start_marker = route_map.generic_layer(
+            name="circleMarker",
+            args=[points[0], {"radius": 6, "color": "#16a34a", "fillOpacity": 1}],
+        )
+        route_map.run_layer_method(
+            start_marker.id,
+            "bindTooltip",
+            f"{start_label} - {route['name']}",
+        )
+        end_marker = route_map.generic_layer(
+            name="circleMarker",
+            args=[points[-1], {"radius": 6, "color": "#dc2626", "fillOpacity": 1}],
+        )
+        route_map.run_layer_method(
+            end_marker.id,
+            "bindTooltip",
+            f"{end_label} - {route['name']}",
+        )
 
-  const colors = ['#2563eb', '#ef4444', '#10b981', '#a855f7', '#f59e0b'];
-  const overlayLayers = {{}};
-  const allPoints = [];
-
-  routeData.forEach((route, index) => {{
-    if (!route.points || route.points.length === 0) {{
-      return;
-    }}
-    const color = colors[index % colors.length];
-    const polyline = L.polyline(route.points, {{ color, weight: 4, opacity: 0.9 }})
-      .bindTooltip(route.name);
-    polyline.addTo(map);
-    overlayLayers[route.name] = polyline;
-    allPoints.push(...route.points);
-
-    const startPoint = route.points[0];
-    const endPoint = route.points[route.points.length - 1];
-    L.circleMarker(startPoint, {{ radius: 6, color: '#16a34a', fillOpacity: 1 }})
-      .bindTooltip(`${{startLabel}} - ${{route.name}}`)
-      .addTo(map);
-    L.circleMarker(endPoint, {{ radius: 6, color: '#dc2626', fillOpacity: 1 }})
-      .bindTooltip(`${{endLabel}} - ${{route.name}}`)
-      .addTo(map);
-  }});
-
-  if (routeData.length > 1) {{
-    L.control.layers(null, overlayLayers, {{ collapsed: false }}).addTo(map);
-  }}
-
-  if (allPoints.length > 0) {{
-    map.fitBounds(allPoints, {{ padding: [20, 20] }});
-  }} else {{
-    map.setView([0, 0], 1);
-  }}
-
-  // Defer size invalidation until after the tab panel is painted; without this,
-  // Leaflet may calculate the map size while the panel is still hidden.
-  setTimeout(() => map.invalidateSize(), 0);
-}})();
-"""
-    ui.run_javascript(js)
+    if all_points:
+        route_map.run_map_method("fitBounds", all_points, {"padding": [20, 20]})
+    else:
+        route_map.set_center((0.0, 0.0))
+        route_map.set_zoom(1)
 
 
 #: Maps each supported raw activity type to the Activity-tab field keys used by
@@ -636,7 +590,7 @@ def create_workout_detail_modal(
       Other activity types show a placeholder message; the tab is disabled.
     * **Route** – interactive map for workouts with GPS points.  Route geometry is
       rendered from ``route_parts`` (when available) or the merged ``route`` field,
-      with start/end markers and selectable overlays for multi-part routes.
+      with start/end markers and per-part colored polylines for multi-part routes.
     * **Intervals** – per-workout interval data.  For Swimming workouts each row
       represents one active set with distance, time, stroke style, average SWOLF,
       and rest duration.  For workouts with a GPS route the table shows per-km (or
@@ -653,9 +607,7 @@ def create_workout_detail_modal(
     if not rows:
         return lambda _: None
 
-    _ensure_leaflet_assets()
     modal_state: dict[str, int] = {"index": 0}
-    route_map_id = f"workout-route-map-{uuid4().hex}"
 
     with ui.dialog() as dialog:
         with ui.card().classes(MODAL_CARD_CLASSES):
@@ -809,7 +761,11 @@ def create_workout_detail_modal(
                         LABEL_MUTED_CLASSES
                     )
                     with ui.row().classes(MODAL_ROUTE_MAP_CONTAINER_CLASSES):
-                        route_map = ui.html(f'<div id="{route_map_id}"></div>').classes(
+                        route_map = ui.leaflet(
+                            center=(0.0, 0.0),
+                            zoom=13,
+                            options={"zoomControl": True},
+                        ).classes(
                             MODAL_ROUTE_MAP_HTML_CLASSES
                         )
 
@@ -853,7 +809,7 @@ def create_workout_detail_modal(
 
     def _refresh_route_tab(row: dict[str, Any]) -> None:
         """Delegate to module-level helper; updates Route tab map and route visibility."""
-        _do_refresh_route_tab(no_route_label, route_map, route_map_id, row)
+        _do_refresh_route_tab(no_route_label, route_map, row)
 
     def _refresh() -> None:
         """Update all modal elements to reflect the current workout."""
