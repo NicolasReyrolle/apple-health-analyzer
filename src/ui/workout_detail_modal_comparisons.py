@@ -292,7 +292,8 @@ def find_similar_route_workouts(
         ):
             continue
         # Compare intermediate waypoints using the merged routes so multi-segment
-        # workouts are evaluated across their full GPS path.
+        # workouts are evaluated across their full GPS path.  When segments are not
+        # GPS-adjacent, _merge_adjacent_route_parts falls back to the first segment.
         candidate_routes = _get_row_routes(row)
         candidate_merged = _merge_adjacent_route_parts(candidate_routes)
         if not _routes_shape_match(current_merged, candidate_merged):

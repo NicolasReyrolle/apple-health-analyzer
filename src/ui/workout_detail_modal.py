@@ -41,7 +41,7 @@ from ui.workout_detail_modal_comparisons import (
     _do_refresh_comparisons_tab,
     _get_row_routes,
 )
-from units import METERS_TO_MILES  # noqa: E402 – after local imports per project convention
+from units import METERS_TO_MILES
 
 #: Callable returning a translated label string; alias for readability.
 _LabelFn: TypeAlias = Callable[[], str]
