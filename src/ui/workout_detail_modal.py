@@ -622,15 +622,18 @@ def _pace_from_row(row: dict[str, Any], distance_unit: str) -> str:
 def _format_duration_diff(duration_s: float, best_duration_s: float) -> str:
     """Format the duration difference relative to the best (fastest) performance.
 
-    The best performance has no offset and is displayed as ``"–"``.  All other
-    entries are formatted as ``"+mm:ss"`` (e.g. ``"+1:30"``).
+    The best performance has no offset and is displayed as ``"–"``.  Entries
+    that are equal to or faster than the best (i.e. ``diff_s <= 0``) also
+    return ``"–"``; in a correctly sorted leaderboard this only occurs for
+    rank 1 (or if two workouts have identical durations).
 
     Args:
         duration_s:      Duration of the current entry in seconds.
         best_duration_s: Duration of the rank-1 entry in seconds.
 
     Returns:
-        ``"–"`` when the entry is the best, otherwise a ``"+mm:ss"`` string.
+        ``"–"`` when the entry matches or beats the best, otherwise a
+        ``"+mm:ss"`` string (e.g. ``"+1:30"``).
     """
     diff_s = round(duration_s - best_duration_s)
     if diff_s <= 0:
@@ -676,6 +679,11 @@ def _build_comparison_display_rows(
             current_rank = i + 1
             break
 
+    # best_duration_s is only used when `similar` is non-empty (the loop below
+    # always has at least one entry when called from _do_refresh_comparisons_tab
+    # which guards on `len(similar) >= 2`).  The 0.0 fallback is a safe default
+    # that makes _format_duration_diff return "–" for all rows in the unlikely
+    # edge case of an empty list reaching this function directly.
     best_duration_s: float = float(similar[0].get("duration_sort") or 0.0) if similar else 0.0
 
     display_rows: list[dict[str, Any]] = []

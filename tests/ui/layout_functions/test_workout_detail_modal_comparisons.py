@@ -204,7 +204,7 @@ class TestFindSimilarRouteWorkouts:
         assert result == []
 
     def test_diverging_midpoint_excluded(self) -> None:
-        """Route whose midpoint deviates more than waypoint threshold must be excluded."""
+        """Route diverging at intermediate waypoints must be excluded."""
         # current: straight north along lon 2.35
         current_pts = [
             (48.850, 2.350),
