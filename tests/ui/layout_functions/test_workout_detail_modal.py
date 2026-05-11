@@ -295,12 +295,12 @@ class TestCreateWorkoutDetailModal:
         no_route_label = _DummyElement()
         route_map = _DummyElement()
 
-        def execute_bg_task_immediately(coro: Any) -> Any:
+        def run_background_task_synchronously(coro: Any) -> Any:
             return asyncio.run(coro)
 
         with patch(
             "ui.workout_detail_modal.background_tasks.create",
-            side_effect=execute_bg_task_immediately,
+            side_effect=run_background_task_synchronously,
         ) as create_bg:
             wdm._do_refresh_route_tab(no_route_label, route_map, row)
 

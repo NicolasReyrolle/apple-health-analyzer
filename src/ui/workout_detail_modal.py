@@ -435,8 +435,8 @@ def _do_refresh_route_tab(
 async def _fit_route_bounds_after_init(route_map: Any, all_points: list[list[float]]) -> None:
     """Fit map bounds after Leaflet map initialization and tab layout completion."""
     await route_map.initialized()
-    # Yield once so the Route tab panel can complete its visible layout pass before
-    # we invalidate size and fit bounds; this avoids stale dimensions from hidden tabs.
+    # Yield control to the event loop so the Route tab panel can complete its
+    # visible layout pass before we invalidate size and fit bounds.
     await asyncio.sleep(0)
     route_map.run_map_method("invalidateSize", False)
     route_map.run_map_method("fitBounds", all_points, {"padding": [20, 20]})
