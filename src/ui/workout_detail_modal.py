@@ -532,12 +532,12 @@ def find_similar_route_workouts(
             continue
         r_s_lat, r_s_lon, r_e_lat, r_e_lon = endpoints
         if (
-            WorkoutRoute._haversine_m(c_s_lat, c_s_lon, r_s_lat, r_s_lon)
+            WorkoutRoute.haversine_m(c_s_lat, c_s_lon, r_s_lat, r_s_lon)
             > _SIMILAR_ROUTE_START_END_RADIUS_M
         ):
             continue
         if (
-            WorkoutRoute._haversine_m(c_e_lat, c_e_lon, r_e_lat, r_e_lon)
+            WorkoutRoute.haversine_m(c_e_lat, c_e_lon, r_e_lat, r_e_lon)
             > _SIMILAR_ROUTE_START_END_RADIUS_M
         ):
             continue

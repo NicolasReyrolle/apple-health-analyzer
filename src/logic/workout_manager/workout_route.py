@@ -90,7 +90,7 @@ class WorkoutRoute:
         return self._sorted_times_cache
 
     @staticmethod
-    def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Calculate the Haversine distance between two GPS points in meters."""
         r = 6_371_000.0
         p1, p2 = radians(lat1), radians(lat2)
@@ -119,7 +119,7 @@ class WorkoutRoute:
             if avg_speed > 0.0 and delta_t > 0.0:
                 segment_distance = avg_speed * delta_t
             else:
-                segment_distance = self._haversine_m(
+                segment_distance = self.haversine_m(
                     previous.latitude,
                     previous.longitude,
                     current.latitude,

@@ -159,7 +159,7 @@ class TestFindSimilarRouteWorkouts:
     def test_distant_start_point_excluded(self) -> None:
         """Row whose start point is far away must be excluded."""
         route_a = _build_route([(48.85, 2.35), (48.87, 2.37)])
-        # Start ~10 km away (lat shifted by ~0.09 deg ≈ 10 km)
+        # Start ~111 km away (lat shifted by 1.0 deg ≈ 111 km at this latitude)
         route_b = _build_route([(49.85, 2.35), (48.87, 2.37)])
         current = _make_row_with_route(idx=0, route=route_a)
         far = _make_row_with_route(idx=1, route=route_b)
