@@ -367,7 +367,7 @@ def _do_refresh_route_tab(
 
     route_data: list[dict[str, Any]] = [
         {
-            "name": t("Route {index}").format(index=idx),
+            "name": t("Route {index}", index=str(idx)),
             "points": [pair for point in route.points if (pair := _point_pair(point)) is not None],
         }
         for idx, route in enumerate(routes, start=1)

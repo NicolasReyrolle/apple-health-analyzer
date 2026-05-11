@@ -309,6 +309,116 @@ class TestCreateWorkoutDetailModal:
         assert route_map._run_map_method_calls[-1][0][0] == "fitBounds"
 
 
+class TestRouteTabLocalizationAndCoverage:
+    """Focused tests for route tab localization and route-parts behavior."""
+
+    @staticmethod
+    def _build_route(points: list[tuple[float, float]]) -> Any:
+        from datetime import timedelta
+
+        import pandas as pd
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = pd.Timestamp("2024-01-01 10:00:00").to_pydatetime()
+        return WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=base_time + timedelta(seconds=i),
+                    latitude=lat,
+                    longitude=lon,
+                    altitude=100.0,
+                    speed=3.0,
+                )
+                for i, (lat, lon) in enumerate(points)
+            ]
+        )
+
+    def test_get_row_routes_prefers_non_empty_route_parts(self) -> None:
+        """Route parts should be preferred over the merged fallback route."""
+        part = self._build_route([(48.85, 2.35), (48.851, 2.351)])
+        fallback = self._build_route([(47.0, 2.0), (47.001, 2.001)])
+        row = {"route_parts": [part], "route": fallback}
+
+        assert wdm._get_row_routes(row) == [part]
+
+    def test_do_refresh_route_tab_uses_translated_route_and_marker_labels(self) -> None:
+        """Route refresh should pass translated route index/start/end labels to tooltips."""
+        row = {"route_parts": [self._build_route([(48.85, 2.35), (48.851, 2.351)])]}
+        no_route_label = _DummyElement()
+        route_map = _DummyElement()
+
+        t_calls: list[tuple[str, dict[str, str]]] = []
+        tooltip_texts: list[str] = []
+
+        def fake_t(message: str, **kwargs: str) -> str:
+            t_calls.append((message, kwargs))
+            if message == "Route {index}":
+                return f"Parcours {kwargs['index']}"
+            if message == "Start":
+                return "Départ"
+            if message == "End":
+                return "Arrivée"
+            return message
+
+        def capture_run_layer_method(_layer_id: str, method: str, text: str) -> _DummyElement:
+            if method == "bindTooltip":
+                tooltip_texts.append(text)
+            return route_map
+
+        def run_coroutine_sync(coro: Any) -> Any:
+            return asyncio.run(coro)
+
+        with (
+            patch("ui.workout_detail_modal.t", side_effect=fake_t),
+            patch.object(route_map, "run_layer_method", side_effect=capture_run_layer_method),
+            patch(
+                "ui.workout_detail_modal.background_tasks.create",
+                side_effect=run_coroutine_sync,
+            ),
+        ):
+            wdm._do_refresh_route_tab(no_route_label, route_map, row)
+
+        assert ("Route {index}", {"index": "1"}) in t_calls
+        assert ("Start", {}) in t_calls
+        assert ("End", {}) in t_calls
+        assert "Parcours 1" in tooltip_texts
+        assert "Départ - Parcours 1" in tooltip_texts
+        assert "Arrivée - Parcours 1" in tooltip_texts
+
+    def test_do_refresh_route_tab_falls_back_when_points_are_invalid(self) -> None:
+        """Route tab should fall back to world view when every route point is invalid."""
+        from datetime import datetime
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        invalid_route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=datetime(2024, 1, 1, 10, 0, 0),
+                    latitude=float("nan"),
+                    longitude=2.35,
+                    altitude=100.0,
+                    speed=3.0,
+                )
+            ]
+        )
+        row = {"route": invalid_route}
+        no_route_label = _DummyElement()
+        route_map = _DummyElement()
+
+        with (
+            patch.object(route_map, "set_center") as set_center,
+            patch.object(route_map, "set_zoom") as set_zoom,
+        ):
+            wdm._do_refresh_route_tab(no_route_label, route_map, row)
+
+        assert not no_route_label._visible
+        assert route_map._visible
+        set_center.assert_called_once_with((0.0, 0.0))
+        set_zoom.assert_called_once_with(1)
+
+
 class TestActivityTabSection:
     """Tests for the Activity tab rendering in the modal."""
 
