@@ -765,9 +765,7 @@ def create_workout_detail_modal(
                             center=(0.0, 0.0),
                             zoom=13,
                             options={"zoomControl": True},
-                        ).classes(
-                            MODAL_ROUTE_MAP_HTML_CLASSES
-                        )
+                        ).classes(MODAL_ROUTE_MAP_HTML_CLASSES)
 
             # ---- Navigation footer ----
             with ui.row().classes(MODAL_NAV_ROW_CLASSES):
