@@ -162,10 +162,10 @@ TABLE_FULL_CLASSES = "w-full"
 # Workout detail modal
 # ---------------------------------------------------------------------------
 
-#: Modal card: fixed width (≈ 30 rem / 480 px).  Does not set an explicit height
+#: Modal card: fixed width (≈ 42 rem / 672 px).  Does not set an explicit height
 #: because the tab panels area uses a fixed height (see MODAL_TAB_PANELS_CLASSES),
 #: keeping the overall modal size stable when switching tabs.
-MODAL_CARD_CLASSES = "w-[30rem]"
+MODAL_CARD_CLASSES = "w-[42rem]"
 
 #: Tab panels container inside the modal: fixed height so the modal does not
 #: resize when switching between Overview, Activity, and Splits tabs.

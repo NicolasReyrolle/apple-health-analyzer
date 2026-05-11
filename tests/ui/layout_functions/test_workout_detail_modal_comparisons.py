@@ -135,9 +135,10 @@ class TestFindSimilarRouteWorkouts:
         assert current in result
 
     def test_identical_route_is_similar(self) -> None:
-        """Two rows with identical start/end points and distance are similar."""
-        route_a = _build_route([(48.85, 2.35), (48.86, 2.36), (48.87, 2.37)])
-        route_b = _build_route([(48.85, 2.35), (48.87, 2.37)])
+        """Two rows with identical GPS points are always similar."""
+        route_pts = [(48.85, 2.35), (48.86, 2.36), (48.865, 2.365), (48.87, 2.37)]
+        route_a = _build_route(route_pts)
+        route_b = _build_route(route_pts)
         row_a = _make_row_with_route(idx=0, route=route_a)
         row_b = _make_row_with_route(idx=1, route=route_b)
         result = wdm.find_similar_route_workouts(row_a, [row_a, row_b])
@@ -167,7 +168,7 @@ class TestFindSimilarRouteWorkouts:
         assert far not in result
 
     def test_very_different_distance_excluded(self) -> None:
-        """Row whose distance deviates by more than 20 % must be excluded."""
+        """Row whose distance deviates by more than 5 % must be excluded."""
         route_a = _build_route([(48.85, 2.35), (48.87, 2.37)])
         route_b = _build_route([(48.85, 2.35), (48.87, 2.37)])
         current = _make_row_with_route(idx=0, route=route_a, distance_sort=10_000.0)
@@ -201,6 +202,43 @@ class TestFindSimilarRouteWorkouts:
         current["distance_sort"] = 0.0
         result = wdm.find_similar_route_workouts(current, [current])
         assert result == []
+
+    def test_diverging_midpoint_excluded(self) -> None:
+        """Route whose midpoint deviates more than waypoint threshold must be excluded."""
+        # current: straight north along lon 2.35
+        current_pts = [
+            (48.850, 2.350),
+            (48.855, 2.350),
+            (48.860, 2.350),
+            (48.865, 2.350),
+            (48.870, 2.350),
+        ]
+        # candidate: same start/end but diverges midway by ~1 km east at lon 2.360
+        candidate_pts = [
+            (48.850, 2.350),
+            (48.855, 2.360),
+            (48.860, 2.360),
+            (48.865, 2.360),
+            (48.870, 2.350),
+        ]
+        current = _make_row_with_route(idx=0, route=_build_route(current_pts))
+        diverged = _make_row_with_route(idx=1, route=_build_route(candidate_pts))
+        result = wdm.find_similar_route_workouts(current, [current, diverged])
+        assert diverged not in result
+
+    def test_matching_intermediate_waypoints_included(self) -> None:
+        """Route with all waypoints close to current should be included."""
+        pts = [
+            (48.850, 2.350),
+            (48.855, 2.350),
+            (48.860, 2.350),
+            (48.865, 2.350),
+            (48.870, 2.350),
+        ]
+        current = _make_row_with_route(idx=0, route=_build_route(pts))
+        similar_row = _make_row_with_route(idx=1, route=_build_route(pts))
+        result = wdm.find_similar_route_workouts(current, [current, similar_row])
+        assert similar_row in result
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +277,39 @@ class TestPaceFromRow:
 
 
 # ---------------------------------------------------------------------------
+# _format_duration_diff
+# ---------------------------------------------------------------------------
+
+
+class TestFormatDurationDiff:
+    """Tests for wdm._format_duration_diff()."""
+
+    def test_best_returns_dash(self) -> None:
+        """Rank-1 entry (diff = 0) should return '–'."""
+        assert wdm._format_duration_diff(3600.0, 3600.0) == "–"
+
+    def test_faster_than_best_returns_dash(self) -> None:
+        """Entry faster than best (negative diff) should return '–'."""
+        assert wdm._format_duration_diff(3590.0, 3600.0) == "–"
+
+    def test_formats_90_second_diff(self) -> None:
+        """90 s difference should format as '+1:30'."""
+        assert wdm._format_duration_diff(3690.0, 3600.0) == "+1:30"
+
+    def test_formats_3601_second_diff(self) -> None:
+        """3661 s difference should format as '+61:01'."""
+        assert wdm._format_duration_diff(3600.0 + 3661, 3600.0) == "+61:01"
+
+    def test_single_second_diff(self) -> None:
+        """1 s difference should format as '+0:01'."""
+        assert wdm._format_duration_diff(3601.0, 3600.0) == "+0:01"
+
+    def test_exactly_one_minute_diff(self) -> None:
+        """60 s difference should format as '+1:00'."""
+        assert wdm._format_duration_diff(3660.0, 3600.0) == "+1:00"
+
+
+# ---------------------------------------------------------------------------
 # _build_comparison_display_rows
 # ---------------------------------------------------------------------------
 
@@ -265,6 +336,34 @@ class TestBuildComparisonDisplayRows:
         rows, _ = wdm._build_comparison_display_rows(similar, "row_0", "km")
         # Top 10 plus 1 overflow for current (rank 1) → but current IS in top 10
         assert len(rows) == 10
+
+    def test_rank_1_has_dash_diff(self) -> None:
+        """Rank-1 row (fastest) should have '–' as diff_str."""
+        similar = self._make_similar(3)
+        rows, _ = wdm._build_comparison_display_rows(similar, "row_0", "km")
+        assert rows[0]["diff_str"] == "–"
+
+    def test_rank_2_has_positive_diff(self) -> None:
+        """Rank-2 row should have a '+mm:ss' diff_str relative to rank 1."""
+        similar = [
+            {
+                "id": "a",
+                "date": "Jan 01, 2024",
+                "duration": "1h",
+                "duration_sort": 3600.0,
+                "distance_sort": 10_000.0,
+            },
+            {
+                "id": "b",
+                "date": "Jan 02, 2024",
+                "duration": "1h 2min",
+                "duration_sort": 3720.0,
+                "distance_sort": 10_000.0,
+            },
+        ]
+        rows, _ = wdm._build_comparison_display_rows(similar, "a", "km")
+        # 3720 - 3600 = 120 s = 2 min → "+2:00"
+        assert rows[1]["diff_str"] == "+2:00"
 
     def test_current_outside_top_10_appended(self) -> None:
         """Current workout ranked 12th should be appended after the top 10."""
@@ -385,7 +484,7 @@ class TestDoRefreshComparisonsTab:
         assert mock_find.call_count == 1
 
     def test_rank_label_contains_rank_and_total(self) -> None:
-        """Rank label should mention both the user's rank and total count."""
+        """Rank label should mention both the rank and total count."""
         no_route, no_similar, rank_lbl, table = self._dummy_widgets()
         route_pts = [(48.85, 2.35), (48.87, 2.37)]
         row_a = _make_row_with_route(idx=0, route=_build_route(route_pts), duration_sort=3000.0)
@@ -393,7 +492,7 @@ class TestDoRefreshComparisonsTab:
         wdm._do_refresh_comparisons_tab(
             no_route, no_similar, rank_lbl, table, row_a, [row_a, row_b]
         )
-        # row_a is fastest so rank=1, total=2
+        # row_a is fastest so rank=1, total=2; label uses "Rank: {rank} of {total}"
         assert "1" in rank_lbl._text
         assert "2" in rank_lbl._text
 

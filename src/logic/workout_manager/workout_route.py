@@ -130,6 +130,36 @@ class WorkoutRoute:
         self._cumulative_distance_cache = distances
         return self._cumulative_distance_cache
 
+    def sample_point_at_fraction(self, fraction: float) -> tuple[float, float] | None:
+        """Return the ``(latitude, longitude)`` of the point nearest to *fraction* of total dist.
+
+        Uses binary search over the cached cumulative-distance list, so repeated
+        calls at different fractions are cheap (O(log n) after the first call).
+
+        Args:
+            fraction: A value in ``[0, 1]`` representing the fraction of the total
+                route distance at which to sample.  Values outside ``[0, 1]`` are
+                clamped silently.
+
+        Returns:
+            ``(lat, lon)`` at the nearest sampled point, or ``None`` when the route
+            has fewer than two points or its total distance is zero.
+        """
+        cum = self._cumulative_distances()
+        if not cum or cum[-1] <= 0:
+            return None
+        fraction = max(0.0, min(1.0, fraction))
+        target = fraction * cum[-1]
+        lo, hi = 0, len(cum) - 1
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if cum[mid] < target:
+                lo = mid + 1
+            else:
+                hi = mid
+        pt = self.points[lo]
+        return pt.latitude, pt.longitude
+
     @classmethod
     def calculate_distance_scale_factor(
         cls, route_distance_m: float, reference_distance_m: float | None

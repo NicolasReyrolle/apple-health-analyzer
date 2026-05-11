@@ -448,11 +448,20 @@ async def _fit_route_bounds_after_init(route_map: Any, all_points: list[list[flo
 
 #: Maximum straight-line distance (metres) between the start (or end) points of
 #: two routes for them to be considered geographically similar.
-_SIMILAR_ROUTE_START_END_RADIUS_M: float = 500.0
+_SIMILAR_ROUTE_START_END_RADIUS_M: float = 50.0
 
 #: Maximum allowed relative deviation in total distance between two routes for
-#: them to be considered the same course.  A value of 0.20 means ±20 %.
-_SIMILAR_ROUTE_DISTANCE_TOLERANCE: float = 0.20
+#: them to be considered the same course.  A value of 0.05 means ±5 %.
+_SIMILAR_ROUTE_DISTANCE_TOLERANCE: float = 0.05
+
+#: Maximum straight-line distance (metres) between intermediate waypoints sampled
+#: at the same fractional position along two routes when checking their shape.
+_SIMILAR_ROUTE_WAYPOINT_RADIUS_M: float = 100.0
+
+#: Fractional positions along the route used for the intermediate shape check.
+#: Three evenly spaced interior samples (25 %, 50 %, 75 %) give a lightweight
+#: sanity-check that the two routes actually follow the same path.
+_SIMILAR_ROUTE_WAYPOINT_FRACTIONS: tuple[float, ...] = (0.25, 0.50, 0.75)
 
 #: Maximum number of ranked rows shown in the Comparisons tab leaderboard.
 _COMPARISON_TOP_N: int = 10
@@ -483,6 +492,39 @@ def _route_endpoints(row: dict[str, Any]) -> tuple[float, float, float, float] |
     return start.latitude, start.longitude, end.latitude, end.longitude
 
 
+def _routes_shape_match(
+    route_a: WorkoutRoute,
+    route_b: WorkoutRoute,
+) -> bool:
+    """Check whether two routes follow the same path using intermediate waypoints.
+
+    Samples each route at :data:`_SIMILAR_ROUTE_WAYPOINT_FRACTIONS` of its total
+    distance and verifies that the corresponding GPS points are within
+    :data:`_SIMILAR_ROUTE_WAYPOINT_RADIUS_M` metres.  A fraction is skipped when
+    either route returns ``None`` from :meth:`~WorkoutRoute.sample_point_at_fraction`
+    (e.g. very short routes with too few points).
+
+    Args:
+        route_a: First GPS route to compare.
+        route_b: Second GPS route to compare.
+
+    Returns:
+        ``True`` when all sampled waypoints are within the threshold, ``False``
+        when any pair exceeds :data:`_SIMILAR_ROUTE_WAYPOINT_RADIUS_M`.
+    """
+    for fraction in _SIMILAR_ROUTE_WAYPOINT_FRACTIONS:
+        pt_a = route_a.sample_point_at_fraction(fraction)
+        pt_b = route_b.sample_point_at_fraction(fraction)
+        if pt_a is None or pt_b is None:
+            continue
+        if (
+            WorkoutRoute.haversine_m(pt_a[0], pt_a[1], pt_b[0], pt_b[1])
+            > _SIMILAR_ROUTE_WAYPOINT_RADIUS_M
+        ):
+            return False
+    return True
+
+
 def find_similar_route_workouts(
     current_row: dict[str, Any],
     all_rows: list[dict[str, Any]],
@@ -492,8 +534,10 @@ def find_similar_route_workouts(
     Two routes are considered similar when they share the same
     ``raw_activity_type``, both have GPS data, their start points are within
     :data:`_SIMILAR_ROUTE_START_END_RADIUS_M` metres of each other, their end
-    points are within the same radius, and their total distances are within
-    :data:`_SIMILAR_ROUTE_DISTANCE_TOLERANCE` of each other.
+    points are within the same radius, their total distances are within
+    :data:`_SIMILAR_ROUTE_DISTANCE_TOLERANCE` of each other, and intermediate
+    waypoints sampled at 25 %, 50 %, and 75 % of each route are within
+    :data:`_SIMILAR_ROUTE_WAYPOINT_RADIUS_M` metres.
 
     The returned list always includes *current_row* itself (when it has a GPS
     route) and is sorted by ``duration_sort`` ascending so that the fastest
@@ -517,6 +561,7 @@ def find_similar_route_workouts(
 
     current_type = current_row.get("raw_activity_type")
     c_s_lat, c_s_lon, c_e_lat, c_e_lon = current_endpoints
+    current_routes = _get_row_routes(current_row)
 
     similar: list[dict[str, Any]] = []
     for row in all_rows:
@@ -541,6 +586,11 @@ def find_similar_route_workouts(
             > _SIMILAR_ROUTE_START_END_RADIUS_M
         ):
             continue
+        # Compare intermediate waypoints against the current row's first route part.
+        candidate_routes = _get_row_routes(row)
+        if current_routes and candidate_routes:
+            if not _routes_shape_match(current_routes[0], candidate_routes[0]):
+                continue
         similar.append(row)
 
     similar.sort(key=lambda r: r.get("duration_sort") or float("inf"))
@@ -569,6 +619,27 @@ def _pace_from_row(row: dict[str, Any], distance_unit: str) -> str:
     return _format_split_pace(pace_min_per_km, distance_unit)
 
 
+def _format_duration_diff(duration_s: float, best_duration_s: float) -> str:
+    """Format the duration difference relative to the best (fastest) performance.
+
+    The best performance has no offset and is displayed as ``"–"``.  All other
+    entries are formatted as ``"+mm:ss"`` (e.g. ``"+1:30"``).
+
+    Args:
+        duration_s:      Duration of the current entry in seconds.
+        best_duration_s: Duration of the rank-1 entry in seconds.
+
+    Returns:
+        ``"–"`` when the entry is the best, otherwise a ``"+mm:ss"`` string.
+    """
+    diff_s = round(duration_s - best_duration_s)
+    if diff_s <= 0:
+        return "–"
+    mins = diff_s // 60
+    secs = diff_s % 60
+    return f"+{mins}:{secs:02d}"
+
+
 def _build_comparison_display_rows(
     similar: list[dict[str, Any]],
     current_row_id: str,
@@ -580,7 +651,10 @@ def _build_comparison_display_rows(
     The leaderboard shows up to *top_n* rows ranked fastest-first.  When the
     current workout is within the top *top_n* its rank is highlighted with a
     ``"→"`` prefix.  When it falls outside the top *top_n* it is appended as an
-    extra row so the user can always see their own result.
+    extra row so the current performance is always visible.
+
+    Each row also carries a ``diff_str`` field with the duration offset from
+    rank 1 formatted as ``"+mm:ss"`` (or ``"–"`` for the fastest entry).
 
     Args:
         similar: Sorted list of similar-route rows (fastest-first), as returned
@@ -602,10 +676,13 @@ def _build_comparison_display_rows(
             current_rank = i + 1
             break
 
+    best_duration_s: float = float(similar[0].get("duration_sort") or 0.0) if similar else 0.0
+
     display_rows: list[dict[str, Any]] = []
     for i, row in enumerate(similar[:top_n]):
         rank = i + 1
         is_current = row.get("id") == current_row_id
+        row_duration_s = float(row.get("duration_sort") or 0.0)
         display_rows.append(
             {
                 "rank": rank,
@@ -613,6 +690,7 @@ def _build_comparison_display_rows(
                 "date": row.get("date", "–"),
                 "duration": row.get("duration", "–"),
                 "pace": _pace_from_row(row, distance_unit),
+                "diff_str": _format_duration_diff(row_duration_s, best_duration_s),
             }
         )
 
@@ -620,6 +698,7 @@ def _build_comparison_display_rows(
     if current_rank is not None and current_rank > top_n:
         current = next((r for r in similar if r.get("id") == current_row_id), None)
         if current is not None:
+            cur_duration_s = float(current.get("duration_sort") or 0.0)
             display_rows.append(
                 {
                     "rank": current_rank,
@@ -627,6 +706,7 @@ def _build_comparison_display_rows(
                     "date": current.get("date", "–"),
                     "duration": current.get("duration", "–"),
                     "pace": _pace_from_row(current, distance_unit),
+                    "diff_str": _format_duration_diff(cur_duration_s, best_duration_s),
                 }
             )
 
@@ -688,7 +768,7 @@ def _do_refresh_comparisons_tab(
 
     total = len(similar)
     rank_str = str(current_rank) if current_rank is not None else "–"
-    rank_label.set_text(t("Your rank: {rank} of {total}", rank=rank_str, total=str(total)))
+    rank_label.set_text(t("Rank: {rank} of {total}", rank=rank_str, total=str(total)))
 
     comparisons_table.rows = display_rows
     comparisons_table.update()
@@ -1064,6 +1144,13 @@ def create_workout_detail_modal(
                             "name": "duration",
                             "label": t("Duration"),
                             "field": "duration",
+                            "align": "right",
+                            "sortable": False,
+                        },
+                        {
+                            "name": "diff",
+                            "label": t("Diff"),
+                            "field": "diff_str",
                             "align": "right",
                             "sortable": False,
                         },

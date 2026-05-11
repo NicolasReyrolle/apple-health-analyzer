@@ -31,7 +31,13 @@ def test_no_similar_routes_message_is_translated_in_french() -> None:
 
 
 def test_your_rank_message_is_translated_in_french() -> None:
-    """Your-rank label template should have a French translation."""
+    """Rank label template should have a French translation."""
     i18n.compile_message_catalogs()
-    result = translate("Your rank: {rank} of {total}", language="fr", rank="3", total="15")
-    assert result == "Votre rang : 3 sur 15"
+    result = translate("Rank: {rank} of {total}", language="fr", rank="3", total="15")
+    assert result == "Rang : 3 sur 15"
+
+
+def test_diff_column_label_is_translated_in_french() -> None:
+    """Diff column header should have a French translation."""
+    i18n.compile_message_catalogs()
+    assert translate("Diff", language="fr") == "Écart"

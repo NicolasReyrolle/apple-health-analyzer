@@ -825,8 +825,11 @@ msgstr "Aucun tracé GPS disponible."
 msgid "No similar routes found."
 msgstr "Aucun parcours similaire trouvé."
 
-msgid "Your rank: {rank} of {total}"
-msgstr "Votre rang : {rank} sur {total}"
+msgid "Rank: {rank} of {total}"
+msgstr "Rang : {rank} sur {total}"
+
+msgid "Diff"
+msgstr "Écart"
 
 msgid "No lap data available."
 msgstr "Aucune donnée de distance disponible."
