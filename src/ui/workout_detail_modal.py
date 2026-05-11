@@ -651,10 +651,17 @@ def _build_comparison_display_rows(
 ) -> tuple[list[dict[str, Any]], int | None]:
     """Build display rows for the route-comparison leaderboard table.
 
-    The leaderboard shows up to *top_n* rows ranked fastest-first.  When the
-    current workout is within the top *top_n* its rank is highlighted with a
-    ``"→"`` prefix.  When it falls outside the top *top_n* it is appended as an
-    extra row so the current performance is always visible.
+    The leaderboard shows up to *top_n* rows ranked fastest-first.  Extra rows
+    are appended in this order when they are not already present in the top-N:
+
+    1. **Current workout** – appended when it falls outside the top *top_n*,
+       so the athlete can always see their own result.
+    2. **Slowest workout** – always appended when not already shown, so the
+       full performance spread is visible.
+
+    As a result the table has at most ``top_n + 2`` rows (top-N + current
+    overflow + slowest), and as few as ``top_n`` rows when both the current and
+    the slowest are already within the top *top_n*.
 
     Each row also carries a ``diff_str`` field with the duration offset from
     rank 1 formatted as ``"+mm:ss"`` (or ``"–"`` for the fastest entry).
@@ -665,7 +672,7 @@ def _build_comparison_display_rows(
         current_row_id: The ``"id"`` value of the current workout row.
         distance_unit: ``"km"`` or ``"mi"`` – passed to :func:`_pace_from_row`.
         top_n: Maximum number of ranked rows to include before the optional
-            current-workout overflow row.
+            overflow rows.
 
     Returns:
         A ``(display_rows, current_rank)`` tuple where *display_rows* is the
@@ -686,37 +693,42 @@ def _build_comparison_display_rows(
     # edge case of an empty list reaching this function directly.
     best_duration_s: float = float(similar[0].get("duration_sort") or 0.0) if similar else 0.0
 
+    def _make_display_row(rank: int, row: dict[str, Any], is_current: bool) -> dict[str, Any]:
+        row_duration_s = float(row.get("duration_sort") or 0.0)
+        return {
+            "rank": rank,
+            "rank_str": f"→ {rank}" if is_current else str(rank),
+            "date": row.get("date", "–"),
+            "duration": row.get("duration", "–"),
+            "pace": _pace_from_row(row, distance_unit),
+            "diff_str": _format_duration_diff(row_duration_s, best_duration_s),
+        }
+
     display_rows: list[dict[str, Any]] = []
     for i, row in enumerate(similar[:top_n]):
         rank = i + 1
         is_current = row.get("id") == current_row_id
-        row_duration_s = float(row.get("duration_sort") or 0.0)
-        display_rows.append(
-            {
-                "rank": rank,
-                "rank_str": f"→ {rank}" if is_current else str(rank),
-                "date": row.get("date", "–"),
-                "duration": row.get("duration", "–"),
-                "pace": _pace_from_row(row, distance_unit),
-                "diff_str": _format_duration_diff(row_duration_s, best_duration_s),
-            }
-        )
+        display_rows.append(_make_display_row(rank, row, is_current))
+
+    # Track which row IDs are already shown so we avoid duplicates below.
+    shown_ids: set[str | None] = {r.get("id") for r in similar[:top_n]}
 
     # Append current workout below the top-N cut when it is outside the top N.
     if current_rank is not None and current_rank > top_n:
         current = next((r for r in similar if r.get("id") == current_row_id), None)
         if current is not None:
-            cur_duration_s = float(current.get("duration_sort") or 0.0)
-            display_rows.append(
-                {
-                    "rank": current_rank,
-                    "rank_str": f"→ {current_rank}",
-                    "date": current.get("date", "–"),
-                    "duration": current.get("duration", "–"),
-                    "pace": _pace_from_row(current, distance_unit),
-                    "diff_str": _format_duration_diff(cur_duration_s, best_duration_s),
-                }
-            )
+            display_rows.append(_make_display_row(current_rank, current, is_current=True))
+            shown_ids.add(current_row_id)
+
+    # Append the slowest entry (last in the sorted list) when not already shown.
+    # This always gives the user a sense of the full spread even with top_n < total.
+    if similar:
+        slowest = similar[-1]
+        slowest_rank = len(similar)
+        slowest_id = slowest.get("id")
+        if slowest_id not in shown_ids:
+            is_current = slowest_id == current_row_id
+            display_rows.append(_make_display_row(slowest_rank, slowest, is_current))
 
     return display_rows, current_rank
 

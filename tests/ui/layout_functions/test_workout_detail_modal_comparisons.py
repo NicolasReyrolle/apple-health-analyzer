@@ -331,11 +331,12 @@ class TestBuildComparisonDisplayRows:
         ]
 
     def test_top_10_rows_included(self) -> None:
-        """Exactly 10 rows should appear when similar has 15 entries."""
+        """Top 10 + slowest shown when current (rank 1) is within top 10."""
         similar = self._make_similar(15)
         rows, _ = wdm._build_comparison_display_rows(similar, "row_0", "km")
-        # Top 10 plus 1 overflow for current (rank 1) → but current IS in top 10
-        assert len(rows) == 10
+        # current is rank 1 (in top 10), slowest (row_14) is not → appended
+        assert len(rows) == 11
+        assert rows[-1]["rank"] == 15
 
     def test_rank_1_has_dash_diff(self) -> None:
         """Rank-1 row (fastest) should have '–' as diff_str."""
@@ -366,14 +367,15 @@ class TestBuildComparisonDisplayRows:
         assert rows[1]["diff_str"] == "+2:00"
 
     def test_current_outside_top_10_appended(self) -> None:
-        """Current workout ranked 12th should be appended after the top 10."""
+        """Current (rank 12) appended after top 10; slowest (rank 15) appended last."""
         similar = self._make_similar(15)
         # current is row_11 (0-indexed), rank 12
         rows, rank = wdm._build_comparison_display_rows(similar, "row_11", "km")
         assert rank == 12
-        assert len(rows) == 11  # top 10 + current
-        last = rows[-1]
-        assert last["rank_str"] == "→ 12"
+        assert len(rows) == 12  # top 10 + current + slowest
+        current_row = next(r for r in rows if "→" in r["rank_str"])
+        assert current_row["rank_str"] == "→ 12"
+        assert rows[-1]["rank"] == 15  # slowest appended at end
 
     def test_current_inside_top_10_highlighted(self) -> None:
         """Current workout ranked 3rd should have '→ 3' in rank_str."""
@@ -403,11 +405,46 @@ class TestBuildComparisonDisplayRows:
         assert rank is None
 
     def test_custom_top_n(self) -> None:
-        """top_n=3 should limit leaderboard to 3 rows (plus overflow)."""
+        """top_n=3 with 10 entries: 3 top rows + slowest appended."""
         similar = self._make_similar(10)
         rows, _ = wdm._build_comparison_display_rows(similar, "row_0", "km", top_n=3)
-        # row_0 is rank 1 (inside top 3), so exactly 3 rows
-        assert len(rows) == 3
+        # row_0 is rank 1 (inside top 3), slowest (row_9) not shown → appended
+        assert len(rows) == 4
+        assert rows[-1]["rank"] == 10
+
+    def test_slowest_already_in_top_n_not_duplicated(self) -> None:
+        """When all entries fit within top_n the slowest is already shown; no duplicate."""
+        similar = self._make_similar(5)
+        rows, _ = wdm._build_comparison_display_rows(similar, "row_0", "km", top_n=10)
+        # All 5 rows fit in top_n; no extra row appended
+        assert len(rows) == 5
+        assert [r["rank"] for r in rows] == [1, 2, 3, 4, 5]
+
+    def test_slowest_equals_current_outside_top_n_not_duplicated(self) -> None:
+        """Current == slowest outside top_n should appear once only (highlighted)."""
+        similar = self._make_similar(12)
+        # row_11 is both the current and the slowest (rank 12)
+        rows, rank = wdm._build_comparison_display_rows(similar, "row_11", "km")
+        assert rank == 12
+        # top 10 + current (= slowest) once, no extra slowest row
+        assert len(rows) == 11
+        last = rows[-1]
+        assert last["rank_str"] == "→ 12"
+
+    def test_slowest_appended_when_current_in_top_n(self) -> None:
+        """When current is inside top_n, slowest is appended as the final row."""
+        similar = self._make_similar(15)
+        # current = row_4 (rank 5, inside top 10); slowest = row_14 (rank 15)
+        rows, rank = wdm._build_comparison_display_rows(similar, "row_4", "km")
+        assert rank == 5
+        assert rows[-1]["rank"] == 15  # slowest at end
+
+    def test_slowest_not_marked_as_current(self) -> None:
+        """Slowest row appended when it differs from current must not use '→' prefix."""
+        similar = self._make_similar(15)
+        rows, _ = wdm._build_comparison_display_rows(similar, "row_0", "km")
+        slowest_row = rows[-1]
+        assert "→" not in slowest_row["rank_str"]
 
 
 # ---------------------------------------------------------------------------
