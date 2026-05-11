@@ -424,9 +424,7 @@ def _do_refresh_route_tab(
         )
 
     if all_points:
-        background_tasks.create(
-            _fit_route_bounds_after_init(route_map, list(all_points))
-        )
+        background_tasks.create(_fit_route_bounds_after_init(route_map, list(all_points)))
     else:
         route_map.set_center((0.0, 0.0))
         route_map.set_zoom(1)
