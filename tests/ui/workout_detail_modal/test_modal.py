@@ -391,6 +391,8 @@ class TestRouteTabLocalizationAndCoverage:
         assert "Speed" in segment_tooltips[0]
         assert "Altitude" in segment_tooltips[0]
         assert "Distance" in segment_tooltips[0]
+        assert "/km" in segment_tooltips[0]
+        assert "km/h" in segment_tooltips[0]
         assert "Départ - Parcours 1" in tooltip_texts
         assert "Arrivée - Parcours 1" in tooltip_texts
 
@@ -509,7 +511,7 @@ class TestRouteTabLocalizationAndCoverage:
             wdm._do_refresh_route_tab(no_route_label, route_map, route_profile_chart, row)
 
         assert polyline_colors
-        assert set(polyline_colors) >= {"#eab308", "#16a34a"}
+        assert polyline_colors[:2] == ["#eab308", "#16a34a"]
         assert any("Pace" in text and "Speed" in text for text in tooltip_texts)
 
 

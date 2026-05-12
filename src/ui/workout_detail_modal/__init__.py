@@ -372,8 +372,14 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
         ]
         if not altitudes:
             continue
-        route_points = [_route_point_map_data(point) for point in route.points]
-        valid_points = [point for point in route_points if point is not None]
+        route_points: list[dict[str, Any]] = []
+        for idx, point in enumerate(route.points):
+            point_data = _route_point_map_data(point)
+            if point_data is None:
+                continue
+            point_data["altitude"] = altitudes[idx]
+            route_points.append(point_data)
+        valid_points = route_points
         if len(valid_points) < 2:
             continue
         for idx, current in enumerate(valid_points):
@@ -386,9 +392,7 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
                     cast(float, current["lon"]),
                 )
             distance_km = cumulative_distance_m / 1000.0
-            # Keep altitude lookup safe when a malformed point was filtered out from
-            # valid_points but still exists in the DataFrame.
-            altitude_m = altitudes[min(idx, len(altitudes) - 1)]
+            altitude_m = cast(float, current["altitude"])
             pace = None
             speed_kmh = None
             hr_bpm = cast(float | None, current["heart_rate"])
