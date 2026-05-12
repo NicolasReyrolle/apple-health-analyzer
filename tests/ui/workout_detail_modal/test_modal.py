@@ -317,6 +317,20 @@ class TestCreateWorkoutDetailModal:
             {"padding": [20, 20]},
         )
 
+    def test_fit_route_bounds_after_init_ignores_timeout(self) -> None:
+        """Map-fit helper should ignore JS timeout when tab changes during loading."""
+
+        class _TimeoutMap(_DummyElement):
+            async def initialized(self) -> None:
+                raise TimeoutError
+
+        route_map = _TimeoutMap()
+        points = [[48.85, 2.35], [48.851, 2.351]]
+
+        asyncio.run(wdm._fit_route_bounds_after_init(route_map, points))
+
+        assert not route_map._run_map_method_calls
+
     def test_do_refresh_route_tab_schedules_post_init_fit(self) -> None:
         """Route refresh should schedule a post-init fit for reliable centering."""
         from datetime import timedelta
@@ -565,6 +579,54 @@ class TestRouteTabLocalizationAndCoverage:
         assert altitude_data[0][1] == 100.0
         assert pace_data[1][2] is not None  # pace min/km
         assert pace_data[1][3] is not None  # speed km/h
+
+    def test_build_route_profile_chart_config_smooths_pause_spikes(self) -> None:
+        """Pause-like segments should not inject extreme pace spikes into profile samples."""
+        from datetime import timedelta
+
+        import pandas as pd
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        base_time = pd.Timestamp("2024-01-01").to_pydatetime()
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=base_time,
+                    latitude=48.8500,
+                    longitude=2.3500,
+                    altitude=100.0,
+                    speed=0.0,
+                ),
+                RoutePoint(
+                    time=base_time + timedelta(seconds=60),
+                    latitude=48.8509,
+                    longitude=2.3500,
+                    altitude=101.0,
+                    speed=0.0,
+                ),
+                RoutePoint(
+                    time=base_time + timedelta(seconds=240),
+                    latitude=48.8510,
+                    longitude=2.3500,
+                    altitude=102.0,
+                    speed=0.0,
+                ),
+                RoutePoint(
+                    time=base_time + timedelta(seconds=300),
+                    latitude=48.8519,
+                    longitude=2.3500,
+                    altitude=103.0,
+                    speed=0.0,
+                ),
+            ]
+        )
+
+        config = wdm._build_route_profile_chart_config([route])
+        data = config["series"][0]["data"]
+
+        assert data[2][2] is not None
+        assert data[2][2] < 20.0
 
     def test_do_refresh_route_tab_uses_metric_based_segment_colors(self) -> None:
         """Route refresh should color each segment by pace and expose metric details in tooltip."""

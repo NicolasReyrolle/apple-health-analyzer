@@ -216,7 +216,7 @@ def _all_patches(
     Pass *tabs_stub* to receive the ``ui.tabs`` instance back for simulating
     tab-change events via :meth:`_DummyElement.fire_value_change`.
     Pass *tab_side_effect* to capture individual ``ui.tab`` instances (created in
-    order: overview [0], activity [1], route [2], intervals [3], comparisons [4]).
+    order: overview [0], activity [1], route [2], profile [3], intervals [4], comparisons [5]).
     """
     stub = _DummyElement()
     effective_tabs = tabs_stub if tabs_stub is not None else stub

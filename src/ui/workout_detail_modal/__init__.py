@@ -52,6 +52,8 @@ _LabelFn: TypeAlias = Callable[[], str]
 #: i18n key reused across GPS-dependent modal sections.
 _NO_GPS_ROUTE_MSG = "No GPS route available."
 _M_S_TO_KM_H = 3.6
+_MIN_MOVING_SPEED_M_S = 0.5
+_PACE_SMOOTHING_WINDOW_M = 200.0
 
 # ---------------------------------------------------------------------------
 # Shared label-function constants reused across multiple field display lists.
@@ -381,6 +383,9 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
         valid_points = route_points
         if len(valid_points) < 2:
             continue
+        rolling_pace_segments: list[tuple[float, float]] = []
+        rolling_distance_m = 0.0
+        rolling_time_s = 0.0
         for idx, current in enumerate(valid_points):
             if idx > 0:
                 previous = valid_points[idx - 1]
@@ -396,11 +401,25 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
             speed_kmh = None
             hr_bpm = cast(float | None, current["heart_rate"])
             if idx > 0:
-                _distance_m, speed_m_s, pace = _route_segment_metrics(
+                segment_distance_m, speed_m_s, _raw_pace = _route_segment_metrics(
                     valid_points[idx - 1], current
                 )
                 if speed_m_s is not None:
                     speed_kmh = speed_m_s * _M_S_TO_KM_H
+                    if speed_m_s >= _MIN_MOVING_SPEED_M_S and segment_distance_m > 0.0:
+                        segment_time_s = segment_distance_m / speed_m_s
+                        rolling_pace_segments.append((segment_distance_m, segment_time_s))
+                        rolling_distance_m += segment_distance_m
+                        rolling_time_s += segment_time_s
+                        while (
+                            rolling_distance_m > _PACE_SMOOTHING_WINDOW_M
+                            and len(rolling_pace_segments) > 1
+                        ):
+                            old_distance_m, old_time_s = rolling_pace_segments.pop(0)
+                            rolling_distance_m -= old_distance_m
+                            rolling_time_s -= old_time_s
+                if rolling_distance_m > 0.0 and rolling_time_s > 0.0:
+                    pace = (rolling_time_s / 60.0) / (rolling_distance_m / 1000.0)
             profile_points.append([distance_km, altitude_m, pace, speed_kmh, hr_bpm])
 
     pace_label = json.dumps(f"{t('Pace')}: ")
@@ -579,12 +598,16 @@ def _do_refresh_route_profile_tab(
 
 async def _fit_route_bounds_after_init(route_map: Any, all_points: list[list[float]]) -> None:
     """Fit map bounds after Leaflet map initialization and tab layout completion."""
-    await route_map.initialized()
-    # Yield control to the event loop so the Route tab panel can complete its
-    # visible layout pass before we invalidate size and fit bounds.
-    await asyncio.sleep(0)
-    route_map.run_map_method("invalidateSize", False)
-    route_map.run_map_method("fitBounds", all_points, {"padding": [20, 20]})
+    try:
+        await route_map.initialized()
+        # Yield control to the event loop so the Route tab panel can complete its
+        # visible layout pass before we invalidate size and fit bounds.
+        await asyncio.sleep(0)
+        route_map.run_map_method("invalidateSize", False)
+        route_map.run_map_method("fitBounds", all_points, {"padding": [20, 20]})
+    except (TimeoutError, asyncio.CancelledError):
+        # The user may switch away while the map is still initializing.
+        return
 
 
 #: Maps each supported raw activity type to the Activity-tab field keys used by
