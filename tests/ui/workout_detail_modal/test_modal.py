@@ -319,9 +319,13 @@ class TestCreateWorkoutDetailModal:
         from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
 
         class _ReadOnlyChart:
+            _INITIAL_SERIES_DATA = [[1, 2, 3]]
+
             def __init__(self) -> None:
                 self._visible = True
-                self._options_store: dict[str, Any] = {"series": [{"data": [[1, 2, 3]]}]}
+                self._options_store: dict[str, Any] = {
+                    "series": [{"data": self._INITIAL_SERIES_DATA.copy()}]
+                }
 
             @property
             def options(self) -> dict[str, Any]:
@@ -351,17 +355,20 @@ class TestCreateWorkoutDetailModal:
         route_map = _DummyElement()
         route_profile_chart = _ReadOnlyChart()
 
-        def run_coroutine_sync(coro: Any) -> Any:
+        def execute_background_task_synchronously(coro: Any) -> Any:
             return asyncio.run(coro)
 
         with patch(
             "ui.workout_detail_modal.background_tasks.create",
-            side_effect=run_coroutine_sync,
+            side_effect=execute_background_task_synchronously,
         ):
             wdm._do_refresh_route_tab(no_route_label, route_map, route_profile_chart, row)
 
         assert route_profile_chart.options["backgroundColor"] == "transparent"
-        assert route_profile_chart.options["series"][0]["data"]
+        profile_data = route_profile_chart.options["series"][0]["data"]
+        assert isinstance(profile_data, list)
+        assert len(profile_data) >= 3
+        assert profile_data[0][1] == 35.0
 
 
 class TestRouteTabLocalizationAndCoverage:
