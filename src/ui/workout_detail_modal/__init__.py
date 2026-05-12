@@ -49,7 +49,7 @@ from units import METERS_TO_MILES
 #: Callable returning a translated label string; alias for readability.
 _LabelFn: TypeAlias = Callable[[], str]
 
-#: i18n key reused in four places (Intervals, Route, Profile, and Comparisons tabs).
+#: i18n key reused across GPS-dependent modal sections.
 _NO_GPS_ROUTE_MSG = "No GPS route available."
 _M_S_TO_KM_H = 3.6
 
@@ -733,7 +733,7 @@ def create_workout_detail_modal(
     Navigation within the open modal is supported via left/right arrow buttons.
     The dialog closes on Esc (Quasar default) or when the close button is clicked.
 
-    The modal is organised into six tabs:
+    The modal is organised into tabs:
 
     * **Overview** – generic workout attributes (date, distance, calories, heart rate,
       VO₂ max, elevation, etc.) shared by all workout types.
