@@ -467,7 +467,11 @@ def _do_refresh_route_tab(
         },
     )
 
-    route_profile_chart.options = _build_route_profile_chart_config(routes)
+    route_profile_options = _build_route_profile_chart_config(routes)
+    chart_options = getattr(route_profile_chart, "options", None)
+    if isinstance(chart_options, dict):
+        chart_options.clear()
+        chart_options.update(route_profile_options)
     route_profile_chart.update()
 
     all_points: list[list[float]] = []

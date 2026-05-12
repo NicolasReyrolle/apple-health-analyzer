@@ -74,6 +74,7 @@ class _DummyElement:
         self._props_added: list[str] = []
         self._props_removed: list[str] = []
         self.rows: list[Any] = []
+        self.options: dict[str, Any] = {}
         #: Captures the ``columns`` kwarg when used as a ``ui.table`` stub.
         #: Stored by reference so in-place mutations to the list are visible here.
         self.columns: list[Any] = _kwargs.get("columns", [])

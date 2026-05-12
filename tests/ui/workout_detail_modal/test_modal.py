@@ -310,6 +310,59 @@ class TestCreateWorkoutDetailModal:
         assert create_bg.call_count == 1
         assert route_map._run_map_method_calls[-1][0][0] == "fitBounds"
 
+    def test_do_refresh_route_tab_updates_echart_options_without_property_assignment(self) -> None:
+        """Route refresh should mutate chart options in place (NiceGUI options has no setter)."""
+        from datetime import timedelta
+
+        import pandas as pd
+
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        class _ReadOnlyChart:
+            def __init__(self) -> None:
+                self._visible = True
+                self._options_store: dict[str, Any] = {"series": [{"data": [[1, 2, 3]]}]}
+
+            @property
+            def options(self) -> dict[str, Any]:
+                return self._options_store
+
+            def set_visibility(self, visible: bool) -> None:
+                self._visible = visible
+
+            def update(self) -> None:
+                return
+
+        base_time = pd.Timestamp("2024-01-01").to_pydatetime()
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=base_time + timedelta(seconds=i),
+                    latitude=48.85 + (i * 0.0001),
+                    longitude=2.35 + (i * 0.0001),
+                    altitude=35.0 + i,
+                    speed=3.0,
+                )
+                for i in range(3)
+            ]
+        )
+        row = {**_make_row(idx=0), "route": route}
+        no_route_label = _DummyElement()
+        route_map = _DummyElement()
+        route_profile_chart = _ReadOnlyChart()
+
+        def run_coroutine_sync(coro: Any) -> Any:
+            return asyncio.run(coro)
+
+        with patch(
+            "ui.workout_detail_modal.background_tasks.create",
+            side_effect=run_coroutine_sync,
+        ):
+            wdm._do_refresh_route_tab(no_route_label, route_map, route_profile_chart, row)
+
+        assert route_profile_chart.options["backgroundColor"] == "transparent"
+        assert route_profile_chart.options["series"][0]["data"]
+
 
 class TestRouteTabLocalizationAndCoverage:
     """Focused tests for route tab localization and route-parts behavior."""
