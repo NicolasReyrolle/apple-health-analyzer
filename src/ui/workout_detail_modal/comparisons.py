@@ -26,6 +26,25 @@ from ui.helpers import _format_split_pace
 # ---------------------------------------------------------------------------
 
 
+def _duration_sort_key(row: dict[str, Any]) -> float:
+    """Return the numeric sort key for a row's duration.
+
+    Non-positive values (e.g. the ``-1.0`` sentinel used for missing durations)
+    are treated as :data:`math.inf` so they sort to the end of the leaderboard
+    rather than appearing as the fastest performance.
+
+    Args:
+        row: A workout row dict.
+
+    Returns:
+        The ``duration_sort`` value when positive, or ``float("inf")``.
+    """
+    val = row.get("duration_sort")
+    if isinstance(val, (int, float)) and val > 0:
+        return float(val)
+    return float("inf")
+
+
 def _row_has_route(row: dict[str, Any]) -> bool:
     """Return True when the row contains a non-empty GPS route.
 
@@ -350,13 +369,7 @@ def find_similar_route_workouts(
         ):
             similar.append(row)
 
-    similar.sort(
-        key=lambda r: (
-            float(r["duration_sort"])
-            if isinstance(r.get("duration_sort"), (int, float)) and r["duration_sort"] > 0
-            else float("inf")
-        )
-    )
+    similar.sort(key=_duration_sort_key)
     return similar
 
 

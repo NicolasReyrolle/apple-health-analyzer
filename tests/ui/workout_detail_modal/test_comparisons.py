@@ -269,10 +269,10 @@ class TestFindSimilarRouteWorkouts:
             idx=1, route=_build_route(route_pts), duration_sort=-1.0
         )
         result = wdmc.find_similar_route_workouts(row_valid, [row_valid, row_sentinel])
-        if len(result) >= 2:
-            # The row with a valid duration should come first.
-            assert result[0] is row_valid
-            assert result[-1] is row_sentinel
+        assert len(result) == 2
+        # The row with a valid duration should come first.
+        assert result[0] is row_valid
+        assert result[-1] is row_sentinel
 
     def test_no_distance_sort_excluded(self) -> None:
         """Row without a valid distance_sort must be excluded."""
