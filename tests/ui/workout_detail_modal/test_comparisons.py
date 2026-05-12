@@ -735,3 +735,178 @@ class TestComparisonsTabIntegration:
             assert not refresh_calls
             tabs_stub.fire_value_change("comparisons")
             assert len(refresh_calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# _row_has_route
+# ---------------------------------------------------------------------------
+
+
+class TestRowHasRoute:
+    """Tests for wdmc._row_has_route()."""
+
+    def test_returns_false_for_empty_dict(self) -> None:
+        """Row with no 'route' key should return False."""
+        assert wdmc._row_has_route({}) is False
+
+    def test_returns_false_for_non_workout_route_value(self) -> None:
+        """Row with a non-WorkoutRoute value under 'route' should return False."""
+        assert wdmc._row_has_route({"route": "not-a-route"}) is False
+        assert wdmc._row_has_route({"route": 42}) is False
+
+    def test_returns_false_for_empty_workout_route(self) -> None:
+        """Row with an empty WorkoutRoute should return False."""
+        assert wdmc._row_has_route({"route": WorkoutRoute(points=[])}) is False
+
+    def test_returns_true_for_non_empty_workout_route(self) -> None:
+        """Row with a non-empty WorkoutRoute should return True."""
+        route = _build_route([(48.85, 2.35), (48.87, 2.37)])
+        assert wdmc._row_has_route({"route": route}) is True
+
+
+# ---------------------------------------------------------------------------
+# _merge_adjacent_route_parts – empty segment skip
+# ---------------------------------------------------------------------------
+
+
+class TestMergeAdjacentRoutePartsEmptySegment:
+    """Additional tests covering the empty-segment skip branch."""
+
+    def test_empty_segment_in_pair_is_skipped(self) -> None:
+        """An empty segment between two real segments should be skipped (continue)."""
+        part_a = _build_route([(48.8500, 2.3500), (48.8501, 2.3501)])
+        part_empty = WorkoutRoute(points=[])
+        part_b = _build_route([(48.8501, 2.3501), (48.8510, 2.3510)])
+        # The A–empty pair is skipped; the empty–B pair is also skipped.
+        # All checked pairs pass → all three are merged.
+        result = wdmc._merge_adjacent_route_parts([part_a, part_empty, part_b])
+        assert len(result.points) == len(part_a.points) + len(part_b.points)
+
+
+# ---------------------------------------------------------------------------
+# _routes_shape_match – short routes where sample_point_at_fraction → None
+# ---------------------------------------------------------------------------
+
+
+class TestRoutesShapeMatchShortRoutes:
+    """Tests covering the None-sample skip branch inside _routes_shape_match."""
+
+    def test_single_point_routes_treated_as_matching(self) -> None:
+        """Routes with only one point return None from sample_point_at_fraction.
+
+        All fraction checks are skipped (continue), so the forward _check
+        loop completes without returning False → returns True.
+        """
+        route_a = _build_route([(48.85, 2.35)])
+        route_b = _build_route([(48.85, 2.35)])
+        assert wdmc._routes_shape_match(route_a, route_b) is True
+
+    def test_identical_two_point_routes_match(self) -> None:
+        """Two-point routes with non-zero distance do produce sample points
+        and match when they are identical."""
+        pts = [(48.85, 2.35), (48.87, 2.37)]
+        route_a = _build_route(pts)
+        route_b = _build_route(pts)
+        assert wdmc._routes_shape_match(route_a, route_b) is True
+
+
+# ---------------------------------------------------------------------------
+# _is_candidate_similar / find_similar_route_workouts – extra exclusion paths
+# ---------------------------------------------------------------------------
+
+
+class TestIsCandidateSimilarExtraPaths:
+    """Extra tests that exercise uncovered branches of _is_candidate_similar."""
+
+    def test_candidate_without_route_excluded(self) -> None:
+        """Candidate with matching activity type but no GPS route is excluded.
+
+        This exercises the ``endpoints is None`` branch (line 278).
+        """
+        route = _build_route([(48.85, 2.35), (48.87, 2.37)])
+        current = _make_row_with_route(idx=0, route=route, distance_sort=2000.0)
+        # Candidate has correct type and distance but no route at all.
+        no_route_candidate = {
+            "id": "no_route",
+            "raw_activity_type": "Running",
+            "distance_sort": 2000.0,
+        }
+        result = wdmc.find_similar_route_workouts(current, [current, no_route_candidate])
+        assert no_route_candidate not in result
+
+    def test_candidate_with_far_end_excluded(self) -> None:
+        """Candidate whose end is far from the current end is excluded.
+
+        Both start points are very close; the end of the candidate is moved
+        ~111 km north so only the end-proximity check can reject it,
+        exercising the ``return False`` branch for the end haversine check.
+        """
+        start = (48.85, 2.35)
+        close_end = (48.87, 2.37)
+        far_end = (49.87, 2.37)  # ~111 km north
+
+        route_current = _build_route([start, close_end])
+        # Same start, but end is very far.
+        route_far_end = _build_route([start, far_end])
+
+        current = _make_row_with_route(idx=0, route=route_current, distance_sort=2500.0)
+        far = _make_row_with_route(
+            idx=1,
+            route=route_far_end,
+            # distance_sort close enough to pass the ±5 % tolerance
+            distance_sort=2550.0,
+        )
+        result = wdmc.find_similar_route_workouts(current, [current, far])
+        assert far not in result
+
+
+# ---------------------------------------------------------------------------
+# _make_leaderboard_row – direct unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestMakeLeaderboardRow:
+    """Direct tests for the module-level _make_leaderboard_row helper."""
+
+    def _row(self, duration_sort: float = 3600.0, date: str = "Jan 01, 2024") -> dict[str, Any]:
+        return {
+            "id": "r1",
+            "date": date,
+            "duration": "1h 00min",
+            "duration_sort": duration_sort,
+            "distance_sort": 10_000.0,
+        }
+
+    def test_non_current_has_plain_rank_str(self) -> None:
+        """Non-current entry should have plain rank number in rank_str."""
+        row = wdmc._make_leaderboard_row(3, self._row(), False, 3600.0, "km")
+        assert row["rank"] == 3
+        assert row["rank_str"] == "3"
+        assert "→" not in row["rank_str"]
+
+    def test_current_has_arrow_prefix(self) -> None:
+        """Current entry should have '→ {rank}' in rank_str."""
+        row = wdmc._make_leaderboard_row(1, self._row(), True, 3600.0, "km")
+        assert row["rank_str"] == "→ 1"
+
+    def test_diff_str_for_fastest(self) -> None:
+        """Rank-1 entry (same duration as best) should have '–' as diff_str."""
+        row = wdmc._make_leaderboard_row(1, self._row(3600.0), False, 3600.0, "km")
+        assert row["diff_str"] == "–"
+
+    def test_diff_str_for_slower_entry(self) -> None:
+        """Entry 90 s slower than best should have '+1:30' as diff_str."""
+        row = wdmc._make_leaderboard_row(2, self._row(3690.0), False, 3600.0, "km")
+        assert row["diff_str"] == "+1:30"
+
+    def test_date_and_duration_copied(self) -> None:
+        """date and duration should be copied from the source row."""
+        row = wdmc._make_leaderboard_row(1, self._row(date="Feb 14, 2024"), False, 3600.0, "km")
+        assert row["date"] == "Feb 14, 2024"
+        assert row["duration"] == "1h 00min"
+
+    def test_missing_duration_sort_treated_as_zero(self) -> None:
+        """Row without duration_sort should be treated as 0 seconds (diff_str '–')."""
+        r: dict[str, Any] = {"id": "x", "date": "–", "duration": "–", "distance_sort": 1.0}
+        result = wdmc._make_leaderboard_row(1, r, False, 0.0, "km")
+        assert result["diff_str"] == "–"

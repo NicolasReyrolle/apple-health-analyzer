@@ -173,8 +173,6 @@ def _route_endpoints(row: dict[str, Any]) -> tuple[float, float, float, float] |
         return None
     first_route = routes[0]
     last_route = routes[-1]
-    if first_route.is_empty or last_route.is_empty:
-        return None
     start = first_route.points[0]
     end = last_route.points[-1]
     return start.latitude, start.longitude, end.latitude, end.longitude
@@ -488,22 +486,13 @@ def _build_comparison_display_rows(
     # edge case of an empty list reaching this function directly.
     best_duration_s: float = float(similar[0].get("duration_sort") or 0.0) if similar else 0.0
 
-    def _make_display_row(rank: int, row: dict[str, Any], is_current: bool) -> dict[str, Any]:
-        row_duration_s = float(row.get("duration_sort") or 0.0)
-        return {
-            "rank": rank,
-            "rank_str": f"→ {rank}" if is_current else str(rank),
-            "date": row.get("date", "–"),
-            "duration": row.get("duration", "–"),
-            "pace": _pace_from_row(row, distance_unit),
-            "diff_str": _format_duration_diff(row_duration_s, best_duration_s),
-        }
-
     display_rows: list[dict[str, Any]] = []
     for i, row in enumerate(similar[:top_n]):
         rank = i + 1
         is_current = row.get("id") == current_row_id
-        display_rows.append(_make_display_row(rank, row, is_current))
+        display_rows.append(
+            _make_leaderboard_row(rank, row, is_current, best_duration_s, distance_unit)
+        )
 
     # Track which row IDs are already shown so we avoid duplicates below.
     shown_ids: set[str | None] = {r.get("id") for r in similar[:top_n]}
@@ -512,7 +501,9 @@ def _build_comparison_display_rows(
     if current_rank is not None and current_rank > top_n:
         current = _find_row_by_id(similar, current_row_id)
         if current is not None:
-            display_rows.append(_make_display_row(current_rank, current, is_current=True))
+            display_rows.append(
+                _make_leaderboard_row(current_rank, current, True, best_duration_s, distance_unit)
+            )
             shown_ids.add(current_row_id)
 
     # Append the slowest entry (last in the sorted list) when not already shown.
@@ -523,7 +514,11 @@ def _build_comparison_display_rows(
         slowest_id = slowest.get("id")
         if slowest_id not in shown_ids:
             is_current = slowest_id == current_row_id
-            display_rows.append(_make_display_row(slowest_rank, slowest, is_current))
+            display_rows.append(
+                _make_leaderboard_row(
+                    slowest_rank, slowest, is_current, best_duration_s, distance_unit
+                )
+            )
 
     return display_rows, current_rank
 
