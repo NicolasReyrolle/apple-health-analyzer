@@ -258,8 +258,8 @@ def _build_field_rows(
 ) -> dict[str, tuple[Any, Any]]:
     """Build label/value field row widgets from a display spec.
 
-    Creates a ``ui.row`` for each entry in *field_display* and returns a dict
-    mapping each field key to its ``(row_element, value_label)`` pair so that
+    Creates a ``ui.element("div")`` row for each entry in *field_display* and
+    returns a dict mapping each field key to its ``(row_element, value_label)`` pair so that
     :func:`_update_fields` can update values without rebuilding the UI tree.
 
     Args:
@@ -275,33 +275,6 @@ def _build_field_rows(
             value_el = ui.label().classes(MODAL_FIELD_VALUE_CLASSES)
         field_rows[field_key] = (frow, value_el)
     return field_rows
-
-
-def _segment_color_from_pace(pace_min_per_km: float | None) -> str:
-    """Return route-segment color from pace (green=fast, red=slow)."""
-    if pace_min_per_km is None:
-        return "#6b7280"
-    if pace_min_per_km <= 4.0:
-        return "#16a34a"
-    if pace_min_per_km <= 5.0:
-        return "#65a30d"
-    if pace_min_per_km <= 6.0:
-        return "#eab308"
-    if pace_min_per_km <= 7.0:
-        return "#f97316"
-    return "#dc2626"
-
-
-def _format_pace_min_per_km(pace_min_per_km: float | None) -> str:
-    """Format pace value for tooltips, or return an unavailable marker."""
-    if pace_min_per_km is None or pace_min_per_km <= 0.0:
-        return "–"
-    minutes = int(pace_min_per_km)
-    seconds = int(round((pace_min_per_km - minutes) * 60.0))
-    if seconds == 60:
-        minutes += 1
-        seconds = 0
-    return f"{minutes}:{seconds:02d} /km"
 
 
 def _route_point_map_data(point: Any) -> dict[str, float | Any] | None:
@@ -514,7 +487,6 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
     no_data = json.dumps("–")
     # point payload indices for JS formatter:
     # [0]=distance_km, [1]=altitude_m, [2]=pace_min_per_km, [3]=speed_km_h, [4]=heart_rate_bpm
-    # Keep this pace formatter aligned with _format_pace_min_per_km used on map tooltips.
     altitude_axis_name = f"{t('Altitude')} (m)"
     pace_axis_name = f"{t('Pace')} (/km)"
     # Keep legend and axis titles separated from tick labels on compact screens.
