@@ -626,6 +626,7 @@ class TestRouteTabLocalizationAndCoverage:
         data = config["series"][0]["data"]
 
         assert data[2][2] is not None
+        # 20.0 min/km threshold confirms the pause spike is smoothed to a plausible running pace.
         assert data[2][2] < 20.0
 
     def test_do_refresh_route_tab_uses_metric_based_segment_colors(self) -> None:

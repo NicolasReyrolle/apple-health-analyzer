@@ -52,6 +52,8 @@ _LabelFn: TypeAlias = Callable[[], str]
 #: i18n key reused across GPS-dependent modal sections.
 _NO_GPS_ROUTE_MSG = "No GPS route available."
 _M_S_TO_KM_H = 3.6
+_SECONDS_PER_MINUTE = 60.0
+_METERS_PER_KM = 1000.0
 _MIN_MOVING_SPEED_M_S = 0.5
 _PACE_SMOOTHING_WINDOW_M = 200.0
 
@@ -355,7 +357,7 @@ def _route_segment_metrics(
                 speed_m_s = distance_m / delta_seconds
     if speed_m_s is None or speed_m_s <= 0.0:
         return distance_m, None, None
-    pace_min_per_km = (1000.0 / speed_m_s) / 60.0
+    pace_min_per_km = (_METERS_PER_KM / speed_m_s) / _SECONDS_PER_MINUTE
     return distance_m, speed_m_s, pace_min_per_km
 
 
@@ -383,6 +385,7 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
         valid_points = route_points
         if len(valid_points) < 2:
             continue
+        # Keep a short rolling distance window to smooth pause spikes in pace samples.
         rolling_pace_segments: list[tuple[float, float]] = []
         rolling_distance_m = 0.0
         rolling_time_s = 0.0
@@ -419,7 +422,9 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
                             rolling_distance_m -= old_distance_m
                             rolling_time_s -= old_time_s
                 if rolling_distance_m > 0.0 and rolling_time_s > 0.0:
-                    pace = (rolling_time_s / 60.0) / (rolling_distance_m / 1000.0)
+                    pace = (rolling_time_s / _SECONDS_PER_MINUTE) / (
+                        rolling_distance_m / _METERS_PER_KM
+                    )
             profile_points.append([distance_km, altitude_m, pace, speed_kmh, hr_bpm])
 
     pace_label = json.dumps(f"{t('Pace')}: ")
