@@ -367,7 +367,7 @@ class TestCreateWorkoutDetailModal:
         assert route_profile_chart.options["backgroundColor"] == "transparent"
         profile_data = route_profile_chart.options["series"][0]["data"]
         assert isinstance(profile_data, list)
-        assert len(profile_data) >= 3
+        assert len(profile_data) == 3
         assert profile_data[0][1] == 35.0
 
 
