@@ -414,10 +414,12 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
     # Keep this pace formatter aligned with _format_pace_min_per_km used on map tooltips.
     altitude_axis_name = f"{t('Altitude')} (m)"
     pace_axis_name = f"{t('Pace')} (/km)"
+    # Dual-axis layout needs extra right/left grid space for y-axis names and labels.
+    chart_grid = {"left": 56, "right": 64, "top": 36, "bottom": 42}
     return {
         "backgroundColor": "transparent",
-        "legend": {"data": [t("Altitude"), t("Pace")]},
-        "grid": {"left": 56, "right": 64, "top": 36, "bottom": 42},
+        "legend": {"data": [altitude_axis_name, pace_axis_name]},
+        "grid": chart_grid,
         "tooltip": {
             "trigger": "axis",
             "renderMode": "richText",
@@ -447,7 +449,7 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
         ],
         "series": [
             {
-                "name": t("Altitude"),
+                "name": altitude_axis_name,
                 "type": "line",
                 "data": profile_points,
                 "encode": {"x": 0, "y": 1},
@@ -456,7 +458,7 @@ def _build_route_profile_chart_config(routes: list[WorkoutRoute]) -> dict[str, A
                 "lineStyle": {"width": 2},
             },
             {
-                "name": t("Pace"),
+                "name": pace_axis_name,
                 "type": "line",
                 "data": profile_points,
                 "encode": {"x": 0, "y": 2},
