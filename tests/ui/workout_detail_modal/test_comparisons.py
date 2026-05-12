@@ -254,6 +254,26 @@ class TestFindSimilarRouteWorkouts:
         durations = [float(r.get("duration_sort") or 0.0) for r in result]
         assert durations == sorted(durations)
 
+    def test_sentinel_duration_sort_not_ranked_fastest(self) -> None:
+        """Rows with a non-positive duration_sort (e.g. -1.0 sentinel from
+        _build_field_pair) must not be ranked ahead of real durations.
+
+        Regression: the old ``r.get("duration_sort") or float("inf")`` sort
+        key treated ``-1.0`` as truthy, so -1.0 < real_duration and would be
+        ranked as fastest.  The fixed key treats any ``<= 0`` value as ``inf``
+        so these rows sort to the end of the list.
+        """
+        route_pts = [(48.85, 2.35), (48.87, 2.37)]
+        row_valid = _make_row_with_route(idx=0, route=_build_route(route_pts), duration_sort=3600.0)
+        row_sentinel = _make_row_with_route(
+            idx=1, route=_build_route(route_pts), duration_sort=-1.0
+        )
+        result = wdmc.find_similar_route_workouts(row_valid, [row_valid, row_sentinel])
+        if len(result) >= 2:
+            # The row with a valid duration should come first.
+            assert result[0] is row_valid
+            assert result[-1] is row_sentinel
+
     def test_no_distance_sort_excluded(self) -> None:
         """Row without a valid distance_sort must be excluded."""
         route = _build_route([(48.85, 2.35), (48.87, 2.37)])
@@ -770,17 +790,40 @@ class TestRowHasRoute:
 
 
 class TestMergeAdjacentRoutePartsEmptySegment:
-    """Additional tests covering the empty-segment skip branch."""
+    """Additional tests covering the empty-segment filtering behaviour."""
 
-    def test_empty_segment_in_pair_is_skipped(self) -> None:
-        """An empty segment between two real segments should be skipped (continue)."""
+    def test_empty_segment_between_adjacent_parts_is_ignored(self) -> None:
+        """An empty segment sandwiched between two adjacent real segments is
+        filtered out; the two non-empty segments are still merged."""
         part_a = _build_route([(48.8500, 2.3500), (48.8501, 2.3501)])
         part_empty = WorkoutRoute(points=[])
         part_b = _build_route([(48.8501, 2.3501), (48.8510, 2.3510)])
-        # The A–empty pair is skipped; the empty–B pair is also skipped.
-        # All checked pairs pass → all three are merged.
         result = wdmc._merge_adjacent_route_parts([part_a, part_empty, part_b])
         assert len(result.points) == len(part_a.points) + len(part_b.points)
+
+    def test_empty_segment_between_far_parts_falls_back(self) -> None:
+        """An empty segment between two non-adjacent real segments must not
+        cause a false merge.  The fix filters out empties first so the ~11 km
+        gap between part_a and part_b is correctly detected and falls back to
+        the first non-empty segment."""
+        part_a = _build_route([(48.8500, 2.3500), (48.8510, 2.3510)])
+        part_empty = WorkoutRoute(points=[])
+        part_b = _build_route([(48.9510, 2.3510), (48.9600, 2.3600)])  # ~11 km away
+        result = wdmc._merge_adjacent_route_parts([part_a, part_empty, part_b])
+        # Should fall back to just part_a, not merge part_b in.
+        assert result is part_a
+
+    def test_all_empty_returns_empty_route(self) -> None:
+        """Input consisting solely of empty segments returns an empty route."""
+        result = wdmc._merge_adjacent_route_parts(
+            [WorkoutRoute(points=[]), WorkoutRoute(points=[])]
+        )
+        assert result.is_empty
+
+    def test_single_empty_returns_empty_route(self) -> None:
+        """Single empty segment should return an empty WorkoutRoute."""
+        result = wdmc._merge_adjacent_route_parts([WorkoutRoute(points=[])])
+        assert result.is_empty
 
 
 # ---------------------------------------------------------------------------

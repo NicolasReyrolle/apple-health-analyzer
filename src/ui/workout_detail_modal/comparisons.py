@@ -127,10 +127,15 @@ def _merge_adjacent_route_parts(
     if len(routes) == 1:
         return routes[0]
 
-    # Verify that every consecutive pair is GPS-adjacent.
-    for prev, nxt in zip(routes, routes[1:]):
-        if prev.is_empty or nxt.is_empty:
-            continue
+    # Filter out empty segments up-front so adjacency is checked between
+    # consecutive non-empty parts only (avoids a false merge when an empty
+    # segment sits between two geographically distant non-empty segments).
+    non_empty = [r for r in routes if not r.is_empty]
+    if len(non_empty) <= 1:
+        return non_empty[0] if non_empty else WorkoutRoute(points=[])
+
+    # Verify that every consecutive non-empty pair is GPS-adjacent.
+    for prev, nxt in zip(non_empty, non_empty[1:]):
         end_pt = prev.points[-1]
         start_pt = nxt.points[0]
         gap_m = WorkoutRoute.haversine_m(
@@ -140,12 +145,12 @@ def _merge_adjacent_route_parts(
             start_pt.longitude,
         )
         if gap_m > adjacency_threshold_m:
-            # Non-adjacent segments → fall back to the first segment only.
-            return routes[0]
+            # Non-adjacent segments → fall back to the first non-empty segment.
+            return non_empty[0]
 
-    # All consecutive pairs are adjacent → merge all points in order.
+    # All consecutive non-empty pairs are adjacent → merge all points in order.
     merged_points: list[RoutePoint] = []
-    for route in routes:
+    for route in non_empty:
         merged_points.extend(route.points)
     return WorkoutRoute(points=merged_points)
 
@@ -345,7 +350,13 @@ def find_similar_route_workouts(
         ):
             similar.append(row)
 
-    similar.sort(key=lambda r: r.get("duration_sort") or float("inf"))
+    similar.sort(
+        key=lambda r: (
+            float(r["duration_sort"])
+            if isinstance(r.get("duration_sort"), (int, float)) and r["duration_sort"] > 0
+            else float("inf")
+        )
+    )
     return similar
 
 
