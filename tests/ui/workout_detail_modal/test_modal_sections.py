@@ -22,7 +22,7 @@ class TestTabEnableState:
 
         def make_tab(*_a: Any, **_kw: Any) -> _DummyElement:
             tab = _DummyElement()
-            tab._tab_value = _a[0] if _a else _kw.get("value")
+            tab.value = _a[0] if _a else _kw.get("value", "overview")
             tab_stubs.append(tab)
             return tab
 
@@ -30,7 +30,7 @@ class TestTabEnableState:
 
     def _tab_by_value(self, tab_stubs: list[_DummyElement], tab_value: str) -> _DummyElement:
         """Return the first tab stub with the requested ``value``."""
-        return next(tab for tab in tab_stubs if getattr(tab, "_tab_value", None) == tab_value)
+        return next(tab for tab in tab_stubs if getattr(tab, "value", None) == tab_value)
 
     def test_activity_tab_disabled_for_unsupported_activity(self) -> None:
         """Activity tab should be disabled when no type-specific data is available."""
