@@ -8,7 +8,8 @@ When instructions conflict, apply this order:
 3. This repository instruction file
 4. General style preferences
 
-If two rules at the same level conflict, choose the option with fewer steps or dependencies and state the assumption.
+If two rules at the same level conflict, choose the option with fewer implementation steps or dependencies, prioritizing user-facing simplicity, and state the assumption.
+If a user request is ambiguous or incomplete, apply repository instructions that best match the stated intent and document the assumption in your response.
 
 ## Project overview
 
@@ -75,6 +76,7 @@ If two rules at the same level conflict, choose the option with fewer steps or d
 - Keep cognitive complexity low; break down complex functions into smaller helpers. Maximum complexity of 15 per function.
 - Keep functions under 50 lines where practical. If a function exceeds this, consider refactoring into smaller functions.
 - Each module must contain less than 1000 lines of code. This limit applies to both source and test files. If a module exceeds this, consider splitting it into smaller, focused modules (e.g. by feature area or tab).
+- Any `__init__.py` content should be kept to a minimum, without much logic inside. Only imports and real setup would be preferable.
 
 ### After coding
 - Run `ruff format src tests`
