@@ -809,8 +809,9 @@ def create_workout_detail_modal(
         comparisons_tab.set_enabled(has_route)
         # Only refresh the Intervals tab when it is currently active; switching to
         # it triggers _on_tab_change which handles the initial load.
-        active_tab = detail_tabs.value if isinstance(detail_tabs.value, str) else None
-        refresh_fn = _lazy_tab_refresh.get(active_tab) if active_tab is not None else None
+        refresh_fn = (
+            _lazy_tab_refresh.get(detail_tabs.value) if isinstance(detail_tabs.value, str) else None
+        )
         if refresh_fn:
             refresh_fn(row)
 

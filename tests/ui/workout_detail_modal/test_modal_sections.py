@@ -5,7 +5,9 @@ from __future__ import annotations
 from contextlib import ExitStack
 from typing import Any
 
-import ui.workout_detail_modal.comparisons as wdmc
+import pytest
+
+import ui.workout_detail_modal.comparisons as wdm_comparisons
 from ui import workout_detail_modal as wdm
 
 from ._stubs import _all_patches, _DummyElement, _make_row
@@ -241,17 +243,17 @@ class TestRowHasRoute:
 
     def test_returns_false_when_no_route_key(self) -> None:
         """Row without a 'route' key should return False."""
-        assert not wdmc._row_has_route({})
+        assert not wdm_comparisons._row_has_route({})
 
     def test_returns_false_when_route_is_none(self) -> None:
         """Row with route=None should return False."""
-        assert not wdmc._row_has_route({"route": None})
+        assert not wdm_comparisons._row_has_route({"route": None})
 
     def test_returns_false_for_empty_route(self) -> None:
         """Row with an empty WorkoutRoute should return False."""
         from logic.workout_manager.workout_route import WorkoutRoute
 
-        assert not wdmc._row_has_route({"route": WorkoutRoute(points=[])})
+        assert not wdm_comparisons._row_has_route({"route": WorkoutRoute(points=[])})
 
     def test_returns_true_for_non_empty_route(self) -> None:
         """Row with a non-empty WorkoutRoute should return True."""
@@ -272,7 +274,7 @@ class TestRowHasRoute:
             )
             for i in range(5)
         ]
-        assert wdmc._row_has_route({"route": WorkoutRoute(points=points)})
+        assert wdm_comparisons._row_has_route({"route": WorkoutRoute(points=points)})
 
 
 class TestGetRowRoutes:
@@ -476,7 +478,8 @@ class TestDistanceFormatTwoDecimals:
         from ui import workout_table as wt
 
         row = {"distance": 10000.0}
-        _, display = wt._extract_distance_field(row, distance_unit="km")
+        distance_value, display = wt._extract_distance_field(row, distance_unit="km")
+        assert distance_value == pytest.approx(10000.0)
         assert display == "10.00 km"
 
     def test_metric_distance_non_round_has_two_decimals(self) -> None:
@@ -484,7 +487,8 @@ class TestDistanceFormatTwoDecimals:
         from ui import workout_table as wt
 
         row = {"distance": 5678.0}
-        _, display = wt._extract_distance_field(row, distance_unit="km")
+        distance_value, display = wt._extract_distance_field(row, distance_unit="km")
+        assert distance_value == pytest.approx(5678.0)
         assert display == "5.68 km"
 
     def test_imperial_distance_has_two_decimals(self) -> None:
@@ -493,8 +497,9 @@ class TestDistanceFormatTwoDecimals:
         from units import METERS_TO_MILES
 
         row = {"distance": 1609.344}
-        _, display = wt._extract_distance_field(row, distance_unit="mi")
+        distance_value, display = wt._extract_distance_field(row, distance_unit="mi")
         expected = f"{1609.344 * METERS_TO_MILES:.2f} mi"
+        assert distance_value == pytest.approx(1609.344)
         assert display == expected
 
 

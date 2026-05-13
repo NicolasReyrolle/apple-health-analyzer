@@ -6,7 +6,7 @@ import asyncio
 import json
 from collections.abc import Callable
 from math import isfinite
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from nicegui import background_tasks
 
@@ -29,7 +29,18 @@ _PACE_SMOOTHING_WINDOW_M = 200.0
 _MIN_ROLLING_SEGMENTS = 1
 
 
-def _route_point_map_data(point: Any) -> dict[str, float | Any] | None:
+class _RoutePointData(TypedDict):
+    """Normalized route point payload used by map/profile helpers."""
+
+    lat: float
+    lon: float
+    altitude: float
+    speed: float
+    heart_rate: float | None
+    time: Any
+
+
+def _route_point_map_data(point: Any) -> _RoutePointData | None:
     """Extract map/profile fields from a route point; return None when invalid."""
     lat = getattr(point, "latitude", None)
     lon = getattr(point, "longitude", None)
@@ -58,8 +69,8 @@ def _route_point_map_data(point: Any) -> dict[str, float | Any] | None:
 
 
 def _route_segment_metrics(
-    previous: dict[str, Any],
-    current: dict[str, Any],
+    previous: _RoutePointData,
+    current: _RoutePointData,
 ) -> tuple[float, float | None, float | None]:
     """Return segment distance (m), speed (m/s), and pace (min/km)."""
     distance_m = WorkoutRoute.haversine_m(
@@ -123,12 +134,12 @@ def _route_altitudes(route: WorkoutRoute) -> list[float]:
     ]
 
 
-def _build_valid_route_points(route: WorkoutRoute) -> list[dict[str, Any]]:
+def _build_valid_route_points(route: WorkoutRoute) -> list[_RoutePointData]:
     """Return route points enriched with altitude and filtered for valid coordinates."""
     altitudes = _route_altitudes(route)
     if not altitudes:
         return []
-    valid_points: list[dict[str, Any]] = []
+    valid_points: list[_RoutePointData] = []
     for point, altitude in zip(route.points, altitudes):
         point_data = _route_point_map_data(point)
         if point_data is None:
@@ -140,8 +151,8 @@ def _build_valid_route_points(route: WorkoutRoute) -> list[dict[str, Any]]:
 
 def _add_segment_distance(
     cumulative_distance_m: float,
-    previous: dict[str, Any] | None,
-    current: dict[str, Any],
+    previous: _RoutePointData | None,
+    current: _RoutePointData,
 ) -> float:
     """Accumulate traveled distance from the previous point to current point."""
     if previous is None:
@@ -155,8 +166,8 @@ def _add_segment_distance(
 
 
 def _profile_speed_and_pace(
-    previous: dict[str, Any] | None,
-    current: dict[str, Any],
+    previous: _RoutePointData | None,
+    current: _RoutePointData,
     rolling_pace_segments: list[tuple[float, float]],
     rolling_distance_m: float,
     rolling_time_s: float,
@@ -180,7 +191,7 @@ def _profile_speed_and_pace(
 
 def _append_route_profile_points(
     profile_points: list[list[float | None]],
-    valid_points: list[dict[str, Any]],
+    valid_points: list[_RoutePointData],
     cumulative_distance_m: float,
 ) -> float:
     """Append chart points for one valid route and return updated cumulative distance."""
