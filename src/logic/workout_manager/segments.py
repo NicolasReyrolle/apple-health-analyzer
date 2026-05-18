@@ -29,6 +29,27 @@ class CriticalPowerResult(TypedDict):
 
 class WorkoutManagerSegmentsMixin:
     @staticmethod
+    def _split_route_into_traces(route: WorkoutRoute) -> list[WorkoutRoute]:
+        """Split route into monotonic-time traces to avoid cross-reversal windows."""
+        if len(route.points) < 2:
+            return []
+
+        traces: list[WorkoutRoute] = []
+        current_points = [route.points[0]]
+        for point in route.points[1:]:
+            if point.time < current_points[-1].time:
+                if len(current_points) >= 2:
+                    traces.append(WorkoutRoute(points=current_points))
+                current_points = [point]
+                continue
+            current_points.append(point)
+
+        if len(current_points) >= 2:
+            traces.append(WorkoutRoute(points=current_points))
+
+        return traces
+
+    @staticmethod
     def _evaluate_ransac_candidate(
         times_s: list[float],
         works_j: list[float],
@@ -221,13 +242,13 @@ class WorkoutManagerSegmentsMixin:
             traces: list[WorkoutRoute] = []
             for route_part in route_parts_obj:  # type: ignore[misc]
                 if isinstance(route_part, WorkoutRoute):
-                    traces.append(route_part)
+                    traces.extend(cls._split_route_into_traces(route_part))
             if traces:
                 return traces
 
         route_obj: Any = run_record.route if hasattr(run_record, "route") else None
         if isinstance(route_obj, WorkoutRoute):
-            return [route_obj]
+            return cls._split_route_into_traces(route_obj)
 
         return []
 
@@ -737,12 +758,13 @@ class WorkoutManagerSegmentsMixin:
         if w_prime_j <= 0:
             _logger.warning(
                 "Non-physical W' detected for period candidate "
-                "(short=%sm long=%sm cp=%.2fW w_prime=%.2fJ); keeping CP result",
+                "(short=%sm long=%sm cp=%.2fW w_prime=%.2fJ); dropping CP result",
                 short_distance,
                 long_distance,
                 critical_power_w,
                 w_prime_j,
             )
+            return None
 
         return CriticalPowerResult(
             short_distance=short_distance,

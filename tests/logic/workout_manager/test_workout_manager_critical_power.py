@@ -345,7 +345,7 @@ class TestGetCriticalPower:
     def test_critical_power_logs_warning_for_non_physical_w_prime(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """Negative W' should be kept but explicitly logged as a warning."""
+        """Non-physical W' should be rejected and logged as a warning."""
         t800 = datetime(2025, 4, 1, tzinfo=timezone.utc)
         t5000 = datetime(2025, 4, 2, tzinfo=timezone.utc)
         manager = WorkoutManager(
@@ -372,8 +372,7 @@ class TestGetCriticalPower:
         with caplog.at_level("WARNING"):
             result = manager.get_critical_power(running_power_df=rp_df, topn=1)
 
-        assert result is not None
-        assert result["w_prime_j"] <= 0
+        assert result is None
         assert "Non-physical W' detected" in caplog.text
 
     def test_critical_power_continues_when_additional_distances_have_no_segments(
