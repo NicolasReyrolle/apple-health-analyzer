@@ -94,12 +94,9 @@ class WorkoutManagerSegmentsMixin:
                 sorted_residuals = sorted(residuals[index] for index in inlier_indexes)
                 median_residual = sorted_residuals[len(sorted_residuals) // 2]
 
-                if (
-                    len(inlier_indexes) > best_inlier_count
-                    or (
-                        len(inlier_indexes) == best_inlier_count
-                        and median_residual < best_median_residual
-                    )
+                if len(inlier_indexes) > best_inlier_count or (
+                    len(inlier_indexes) == best_inlier_count
+                    and median_residual < best_median_residual
                 ):
                     best_inlier_count = len(inlier_indexes)
                     best_median_residual = median_residual
@@ -819,4 +816,3 @@ class WorkoutManagerSegmentsMixin:
             for pk in full_range
         ]
         return pd.DataFrame(filled)
-
