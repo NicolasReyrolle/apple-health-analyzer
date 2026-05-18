@@ -177,6 +177,68 @@ class TestGetCriticalPower:
         assert result["avg_power_short_w"] == pytest.approx(350.0, rel=0.01)  # type: ignore[misc]
         assert result["avg_power_long_w"] == pytest.approx(250.0, rel=0.01)  # type: ignore[misc]
 
+    def test_critical_power_uses_average_work_not_product_of_means(self) -> None:
+        """Average work should be computed from per-segment work to avoid false invalid W'."""
+        month = datetime(2026, 4, 1, tzinfo=timezone.utc)
+        short_data = [
+            (198.3270856480831, 370.7915258375548),
+            (161.7296540939797, 278.27940586367725),
+            (170.57335750270062, 255.26954656462945),
+            (178.77726829668626, 334.006848846674),
+            (157.12712767559637, 271.50544091913963),
+        ]
+        long_data = [
+            (1770.2654643940498, 307.38580179348514),
+            (1304.4328938134136, 300.8841198524406),
+            (1438.573924535698, 281.9585778958942),
+            (1579.2464357580236, 308.68479554994934),
+            (1630.0284825070953, 313.000637214952),
+        ]
+
+        rows: list[dict[str, Any]] = []
+        rp_dfs: list[pd.DataFrame] = []
+        for idx, (duration_s, power_w) in enumerate(short_data):
+            start = month + timedelta(days=idx)
+            rows.append(
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp(start),
+                    "distance": 800.0,
+                    "route": self._make_route(start, 800.0, duration_s, 0.007),
+                }
+            )
+            rp_dfs.append(self._rp_df(start, duration_s, power_w))
+        for idx, (duration_s, power_w) in enumerate(long_data):
+            start = month + timedelta(days=10 + idx)
+            rows.append(
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp(start),
+                    "distance": 5000.0,
+                    "route": self._make_route(start, 5000.0, duration_s, 0.045),
+                }
+            )
+            rp_dfs.append(self._rp_df(start, duration_s, power_w))
+
+        manager = WorkoutManager(pd.DataFrame(rows))
+        rp_df = pd.concat(rp_dfs, ignore_index=True)
+
+        result = manager.get_critical_power(
+            running_power_df=rp_df, topn=5, short_distance=800, long_distance=5000
+        )
+
+        assert result is not None
+        avg_time_short = sum(duration for duration, _ in short_data) / len(short_data)
+        avg_time_long = sum(duration for duration, _ in long_data) / len(long_data)
+        avg_work_short = sum(duration * power for duration, power in short_data) / len(short_data)
+        avg_work_long = sum(duration * power for duration, power in long_data) / len(long_data)
+        expected_cp = (avg_work_long - avg_work_short) / (avg_time_long - avg_time_short)
+        expected_w_prime = avg_work_short - expected_cp * avg_time_short
+
+        assert result["critical_power_w"] == pytest.approx(expected_cp)  # type: ignore[misc]
+        assert result["w_prime_j"] == pytest.approx(expected_w_prime)  # type: ignore[misc]
+        assert result["w_prime_j"] > 0  # type: ignore[operator]
+
 
 class TestGetCriticalPowerEvolution:
     """Test suite for WorkoutManager.get_critical_power_evolution."""
@@ -354,3 +416,55 @@ class TestGetCriticalPowerEvolution:
         # November: valid CP
         assert result.iloc[2]["critical_power_w"] is not None
         assert result.iloc[2]["w_prime_kj"] is not None
+
+    def test_month_with_valid_segments_is_not_dropped_due_to_work_averaging(self) -> None:
+        """A month with valid 800m/5000m power data should produce CP/W' values."""
+        month = datetime(2026, 4, 1, tzinfo=timezone.utc)
+        short_data = [
+            (198.3270856480831, 370.7915258375548),
+            (161.7296540939797, 278.27940586367725),
+            (170.57335750270062, 255.26954656462945),
+            (178.77726829668626, 334.006848846674),
+            (157.12712767559637, 271.50544091913963),
+        ]
+        long_data = [
+            (1770.2654643940498, 307.38580179348514),
+            (1304.4328938134136, 300.8841198524406),
+            (1438.573924535698, 281.9585778958942),
+            (1579.2464357580236, 308.68479554994934),
+            (1630.0284825070953, 313.000637214952),
+        ]
+
+        rows: list[dict[str, Any]] = []
+        rp_records: list[dict[str, Any]] = []
+        for idx, (duration_s, power_w) in enumerate(short_data):
+            start = month + timedelta(days=idx)
+            rows.append(
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp(start),
+                    "distance": 800.0,
+                    "route": self._make_route(start, 800.0, duration_s, 0.007),
+                }
+            )
+            rp_records.append(self._rp_record(start, duration_s, power_w))
+        for idx, (duration_s, power_w) in enumerate(long_data):
+            start = month + timedelta(days=10 + idx)
+            rows.append(
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp(start),
+                    "distance": 5000.0,
+                    "route": self._make_route(start, 5000.0, duration_s, 0.045),
+                }
+            )
+            rp_records.append(self._rp_record(start, duration_s, power_w))
+
+        manager = WorkoutManager(pd.DataFrame(rows))
+        rp_df = pd.DataFrame(rp_records)
+
+        result = manager.get_critical_power_evolution(running_power_df=rp_df, period="M", topn=5)
+
+        assert list(result["period"]) == ["2026-04"]
+        assert result.iloc[0]["critical_power_w"] is not None
+        assert result.iloc[0]["w_prime_kj"] is not None

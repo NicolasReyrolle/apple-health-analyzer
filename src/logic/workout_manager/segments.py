@@ -559,8 +559,10 @@ class WorkoutManagerSegmentsMixin:
         if time_diff <= 0:
             return None
 
-        work_short = avg_power_short * avg_time_short  # Joules
-        work_long = avg_power_long * avg_time_long  # Joules
+        short_work_j = short_rows["segment_avg_power"] * short_rows["duration_s"]
+        long_work_j = long_rows["segment_avg_power"] * long_rows["duration_s"]
+        work_short = float(short_work_j.mean())  # Joules
+        work_long = float(long_work_j.mean())  # Joules
 
         critical_power_w = (work_long - work_short) / time_diff
         w_prime_j = work_short - critical_power_w * avg_time_short
