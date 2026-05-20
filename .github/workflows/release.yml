@@ -154,7 +154,7 @@ jobs:
 
             - name: Install test tooling
               run: |
-                  pip install --only-binary :all: --constraint .github/workflows/constraints-test.txt pytest==9.0.3 pytest-cov==7.1.0
+                  pip install --only-binary :all: --constraint .github/workflows/constraints-test.txt -r requirements.txt pytest==9.0.3 pytest-cov==7.1.0
 
             - name: Verify tests use installed wheel
               shell: bash
