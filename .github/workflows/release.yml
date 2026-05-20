@@ -3,10 +3,6 @@ name: Release
 on:
     workflow_dispatch:
         inputs:
-            release_notes:
-                description: Optional release notes to include in the GitHub release
-                required: false
-                type: string
             dry_run:
                 description: Build and validate artifacts without pushing a tag, creating a release, or publishing to PyPI
                 required: false
