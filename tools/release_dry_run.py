@@ -14,7 +14,6 @@ from pathlib import Path
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a local dry run of the release flow.")
-    parser.add_argument("--release-notes", default="", help="Optional maintainer notes.")
     parser.add_argument("--skip-tests", action="store_true", help="Skip pytest execution.")
     parser.add_argument("--skip-python-build", action="store_true", help="Skip wheel/sdist build.")
     parser.add_argument("--skip-pyinstaller", action="store_true", help="Skip PyInstaller build.")
@@ -42,29 +41,6 @@ def compute_version(root: Path) -> tuple[str, str, str]:
     last_patch = int(last_tag.rsplit(".", 1)[-1]) if last_tag else 0
     new_version = f"{current_month}.{last_patch + 1}"
     return new_version, f"v{new_version}", last_tag
-
-
-def release_notes(root: Path, tag: str, last_tag: str, user_notes: str) -> str:
-    version = tag.removeprefix("v")
-    if last_tag:
-        changes = git_output(["log", "--oneline", f"{last_tag}..HEAD"], root)
-    else:
-        changes = git_output(["log", "--oneline"], root)
-    lines = [
-        f"# TrackTales {version}",
-        "",
-        "## Install",
-        "",
-        "- Windows: download the .exe asset from this release and run it directly.",
-        "- macOS: download the .dmg asset from this release and drag the app to Applications.",
-        f"- Python users: `pip install tracktales=={version}`",
-        "",
-        "## Changes",
-    ]
-    lines.extend(f"- {line}" for line in changes.splitlines() if line)
-    if user_notes:
-        lines.extend(["", "## Maintainer Notes", user_notes])
-    return "\n".join(lines) + "\n"
 
 
 def copy_workspace(root: Path) -> Path:
@@ -112,7 +88,6 @@ def main() -> int:
     args = parse_args()
     root = repo_root()
     version, tag, last_tag = compute_version(root)
-    notes = release_notes(root, tag, last_tag, args.release_notes)
     workspace = copy_workspace(root)
     output_dir = root / "output" / "release-dry-run"
 
@@ -122,9 +97,7 @@ def main() -> int:
 
     try:
         write_version(workspace, version)
-        (workspace / "release-notes.md").write_text(notes, encoding="utf-8")
         output_dir.mkdir(parents=True, exist_ok=True)
-        (output_dir / "release-notes.md").write_text(notes, encoding="utf-8")
 
         if not args.skip_python_build:
             run([sys.executable, "-m", "build"], workspace)

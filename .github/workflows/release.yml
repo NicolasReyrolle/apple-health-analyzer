@@ -58,35 +58,14 @@ jobs:
                   } >> "$GITHUB_OUTPUT"
 
             - name: Generate release notes
-              shell: bash
+              uses: TriPSs/conventional-changelog-action@v3
+              with:
+                preset: conventionalcommits
+                output-file: release-notes.md
+                release-count: 1
+                tag-prefix: v
               env:
-                  NEW_TAG: ${{ steps.version.outputs.new_tag }}
-                  LAST_TAG: ${{ steps.version.outputs.last_tag }}
-                  USER_NOTES: ${{ inputs.release_notes }}
-              run: |
-                  set -euo pipefail
-                  version="${NEW_TAG#v}"
-                  {
-                    echo "# TrackTales ${version}"
-                    echo
-                    echo "## Install"
-                    echo
-                    echo "- Windows: download the .exe asset from this release and run it directly."
-                    echo "- macOS: download the .dmg asset from this release and drag the app to Applications."
-                    echo "- Python users: \`pip install tracktales==${version}\`"
-                    echo
-                    echo "## Changes"
-                    if [ -n "${LAST_TAG}" ]; then
-                      git log --oneline "${LAST_TAG}..HEAD" | sed 's/^/- /'
-                    else
-                      git log --oneline | sed 's/^/- /'
-                    fi
-                    if [ -n "${USER_NOTES}" ]; then
-                      echo
-                      echo "## Maintainer Notes"
-                      echo "${USER_NOTES}"
-                    fi
-                  } > release-notes.md
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Upload release notes
               uses: actions/upload-artifact@v4
@@ -438,9 +417,6 @@ jobs:
             - release
         permissions:
             id-token: write
-        environment:
-            name: pypi
-            url: https://pypi.org/project/tracktales/
         steps:
             - name: Download Python artifacts
               uses: actions/download-artifact@v4.1.3
