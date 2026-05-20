@@ -33,6 +33,11 @@ Homepage = "https://github.com/NicolasReyrolle/tracktales"
 Repository = "https://github.com/NicolasReyrolle/tracktales.git"
 Issues = "https://github.com/NicolasReyrolle/tracktales/issues"
 
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "pep621"
+tag_format = "v$version"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
