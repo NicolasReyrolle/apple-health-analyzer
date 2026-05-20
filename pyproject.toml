@@ -36,6 +36,9 @@ Issues = "https://github.com/NicolasReyrolle/tracktales/issues"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools]
+py-modules = ["app_state", "assets", "logging_config", "tracktales", "units"]
+
 [tool.mypy]
 mypy_path = "src"
 explicit_package_bases = true
