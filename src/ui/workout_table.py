@@ -150,7 +150,11 @@ def _annotate_route_with_heart_rate(
     heart_rate_samples: list[tuple[datetime, float]],
 ) -> Any:
     """Return a copy of *route* with nearest heart-rate samples attached to each point."""
-    if not isinstance(route, WorkoutRoute) or route.is_empty or not heart_rate_samples:
+    if not heart_rate_samples:
+        return route
+    if not isinstance(route, WorkoutRoute):
+        return route
+    if route.is_empty:
         return route
 
     annotated_points = []

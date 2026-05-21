@@ -364,6 +364,17 @@ class TestBuildWorkoutRows:
         assert len(rows) == 1
         assert pd.isna(rows[0]["route"])
 
+    def test_annotate_route_with_heart_rate_ignores_float_inputs(self) -> None:
+        """Helper should return float/NaN route placeholders unchanged."""
+        route = float("nan")
+        heart_rate_samples = [
+            (pd.Timestamp("2025-01-02 10:00:10+00:00").to_pydatetime(), 141.0),
+        ]
+
+        result = wt._annotate_route_with_heart_rate(route, heart_rate_samples)
+
+        assert pd.isna(result)
+
     """Tests for _find_row_index()."""
 
     def test_returns_correct_index_for_matching_id(self) -> None:
