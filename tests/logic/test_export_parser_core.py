@@ -172,6 +172,17 @@ class TestNormalizeWorkoutStartDate:
         assert ep.ExportParser._normalize_workout_start_date(123) is None  # type: ignore[misc]
 
 
+class TestNormalizeHealthDatetimeToUtcNaive:
+    """Tests for UTC-normalized workout matching timestamps."""
+
+    def test_normalize_health_datetime_to_utc_naive_converts_offset_time(self) -> None:
+        result = ep.ExportParser._normalize_health_datetime_to_utc_naive(
+            "2025-01-02 11:00:00 +0100"
+        )
+
+        assert result == pd.Timestamp("2025-01-02 10:00:00").to_pydatetime()
+
+
 class TestStrDistanceToMeters:
     """Test the str_distance_to_meters method."""
 

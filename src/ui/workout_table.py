@@ -360,8 +360,8 @@ def _extract_row_data(
         "distance_unit": distance_unit,
     }
 
-    workout_start = _normalize_datetime(row.get("startDate"))
-    workout_end = _normalize_datetime(row.get("endDate"))
+    workout_start = _normalize_datetime(row.get("startDateUtc", row.get("startDate")))
+    workout_end = _normalize_datetime(row.get("endDateUtc", row.get("endDate")))
     workout_heart_rate_samples = _extract_workout_heart_rate_samples(
         heart_rate_samples if heart_rate_samples is not None else pd.DataFrame(),
         workout_start,

@@ -327,6 +327,64 @@ class TestBuildWorkoutRows:
         assert rows[0]["route"].points[0].heart_rate == pytest.approx(141.0)
         assert rows[0]["route"].points[1].heart_rate == pytest.approx(149.0)
 
+    def test_routes_use_utc_workout_bounds_for_heart_rate_matching(self) -> None:
+        """UTC workout bounds should be used when display dates preserve local wall clock."""
+        from app_state import state
+        from logic.records_by_type import RecordsByType
+        from logic.workout_manager.workout_route import RoutePoint, WorkoutRoute
+
+        original_workouts: Any = state.workouts
+        original_records = state.records_by_type
+        route = WorkoutRoute(
+            points=[
+                RoutePoint(
+                    time=pd.Timestamp("2025-01-02 10:00:00+00:00").to_pydatetime(),
+                    latitude=48.85,
+                    longitude=2.35,
+                    altitude=35.0,
+                    speed=3.0,
+                ),
+                RoutePoint(
+                    time=pd.Timestamp("2025-01-02 10:05:00+00:00").to_pydatetime(),
+                    latitude=48.86,
+                    longitude=2.36,
+                    altitude=36.0,
+                    speed=3.1,
+                ),
+            ]
+        )
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-01-02 11:00:00"),
+                    "endDate": "2025-01-02 11:10:00 +0100",
+                    "startDateUtc": pd.Timestamp("2025-01-02 10:00:00"),
+                    "endDateUtc": pd.Timestamp("2025-01-02 10:10:00"),
+                    "duration": 600.0,
+                    "route": route,
+                }
+            ]
+        )
+        heart_rate_df = pd.DataFrame(
+            [
+                {"startDate": "2025-01-02 10:00:10+00:00", "value": 141},
+                {"startDate": "2025-01-02 10:04:50+00:00", "value": 149},
+            ]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            state.records_by_type = RecordsByType(data={"HeartRate": heart_rate_df})
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+            state.records_by_type = original_records
+
+        assert rows[0]["route"].points[0].heart_rate == pytest.approx(141.0)
+        assert rows[0]["route"].points[1].heart_rate == pytest.approx(149.0)
+
     def test_missing_route_values_do_not_crash_heart_rate_enrichment(self) -> None:
         """Missing routes represented as NaN should be left untouched when HR samples exist."""
         from app_state import state
