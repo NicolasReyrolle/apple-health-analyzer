@@ -29,6 +29,30 @@ if not _logger.handlers:
     _logger.addHandler(logging.NullHandler())
 
 
+def _resource_dir() -> Path:
+    """Return the directory containing bundled UI resources."""
+    frozen_root = getattr(sys, "_MEIPASS", None)
+    if frozen_root is not None:
+        return Path(frozen_root) / "resources"
+    return Path(__file__).resolve().parent.parent / "resources"
+
+
+def _register_static_assets() -> None:
+    """Register bundled static assets if they are available."""
+    resources_dir = _resource_dir()
+    style_css = resources_dir / "style.css"
+
+    if resources_dir.is_dir():
+        app.add_static_files("/resources", str(resources_dir))
+    else:
+        _logger.warning("Resources directory missing at %s", resources_dir)
+
+    if style_css.is_file():
+        ui.add_css(style_css, shared=True)
+    else:
+        _logger.warning("Stylesheet missing at %s", style_css)
+
+
 @app.on_startup  # type: ignore[arg-type]
 def _compile_catalogs() -> None:  # pyright: ignore[reportUnusedFunction]
     """Compile translation catalogs at startup.
@@ -55,12 +79,7 @@ def main() -> None:
     render_left_drawer()
     render_body()
 
-    app.add_static_files("/resources", "resources")
-    # Inject style.css inline rather than via an external link so that browsers
-    # always receive the latest styles.  External links are cached by
-    # NiceGUI/Starlette with a 1-hour max-age, meaning users would keep seeing
-    # stale CSS after a server update until the cache expires.
-    ui.add_css(Path(__file__).parent.parent / "resources" / "style.css", shared=True)
+    _register_static_assets()
 
     # Check if dev file was passed through app storage
     # Note: This auto-load mechanism intentionally triggers on every page render

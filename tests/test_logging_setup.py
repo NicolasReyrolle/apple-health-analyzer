@@ -438,6 +438,24 @@ class TestCLIArgumentParsing:
         assert call_kwargs.get("reload") is False  # type: ignore[union-attr]
         assert "uvicorn_reload_dirs" not in call_kwargs
 
+    def test_register_static_assets_skips_missing_resources(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Missing bundled resources should not crash page rendering."""
+        missing_resources = tmp_path / "missing-resources"
+        monkeypatch.setattr(tracktales, "_resource_dir", lambda: missing_resources)
+
+        with (
+            patch.object(tracktales.app, "add_static_files") as mock_add_static_files,
+            patch.object(tracktales.ui, "add_css") as mock_add_css,
+            patch.object(tracktales._logger, "warning") as mock_warning,
+        ):
+            tracktales._register_static_assets()
+
+        mock_add_static_files.assert_not_called()
+        mock_add_css.assert_not_called()
+        assert mock_warning.call_count == 2
+
     def test_cli_main_recovers_when_std_streams_missing(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
