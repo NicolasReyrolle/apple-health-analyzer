@@ -345,7 +345,7 @@ jobs:
     release:
         name: Create GitHub release
         runs-on: ubuntu-latest
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && (github.ref_name == 'main' || startsWith(github.ref_name, 'release/')) }}
         needs:
             - prepare
             - build-python
@@ -461,7 +461,7 @@ jobs:
     publish-pypi:
         name: Publish to PyPI
         runs-on: ubuntu-latest
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && (github.ref_name == 'main' || startsWith(github.ref_name, 'release/')) }}
         needs:
             - release
         permissions:
