@@ -60,6 +60,12 @@ jobs:
                   output-file: release-notes.md
                   release-count: 1
                   tag-prefix: v
+                  skip-version-file: "true"
+                  skip-commit: "true"
+                  skip-tag: "true"
+                  skip-git-pull: "true"
+                  git-push: "false"
+                  skip-bump: "true"
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
