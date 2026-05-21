@@ -327,6 +327,43 @@ class TestBuildWorkoutRows:
         assert rows[0]["route"].points[0].heart_rate == pytest.approx(141.0)
         assert rows[0]["route"].points[1].heart_rate == pytest.approx(149.0)
 
+    def test_missing_route_values_do_not_crash_heart_rate_enrichment(self) -> None:
+        """Missing routes represented as NaN should be left untouched when HR samples exist."""
+        from app_state import state
+        from logic.records_by_type import RecordsByType
+
+        original_workouts: Any = state.workouts
+        original_records = state.records_by_type
+        workouts_mock = MagicMock()
+        workouts_mock._filter_workouts.return_value = pd.DataFrame(
+            [
+                {
+                    "activityType": "Running",
+                    "startDate": pd.Timestamp("2025-01-02 10:00:00+00:00"),
+                    "endDate": pd.Timestamp("2025-01-02 10:10:00+00:00"),
+                    "duration": 600.0,
+                    "route": float("nan"),
+                }
+            ]
+        )
+        heart_rate_df = pd.DataFrame(
+            [
+                {"startDate": "2025-01-02 10:00:10+00:00", "value": 141},
+                {"startDate": "2025-01-02 10:04:50+00:00", "value": 149},
+            ]
+        )
+
+        try:
+            state.workouts = workouts_mock
+            state.records_by_type = RecordsByType(data={"HeartRate": heart_rate_df})
+            rows = wt._build_workout_rows()
+        finally:
+            state.workouts = original_workouts
+            state.records_by_type = original_records
+
+        assert len(rows) == 1
+        assert pd.isna(rows[0]["route"])
+
     """Tests for _find_row_index()."""
 
     def test_returns_correct_index_for_matching_id(self) -> None:

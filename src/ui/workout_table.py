@@ -146,11 +146,11 @@ def _extract_workout_heart_rate_samples(
 
 
 def _annotate_route_with_heart_rate(
-    route: WorkoutRoute | None,
+    route: Any,
     heart_rate_samples: list[tuple[datetime, float]],
-) -> WorkoutRoute | None:
+) -> Any:
     """Return a copy of *route* with nearest heart-rate samples attached to each point."""
-    if route is None or route.is_empty or not heart_rate_samples:
+    if not isinstance(route, WorkoutRoute) or route.is_empty or not heart_rate_samples:
         return route
 
     annotated_points = []
