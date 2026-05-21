@@ -219,6 +219,16 @@ def _log_malformed_route_fragment(
     )
 
 
+def _is_missing_route_placeholder(value: Any) -> bool:
+    """Return True when *value* is an expected missing-route placeholder."""
+    if value is None:
+        return True
+    try:
+        return bool(pd.isna(value))
+    except TypeError:
+        return False
+
+
 def _build_workout_rows(
     activity_type: str | None = None,
     skip_range_filters: bool = False,
@@ -336,16 +346,7 @@ def _extract_row_data(
         row.get("averageHeartRate"),
         lambda v: f"{int(round(v))} bpm",
     )
-    if elevation_unit == "ft":
-        elev_sort, elev_display = _build_field_pair(
-            row.get("ElevationAscended"),
-            lambda v: f"{int(round(v * METERS_TO_FEET))} ft",
-        )
-    else:
-        elev_sort, elev_display = _build_field_pair(
-            row.get("ElevationAscended"),
-            lambda v: f"{int(round(v))} m",
-        )
+    elev_sort, elev_display = _extract_elevation_field(row, elevation_unit)
     power_sort, power_display = _build_field_pair(
         row.get("averageRunningPower"),
         lambda v: f"{int(round(v))} W",
@@ -390,43 +391,7 @@ def _extract_row_data(
         "distance_unit": distance_unit,
     }
 
-    workout_start = _normalize_datetime(row.get("startDateUtc", row.get("startDate")))
-    workout_end = _normalize_datetime(row.get("endDateUtc", row.get("endDate")))
-    workout_heart_rate_samples = _extract_workout_heart_rate_samples(
-        heart_rate_samples if heart_rate_samples is not None else pd.DataFrame(),
-        workout_start,
-        workout_end,
-    )
-    if workout_heart_rate_samples:
-        route_value = result.get("route")
-        if route_value is not None and not isinstance(route_value, WorkoutRoute):
-            _log_malformed_route_fragment(
-                row, route_value, field_name="route", workout_index=workout_index
-            )
-        result["route"] = _annotate_route_with_heart_rate(
-            cast(WorkoutRoute | None, route_value),
-            workout_heart_rate_samples,
-        )
-        route_parts = result.get("route_parts")
-        if isinstance(route_parts, list):
-            invalid_route_parts = [
-                part
-                for part in route_parts
-                if part is not None and not isinstance(part, WorkoutRoute)
-            ]
-            if invalid_route_parts:
-                _log_malformed_route_fragment(
-                    row,
-                    invalid_route_parts,
-                    field_name="route_parts",
-                    workout_index=workout_index,
-                )
-            result["route_parts"] = [
-                _annotate_route_with_heart_rate(part, workout_heart_rate_samples)
-                if isinstance(part, WorkoutRoute)
-                else part
-                for part in route_parts
-            ]
+    _enrich_routes_with_heart_rate(result, row, heart_rate_samples, workout_index)
 
     # VO2 max is a generic field shown for all activity types (Apple Watch reports
     # VO2 max estimates for every workout type, not only running).  Compute it once
@@ -437,18 +402,94 @@ def _extract_row_data(
     )
     result["vo2_max"] = _nearest_vo2_max(workout_date, vo2_dates)
 
-    if raw_activity == "Running":
-        result.update(_extract_running_fields(row, distance_unit))
-    elif raw_activity == "Walking":
-        result.update(_extract_walking_fields(row, distance_unit))
-    elif raw_activity == "Hiking":
-        result.update(_extract_hiking_fields(row, distance_unit))
-    elif raw_activity == "Swimming":
-        result.update(_extract_swimming_fields(row))
-    elif raw_activity == "Cycling":
-        result.update(_extract_cycling_fields(row, distance_unit))
+    _apply_activity_specific_fields(result, row, raw_activity, distance_unit)
 
     return result
+
+
+def _extract_elevation_field(row: Any, elevation_unit: str) -> tuple[float | str, str]:
+    """Extract elevation sort/display values with the selected unit."""
+    if elevation_unit == "ft":
+        return _build_field_pair(
+            row.get("ElevationAscended"),
+            lambda v: f"{int(round(v * METERS_TO_FEET))} ft",
+        )
+    return _build_field_pair(
+        row.get("ElevationAscended"),
+        lambda v: f"{int(round(v))} m",
+    )
+
+
+def _enrich_routes_with_heart_rate(
+    result: dict[str, Any],
+    row: Any,
+    heart_rate_samples: pd.DataFrame | None,
+    workout_index: object | None,
+) -> None:
+    """Attach nearest heart-rate values to route and route parts when available."""
+    workout_start = _normalize_datetime(row.get("startDateUtc", row.get("startDate")))
+    workout_end = _normalize_datetime(row.get("endDateUtc", row.get("endDate")))
+    workout_heart_rate_samples = _extract_workout_heart_rate_samples(
+        heart_rate_samples if heart_rate_samples is not None else pd.DataFrame(),
+        workout_start,
+        workout_end,
+    )
+    if not workout_heart_rate_samples:
+        return
+
+    route_value = result.get("route")
+    if not _is_missing_route_placeholder(route_value) and not isinstance(route_value, WorkoutRoute):
+        _log_malformed_route_fragment(row, route_value, field_name="route", workout_index=workout_index)
+    result["route"] = _annotate_route_with_heart_rate(
+        cast(WorkoutRoute | None, route_value),
+        workout_heart_rate_samples,
+    )
+
+    route_parts = result.get("route_parts")
+    if not isinstance(route_parts, list):
+        return
+
+    invalid_route_parts = [
+        part
+        for part in route_parts
+        if not _is_missing_route_placeholder(part) and not isinstance(part, WorkoutRoute)
+    ]
+    if invalid_route_parts:
+        _log_malformed_route_fragment(
+            row,
+            invalid_route_parts,
+            field_name="route_parts",
+            workout_index=workout_index,
+        )
+    result["route_parts"] = [
+        _annotate_route_with_heart_rate(part, workout_heart_rate_samples)
+        if isinstance(part, WorkoutRoute)
+        else part
+        for part in route_parts
+    ]
+
+
+def _apply_activity_specific_fields(
+    result: dict[str, Any],
+    row: Any,
+    raw_activity: str,
+    distance_unit: str,
+) -> None:
+    """Populate sport-specific fields for the workout row."""
+    if raw_activity == "Running":
+        result.update(_extract_running_fields(row, distance_unit))
+        return
+    if raw_activity == "Walking":
+        result.update(_extract_walking_fields(row, distance_unit))
+        return
+    if raw_activity == "Hiking":
+        result.update(_extract_hiking_fields(row, distance_unit))
+        return
+    if raw_activity == "Swimming":
+        result.update(_extract_swimming_fields(row))
+        return
+    if raw_activity == "Cycling":
+        result.update(_extract_cycling_fields(row, distance_unit))
 
 
 def _extract_date_field(row: Any, language_code: str) -> tuple[float, str]:

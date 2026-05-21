@@ -386,11 +386,11 @@ class TestBuildWorkoutRows:
         assert rows[0]["route"].points[0].heart_rate == pytest.approx(141.0)
         assert rows[0]["route"].points[1].heart_rate == pytest.approx(149.0)
 
-    def test_missing_route_values_log_xml_fragment_in_debug(
+    def test_missing_route_values_do_not_log_malformed_debug(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Malformed routes should be left untouched and log the workout XML fragment."""
+        """NaN route placeholders should be left untouched without malformed-route logs."""
         from app_state import state
         from logic.records_by_type import RecordsByType
 
@@ -427,9 +427,8 @@ class TestBuildWorkoutRows:
 
         assert len(rows) == 1
         assert pd.isna(rows[0]["route"])
-        assert any(
+        assert not any(
             "Skipping heart-rate route enrichment for malformed route" in record.message
-            and 'XML fragment: <Workout startDate="2025-01-02 11:00:00 +0100" />' in record.message
             for record in caplog.records
         )
 
