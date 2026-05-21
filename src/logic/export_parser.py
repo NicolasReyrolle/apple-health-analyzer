@@ -7,7 +7,7 @@ from collections.abc import Callable
 from datetime import datetime
 from types import TracebackType
 from typing import Any
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import Element, tostring
 from zipfile import ZipFile
 
 import pandas as pd
@@ -180,6 +180,7 @@ class ExportParser:
         """Process a workout element and append the normalized workout record."""
         activity_type = self._extract_activity_type(elem)
         record = self._create_workout_record(elem, activity_type)
+        record["xmlFragment"] = tostring(elem, encoding="unicode")
         self._process_workout_children(elem, record, zipfile)
         workout_rows.append(record)
 
@@ -212,6 +213,18 @@ class ExportParser:
         }
 
         if len(workouts_df) > 0:
+            normalized_start_dates_utc = [
+                self._normalize_health_datetime_to_utc_naive(raw_start_date)
+                for raw_start_date in workouts_df["startDate"].tolist()
+            ]
+            workouts_df["startDateUtc"] = pd.Series(
+                normalized_start_dates_utc, dtype="datetime64[ns]"
+            )
+            normalized_end_dates_utc = [
+                self._normalize_health_datetime_to_utc_naive(raw_end_date)
+                for raw_end_date in workouts_df["endDate"].tolist()
+            ]
+            workouts_df["endDateUtc"] = pd.Series(normalized_end_dates_utc, dtype="datetime64[ns]")
             # Parse each Apple Health datetime and drop timezone information while
             # preserving the local wall-clock timestamp.
             normalized_start_dates = [
@@ -239,6 +252,19 @@ class ExportParser:
 
         parsed_fallback = pd.to_datetime(raw_start_date, errors="coerce")
         return parsed_fallback if not pd.isna(parsed_fallback) else None
+
+    @staticmethod
+    def _normalize_health_datetime_to_utc_naive(
+        raw_datetime: Any,
+    ) -> datetime | pd.Timestamp | None:
+        """Normalize an Apple Health datetime to a UTC-based naive datetime."""
+        if not isinstance(raw_datetime, str):
+            return None
+
+        parsed_datetime = pd.to_datetime(raw_datetime, utc=True, errors="coerce")
+        if pd.isna(parsed_datetime):
+            return None
+        return parsed_datetime.tz_localize(None)
 
     def _load_data(self, zipfile: ZipFile) -> ParsedHealthData:
         """Load workouts and HealthKit records from the export file into ParsedHealthData."""
