@@ -205,6 +205,28 @@ class TestSetupLogging:
         # Verify it uses stdout
         assert stream_handlers[0].stream == sys.stdout  # type: ignore[attr-defined]
 
+    def test_setup_logging_recovers_when_std_streams_missing(
+        self,
+        clean_logger: logging.Logger,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """setup_logging should recreate stdout/stderr when missing."""
+        assert clean_logger is logging.getLogger()
+        monkeypatch.setattr(sys, "stdout", None)
+        monkeypatch.setattr(sys, "stderr", None)
+
+        tracktales.setup_logging("INFO", enable_file_logging=False)
+
+        stream_handlers = [
+            h
+            for h in self._non_pytest_handlers(clean_logger)
+            if isinstance(h, logging.StreamHandler)
+        ]
+        assert len(stream_handlers) == 1
+        assert sys.stdout is not None
+        assert sys.stderr is not None
+        assert stream_handlers[0].stream == sys.stdout  # type: ignore[attr-defined]
+
     def test_setup_logging_handlers_have_formatters(
         self, clean_logger: logging.Logger, tmp_path: Path
     ) -> None:

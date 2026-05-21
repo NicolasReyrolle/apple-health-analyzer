@@ -16,6 +16,18 @@ class _ImmediateFlushHandler(logging.handlers.RotatingFileHandler):
         self.flush()
 
 
+def _ensure_standard_streams() -> None:
+    """Ensure stdout/stderr exist in windowed or frozen executions.
+
+    Uvicorn's default formatter checks ``sys.stderr.isatty()`` during
+    startup. In windowed executables, those streams can be ``None``.
+    """
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
+
 def setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
     """Configure logging with both console and file handlers.
 
@@ -24,6 +36,9 @@ def setup_logging(log_level: str, enable_file_logging: bool = True) -> None:
         enable_file_logging: Whether to write logs to a file
             (disabled in dev mode to avoid reload loops)
     """
+    # Keep std streams available for formatters that probe TTY support.
+    _ensure_standard_streams()
+
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, log_level))
 
